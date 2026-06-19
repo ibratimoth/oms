@@ -50,7 +50,7 @@ const User = require('./user')(sequelize);
 const Product = require('./product')(sequelize);
 const Order = require('./order')(sequelize);
 const OrderItem = require('./orderItem')(sequelize);
-const StockMovement = require('./StockMovement')(sequelize);
+const StockMovement = require('./stockMovement')(sequelize);
 
 /* =========================
    RELATIONSHIPS
