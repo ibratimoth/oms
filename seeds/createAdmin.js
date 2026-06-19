@@ -11,9 +11,9 @@ const { User } = require('../models');
     }
 
     await User.create({
-      full_name: 'user',
-      username: 'user',
-      password: await bcrypt.hash('user123', 10),
+      full_name: 'Zainab Mhajiru',
+      username: 'zai@delle',
+      password: await bcrypt.hash('zai@123', 10),
       role: 'user'
     });
 
