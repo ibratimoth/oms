@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invoice - <%= order.order_number %></title>
+
+  <!-- FontAwesome for UI Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              teal: '#1A6B78',      /* Deep Teal from logo */
+              tealDark: '#124E58',
+              gold: '#D49A17',      /* Rich Gold from logo */
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Ensure clean page breaks and professional rendering when physical printing triggers */
+    @media print {
+      body {
+        background-color: #ffffff;
+        color: #000000;
+      }
+      .no-print {
+        display: none !important;
+      }
+      @page {
+        margin: 1.5cm;
+      }
+    }
+  </style>
+</head>
+
+<body onload="window.print()" class="bg-slate-50 font-sans antialiased text-slate-800 print:bg-white">
+
+<!-- SCREEN-ONLY UTILITY ACTION NAVIGATION ROW -->
+<div class="max-w-4xl mx-auto mt-6 px-8 no-print print:hidden">
+  <div class="flex items-center justify-between bg-slate-800 text-white px-4 py-3 rounded-xl shadow-sm border border-slate-700">
+    <div class="flex items-center gap-3">
+      <a 
+        href="/orders" 
+        class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider bg-slate-700 hover:bg-slate-600 text-slate-200 hover:text-white px-3 py-2 rounded-lg border border-slate-600/50 transition duration-150 group"
+      >
+        <i class="fas fa-arrow-left group-hover:-translate-x-0.5 transition-transform duration-150"></i>
+        <span>Back to Orders List</span>
+      </a>
+      <span class="text-slate-500 text-sm">|</span>
+      <span class="text-xs font-medium text-slate-400 hidden sm:inline">Print manager opened automatically.</span>
+    </div>
+    
+    <button 
+      onclick="window.print()" 
+      class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider bg-brand-teal hover:bg-brand-tealDark text-white px-3 py-2 rounded-lg shadow-sm transition duration-150"
+    >
+      <i class="fas fa-print text-[11px]"></i> Re-Print
+    </button>
+  </div>
+</div>
+
+<!-- MAIN INVOICE PRINT CANVAS SHEET -->
+<div class="max-w-4xl mx-auto my-6 p-8 bg-white border border-slate-200 rounded-xl shadow-sm print:shadow-none print:border-none print:my-0 print:p-0">
+
+  <!-- INVOICE BRAND HEADER METADATA -->
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-6 mb-8">
+    <div class="flex items-center gap-3">
+      <img src="/images/delleventures.jpeg" alt="Delle Ventures" class="h-12 w-auto object-contain rounded bg-white p-0.5 border border-slate-100">
+      <div>
+        <h1 class="text-xl font-bold tracking-tight text-slate-900">Delle Ventures</h1>
+        <p class="text-xs text-slate-400 font-medium">Official Sales & Order Invoice</p>
+      </div>
+    </div>
+    <div class="text-left sm:text-right">
+      <div class="text-xs font-bold uppercase tracking-widest text-brand-teal">Invoice Document</div>
+      <div class="text-lg font-mono font-bold text-slate-800 mt-0.5">#<%= order.order_number %></div>
+    </div>
+  </div>
+
+  <!-- PROFILE INFORMATION REGION -->
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8 text-sm border-b border-slate-100 pb-6">
+    
+    <div>
+      <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Invoice To</h3>
+      <p class="font-bold text-slate-800"><%= order.customer_name || 'Walk-in Customer' %></p>
+      <% if (order.customer_phone) { %>
+        <p class="text-xs font-mono text-slate-500 mt-1"><i class="fas fa-phone text-[10px] text-slate-300 mr-1"></i><%= order.customer_phone %></p>
+      <% } else { %>
+        <p class="text-xs italic text-slate-400 mt-1">No contact phone logged</p>
+      <% } %>
+    </div>
+
+    <div>
+      <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Issued By</h3>
+      <p class="font-semibold text-slate-800">Delle Ventures</p>
+      <p class="text-xs text-slate-500 mt-0.5">Dodoma, Tanzania</p>
+    </div>
+
+    <div class="sm:text-right">
+      <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Date & Reference</h3>
+      <p class="text-slate-600"><span class="font-medium text-slate-800">Date:</span> <%= new Date(order.createdAt || Date.now()).toLocaleDateString('en-GB') %></p>
+      <p class="text-slate-600 mt-0.5"><span class="font-medium text-slate-800">System ID:</span> <%= order.id %></p>
+    </div>
+
+  </div>
+
+  <!-- ORDER QUANTITIES ENTRY DATA TABLE -->
+  <div class="border border-slate-200 rounded-lg overflow-hidden mb-6">
+    <table class="w-full text-left border-collapse">
+      
+      <thead>
+        <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs font-bold uppercase tracking-wider">
+          <th class="py-3 px-4">Product Name</th>
+          <th class="py-3 px-4 text-center w-20">Qty</th>
+          <th class="py-3 px-4 text-right w-32">Unit Price</th>
+          <th class="py-3 px-4 text-right w-36">Total (Subtotal)</th>
+        </tr>
+      </thead>
+
+      <tbody class="text-sm divide-y divide-slate-100 text-slate-700">
+        <% order.OrderItems.forEach(i => { %>
+          <tr class="hover:bg-slate-50/50 transition duration-75">
+            <td class="py-3.5 px-4 font-medium text-slate-800">
+              <%= i.Product ? i.Product.name : i.product_id %>
+            </td>
+            <td class="py-3.5 px-4 text-center font-mono text-slate-600">
+              <%= i.quantity %>
+            </td>
+            <td class="py-3.5 px-4 text-right font-mono text-slate-600">
+              <%= Number(i.unit_price).toLocaleString() %>
+            </td>
+            <td class="py-3.5 px-4 text-right font-mono font-semibold text-slate-900">
+              TSh <%= Number(i.subtotal).toLocaleString() %>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+
+    </table>
+  </div>
+
+  <!-- INVOICE TOTALS CALCULATION FRAME -->
+  <div class="flex flex-col items-end gap-3 pt-4 border-t border-slate-100">
+    <div class="w-full sm:w-72 space-y-2">
+      
+      <div class="flex justify-between text-sm text-slate-500">
+        <span>Subtotal</span>
+        <span class="font-mono font-medium text-slate-700">TSh <%= Number(order.total_amount).toLocaleString() %></span>
+      </div>
+      
+      <div class="flex justify-between text-sm text-slate-500 pb-2 border-b border-slate-100">
+        <span>VAT / Tax (0%)</span>
+        <span class="font-mono font-medium text-slate-700">0.00</span>
+      </div>
+
+      <div class="flex justify-between items-baseline pt-1">
+        <span class="text-base font-bold text-slate-900">Grand Total</span>
+        <span class="text-xl font-mono font-black text-brand-teal">
+          TSh <%= Number(order.total_amount).toLocaleString() %>
+        </span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ACCOUNT DOCUMENT FOOTER REGION -->
+  <div class="mt-16 border-t border-dashed border-slate-200 pt-6 text-center text-xs text-slate-400">
+    <p>Thank you for doing business with <span class="font-semibold text-slate-600">Delle Ventures</span>.</p>
+    <p class="mt-1 text-[10px]">This is a system-generated document and remains valid without a physical signature.</p>
+  </div>
+
+</div>
+
+</body>
+</html>

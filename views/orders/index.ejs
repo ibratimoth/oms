@@ -1,0 +1,279 @@
+<%- include('../layouts/header') %>
+
+<!-- TOP ACTION HEADER -->
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+  <div>
+    <h1 class="text-2xl font-bold tracking-tight text-slate-800">Order Management</h1>
+    <p class="text-sm text-slate-500 mt-1">Track customer purchase invoices, execution states, and financial transactions.</p>
+  </div>
+  <div>
+    <a 
+      href="/orders/create" 
+      class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-teal hover:bg-brand-tealDark text-white text-sm font-semibold rounded-lg shadow-sm shadow-brand-teal/10 transition duration-150 whitespace-nowrap"
+    >
+      <i class="fas fa-plus text-xs"></i> New Order
+    </a>
+  </div>
+</div>
+
+<!-- QUERY FILTERS PANEL CONTAINER -->
+<div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-6">
+  <form method="GET" action="/orders" class="flex flex-col md:flex-row flex-wrap items-end gap-4">
+    
+    <!-- Order ID Short Input Field -->
+    <div class="w-full sm:flex-1 md:w-32 min-w-[120px]">
+      <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Order No</label>
+      <div class="relative">
+        <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400 text-xs">
+          #
+        </span>
+        <input 
+          type="text" 
+          name="orderNo" 
+          value="<%= typeof query !== 'undefined' && query.orderNo ? query.orderNo : '' %>"
+          placeholder="e.g., 1001"
+          class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg pl-7 pr-3 py-1.5 text-sm focus:outline-none focus:border-brand-teal transition duration-150"
+        >
+      </div>
+    </div>
+
+    <!-- Customer Profile String Input Field -->
+    <div class="w-full md:flex-1 min-w-[200px]">
+      <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Customer Details</label>
+      <div class="relative">
+        <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+          <i class="fas fa-user text-xs"></i>
+        </span>
+        <input 
+          type="text" 
+          name="customer" 
+          value="<%= typeof query !== 'undefined' && query.customer ? query.customer : '' %>"
+          placeholder="Search name or phone..."
+          class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg pl-9 pr-3 py-1.5 text-sm focus:outline-none focus:border-brand-teal transition duration-150"
+        >
+      </div>
+    </div>
+
+    <!-- Financial Amount Cap Ceiling Field -->
+    <div class="w-full sm:flex-1 md:w-48 min-w-[150px]">
+      <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Max Amount (TSh)</label>
+      <div class="relative">
+        <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-xs font-semibold text-slate-400">
+          TSh
+        </span>
+        <input 
+          type="number" 
+          name="maxAmount" 
+          value="<%= typeof query !== 'undefined' && query.maxAmount ? query.maxAmount : '' %>"
+          placeholder="Max limit ceiling"
+          class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg pl-10 pr-3 py-1.5 text-sm focus:outline-none focus:border-brand-teal transition duration-150"
+        >
+      </div>
+    </div>
+
+    <!-- State Dropdown Controller Filter -->
+    <div class="w-full sm:flex-1 md:w-48 min-w-[150px]">
+      <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Fulfillment Status</label>
+      <select 
+        name="status" 
+        class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-brand-teal transition duration-150"
+      >
+        <% let selectedStatus = (typeof query !== 'undefined' && query.status) ? query.status : '' %>
+        <option value="" <%= selectedStatus === '' ? 'selected' : '' %>>All Statuses</option>
+        <option value="pending" <%= selectedStatus === 'pending' ? 'selected' : '' %>>Pending</option>
+        <option value="completed" <%= selectedStatus === 'completed' ? 'selected' : '' %>>Completed</option>
+      </select>
+    </div>
+
+    <!-- Filter Execution Actions Trigger Buttons Row -->
+    <div class="w-full md:w-auto flex items-center gap-2 shrink-0 pt-2 md:pt-0">
+      <button 
+        type="submit"
+        class="flex-1 md:flex-none inline-flex items-center justify-center gap-2 px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold rounded-lg transition duration-150 shadow-sm"
+      >
+        <i class="fas fa-sliders-h text-xs text-slate-400"></i> Apply Filters
+      </button>
+
+      <a 
+        href="/orders" 
+        class="inline-flex items-center justify-center px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 text-sm font-semibold rounded-lg border border-slate-200 transition duration-150"
+      >
+        Clear
+      </a>
+    </div>
+
+  </form>
+</div>
+
+<!-- ORDERS DATA TABLE DISPLAY CARD CONTAINER -->
+<div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full text-left border-collapse whitespace-nowrap">
+      
+      <thead>
+        <tr class="bg-slate-50 border-b border-slate-200 text-slate-400 text-xs font-bold uppercase tracking-wider">
+          <th class="py-3.5 px-6">Order No</th>
+          <th class="py-3.5 px-6">Customer Details</th>
+          <th class="py-3.5 px-6">Total Amount</th>
+          <th class="py-3.5 px-6">Fulfillment Status</th>
+          <th class="py-3.5 px-6 text-right">Actions</th>
+        </tr>
+      </thead>
+
+      <tbody class="text-sm divide-y divide-slate-100">
+        <% if (orders && orders.length > 0) { %>
+          <% orders.forEach(o => { %>
+            <tr class="hover:bg-slate-50/70 transition duration-150 group">
+              
+              <!-- Order Core Branding Number Identification -->
+              <td class="py-4 px-6 font-semibold text-slate-700">
+                #<%= o.order_number %>
+              </td>
+
+              <!-- Customer Details Column Block -->
+              <td class="py-4 px-6">
+                <div class="font-medium text-slate-800"><%= o.customer_name || 'Walk-in Customer' %></div>
+                <% if (o.customer_phone) { %>
+                  <div class="text-xs text-slate-400 font-mono mt-0.5"><%= o.customer_phone %></div>
+                <% } else { %>
+                  <div class="text-xs text-slate-400 italic mt-0.5">No phone provided</div>
+                <% } %>
+              </td>
+              
+              <!-- Aggregated Price Total Field -->
+              <td class="py-4 px-6 font-bold text-slate-900 font-mono text-xs">
+                TSh <%= Number(o.total_amount).toLocaleString() %>
+              </td>
+              
+              <!-- Color Coordinated Context Status Badge Row -->
+              <td class="py-4 px-6">
+                <% if (o.status === 'completed') { %>
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
+                    <%= o.status %>
+                  </span>
+                <% } else if (o.status === 'pending') { %>
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-100">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5 animate-pulse"></span>
+                    <%= o.status %>
+                  </span>
+                <% } else { %>
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+                    <span class="w-1.5 h-1.5 rounded-full bg-blue-500 mr-1.5"></span>
+                    <%= o.status %>
+                  </span>
+                <% } %>
+              </td>
+              
+              <!-- ACTIVE INTERACTIVE CONTROLS CONTEXT ACTIONS BLOCK -->
+              <td class="py-4 px-6 text-right">
+                <div class="inline-flex items-center gap-2 opacity-90 group-hover:opacity-100 transition duration-150">
+                  
+                  <!-- Read-Only Profile View (Always Active) -->
+                  <a 
+                    href="/orders/view/<%= o.id %>" 
+                    class="inline-flex items-center gap-1.5 bg-white hover:bg-slate-50 text-slate-600 hover:text-brand-teal py-1.5 px-3 text-xs font-semibold border border-slate-200 rounded-md shadow-sm transition duration-150"
+                  >
+                    <i class="fas fa-eye text-[10px]"></i> View
+                  </a>
+
+                  <!-- Conditional Logic Check: Hide Edit if Status is Completed -->
+                  <% if (o.status !== 'completed') { %>
+                    <a 
+                      href="/orders/edit/<%= o.id %>" 
+                      class="inline-flex items-center gap-1.5 bg-white hover:bg-slate-50 text-slate-600 hover:text-brand-teal py-1.5 px-3 text-xs font-semibold border border-slate-200 rounded-md shadow-sm transition duration-150"
+                    >
+                      <i class="fas fa-edit text-[10px]"></i> Edit
+                    </a>
+
+                    <!-- State Shift Trigger Confirmation Action Anchor -->
+                    <a 
+                      href="/orders/complete/<%= o.id %>" 
+                      onclick="return confirm('Mark order #<%= o.order_number %> as completed? This will finalize transactions.')"
+                      class="inline-flex items-center gap-1.5 bg-white hover:bg-emerald-50 text-emerald-600 border border-slate-200 hover:border-emerald-200 py-1.5 px-3 text-xs font-semibold rounded-md shadow-sm transition duration-150"
+                    >
+                      <i class="fas fa-check text-[10px]"></i> Complete
+                    </a>
+                  <% } %>
+
+                </div>
+              </td>
+
+            </tr>
+          <% }) %>
+        <% } else { %>
+          <!-- FALLBACK EMPTY RESPONSE CANVAS VIEW -->
+          <tr>
+            <td colspan="5" class="py-12 text-center">
+              <div class="text-slate-300 mb-2">
+                <i class="fas fa-receipt text-4xl"></i>
+              </div>
+              <p class="text-sm text-slate-400 italic">No registered sales orders match your filter parameters.</p>
+              <a href="/orders" class="mt-3 inline-flex items-center gap-1 text-xs font-bold text-brand-teal hover:underline">
+                Reset all order filter parameters &rarr;
+              </a>
+            </td>
+          </tr>
+        <% } %>
+      </tbody>
+
+    </table>
+  </div>
+
+  <!-- PAGINATION TRACK STEPPER CONTAINER BLOCK -->
+  <% if (typeof totalPages !== 'undefined' && totalPages > 1) { %>
+    <% 
+      // Safe utility to stitch URL variables together during page shifting jumps
+      function getOrderPageUrl(targetPage) {
+        let params = new URLSearchParams();
+        if (query.orderNo) params.set('orderNo', query.orderNo);
+        if (query.customer) params.set('customer', query.customer);
+        if (query.maxAmount) params.set('maxAmount', query.maxAmount);
+        if (query.status) params.set('status', query.status);
+        params.set('page', targetPage);
+        return '/orders?' + params.toString();
+      }
+    %>
+    <div class="bg-slate-50 border-t border-slate-200 px-6 py-4 flex items-center justify-between">
+      <div class="text-xs font-medium text-slate-500">
+        Showing Page <span class="text-slate-800 font-bold"><%= currentPage %></span> of <span class="text-slate-800 font-bold"><%= totalPages %></span> pages
+      </div>
+      
+      <div class="inline-flex items-center gap-1">
+        <% if (currentPage > 1) { %>
+          <a href="<%= getOrderPageUrl(currentPage - 1) %>" class="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-xs font-semibold transition duration-150">
+            <i class="fas fa-chevron-left"></i>
+          </a>
+        <% } else { %>
+          <span class="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 bg-slate-100 text-slate-300 text-xs cursor-not-allowed">
+            <i class="fas fa-chevron-left"></i>
+          </span>
+        <% } %>
+
+        <% for(let i = 1; i <= totalPages; i++) { %>
+          <% if (i === currentPage) { %>
+            <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-brand-teal text-white text-xs font-bold shadow-sm shadow-brand-teal/10">
+              <%= i %>
+            </span>
+          <% } else { %>
+            <a href="<%= getOrderPageUrl(i) %>" class="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-xs font-medium transition duration-150">
+              <%= i %>
+            </a>
+          <% } %>
+        <% } %>
+
+        <% if (currentPage < totalPages) { %>
+          <a href="<%= getOrderPageUrl(currentPage + 1) %>" class="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-xs font-semibold transition duration-150">
+            <i class="fas fa-chevron-right"></i>
+          </a>
+        <% } else { %>
+          <span class="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 bg-slate-100 text-slate-300 text-xs cursor-not-allowed">
+            <i class="fas fa-chevron-right"></i>
+          </span>
+        <% } %>
+      </div>
+    </div>
+  <% } %>
+</div>
+
+<%- include('../layouts/footer') %>

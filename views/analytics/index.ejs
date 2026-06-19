@@ -1,0 +1,162 @@
+<%- include('../layouts/header') %>
+
+<!-- Top Row Action Header -->
+<div class="mb-6">
+  <h1 class="text-2xl font-bold tracking-tight text-slate-800">Analytics Dashboard</h1>
+  <p class="text-sm text-slate-500 mt-1">Real-time breakdown of top performing products, stock flow velocity, and shop inventory balances.</p>
+</div>
+
+<!-- Quick Overview Counter Metric Cards -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-6">
+  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
+    <div>
+      <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Top Stream Product</p>
+      <h3 class="text-base font-bold text-slate-800 mt-1 truncate max-w-[200px]">
+        <%= topProducts && topProducts.length > 0 ? topProducts[0].Product.name : 'N/A' %>
+      </h3>
+    </div>
+    <div class="text-emerald-500 bg-emerald-50 w-10 h-10 rounded-lg flex items-center justify-center shrink-0">
+      <i class="fas fa-trophy text-lg"></i>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
+    <div>
+      <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Items Logged</p>
+      <h3 class="text-xl font-mono font-black text-slate-900 mt-1"><%= stockData ? stockData.length : 0 %></h3>
+    </div>
+    <div class="text-brand-teal bg-slate-50 w-10 h-10 rounded-lg flex items-center justify-center shrink-0">
+      <i class="fas fa-boxes text-lg"></i>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between sm:col-span-2 lg:col-span-1">
+    <div>
+      <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Inventory Health Status</p>
+      <h3 class="text-sm font-semibold text-slate-700 mt-1.5 flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Operational Stable
+      </h3>
+    </div>
+    <div class="text-slate-400 bg-slate-50 w-10 h-10 rounded-lg flex items-center justify-center shrink-0">
+      <i class="fas fa-heartbeat text-lg"></i>
+    </div>
+  </div>
+</div>
+
+<!-- Main Intelligence Section split into Responsive Layout Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+  
+  <!-- 🏆 LEFT COLUMN: TOP SELLING PRODUCTS LEDGER (1/3 Width) -->
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden lg:col-span-1">
+    <div class="px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
+      <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+      <h3 class="font-bold text-slate-800 text-xs tracking-wide uppercase">Top Selling Products</h3>
+    </div>
+    
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse whitespace-nowrap">
+        <thead>
+          <tr class="bg-slate-50/70 border-b border-slate-200 text-slate-400 text-[11px] font-bold uppercase tracking-wider">
+            <th class="py-3 px-5">Product Name</th>
+            <th class="py-3 px-5 text-right w-24">Units Sold</th>
+          </tr>
+        </thead>
+        <tbody class="text-sm divide-y divide-slate-100">
+          <% if (topProducts && topProducts.length > 0) { %>
+            <% topProducts.forEach((p, idx) => { %>
+              <tr class="hover:bg-slate-50/40 transition duration-75">
+                <td class="py-3 px-5 font-medium text-slate-800 flex items-center gap-2">
+                  <span class="font-mono text-xs text-slate-300 w-4"><%= idx + 1 %>.</span>
+                  <span class="truncate max-w-[160px]" title="<%= p.Product.name %>"><%= p.Product.name %></span>
+                </td>
+                <td class="py-3 px-5 text-right font-mono font-bold text-emerald-600 bg-emerald-50/30">
+                  <%= p.dataValues.total_sold %>
+                </td>
+              </tr>
+            <% }) %>
+          <% } else { %>
+            <tr>
+              <td colspan="2" class="py-8 text-center text-xs italic text-slate-400">No recorded sales items data yet.</td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 📦 RIGHT COLUMN: COMPREHENSIVE STOCK FLOW ANALYSIS (2/3 Width) -->
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden lg:col-span-2">
+    <div class="px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
+      <div class="w-2 h-2 rounded-full bg-brand-teal"></div>
+      <h3 class="font-bold text-slate-800 text-xs tracking-wide uppercase">Stock Velocity & Level Overview</h3>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse whitespace-nowrap">
+        <thead>
+          <tr class="bg-slate-50/70 border-b border-slate-200 text-slate-400 text-[11px] font-bold uppercase tracking-wider">
+            <th class="py-3 px-6">Product Description</th>
+            <th class="py-3 px-4 text-center w-24">Starting Stock</th>
+            <th class="py-3 px-4 text-center w-24">Units Sold</th>
+            <th class="py-3 px-6 text-right w-32">Remaining Balance</th>
+          </tr>
+        </thead>
+        <tbody class="text-sm divide-y divide-slate-100 text-slate-700">
+          <% if (stockData && stockData.length > 0) { %>
+            <% stockData.forEach(p => { %>
+              <tr class="hover:bg-slate-50/50 transition duration-75 group">
+                
+                <!-- Product Name Header Info -->
+                <td class="py-3.5 px-6 font-medium text-slate-800">
+                  <%= p.name %>
+                </td>
+                
+                <!-- Initial Total Bulk Capacity Added -->
+                <td class="py-3.5 px-4 text-center font-mono text-slate-500">
+                  <%= p.stock %>
+                </td>
+                
+                <!-- Aggregated Sales Dispatched Volume -->
+                <td class="py-3.5 px-4 text-center font-mono font-medium text-slate-600">
+                  <%= p.sold %>
+                </td>
+                
+                <!-- Remaining Safe Stock Count + Interactive Flag Tags -->
+                <td class="py-3.5 px-6 text-right">
+                  <div class="flex items-center justify-end gap-3">
+                    <span class="font-mono font-bold text-slate-900 text-base"><%= p.remaining %></span>
+                    
+                    <!-- Alert levels depend directly on remaining stock limits -->
+                    <% if (p.remaining <= 0) { %>
+                      <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-rose-50 text-rose-700 border border-rose-100">
+                        Out of Stock
+                      </span>
+                    <% } else if (p.remaining <= p.reorder_level) { %>
+                      <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-50 text-amber-700 border border-amber-100 animate-pulse">
+                        Low Stock
+                      </span>
+                    <% } else { %>
+                      <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-50 text-slate-600 border border-slate-200">
+                        Healthy
+                      </span>
+                    <% } %>
+                  </div>
+                </td>
+
+              </tr>
+            <% }) %>
+          <% } else { %>
+            <tr>
+              <td colspan="4" class="py-12 text-center text-sm text-slate-400 italic">
+                No active inventory products tracked.
+              </td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<%- include('../layouts/footer') %>

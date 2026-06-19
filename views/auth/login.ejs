@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login | Delle Ventures Order Management</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    /* Custom brand colors matching the logo */
+    .bg-brand-teal { background-color: #1A6B78; }
+    .text-brand-teal { color: #1A6B78; }
+    .border-brand-teal { border-color: #1A6B78; }
+    .focus-brand-teal:focus { border-color: #1A6B78; --tw-ring-color: #1A6B78; }
+    
+    .bg-brand-gold { background-color: #D49A17; }
+    .text-brand-gold { color: #D49A17; }
+    .hover-brand-gold:hover { background-color: #B88211; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8">
+
+  <div class="bg-white rounded-2xl shadow-xl overflow-hidden max-w-4xl w-full min-h-[550px] flex flex-col md:flex-row">
+    
+    <div class="md:w-1/2 bg-brand-teal p-8 flex flex-col justify-between text-white relative overflow-hidden">
+      <div class="absolute -top-10 -left-10 w-40 h-40 bg-brand-gold opacity-10 rounded-full"></div>
+      
+      <div class="relative z-10">
+        <span class="text-xs font-semibold tracking-wider uppercase bg-white/20 px-3 py-1 rounded-full">
+          OMS Portal
+        </span>
+      </div>
+
+      <div class="my-auto py-8 flex flex-col items-center text-center relative z-10">
+        <img src="/images/delleventures.jpeg" alt="Delle Ventures Logo" class="w-48 h-auto object-contain mb-6 drop-shadow-md rounded-lg">
+        <h2 class="text-2xl font-bold tracking-tight">Order Management System</h2>
+        <p class="text-teal-100 text-sm mt-2 max-w-xs">
+          Streamline your orders, tracking, and logistics fulfillment in one secure place.
+        </p>
+      </div>
+
+      <div class="text-xs text-teal-200/80 relative z-10">
+        &copy; 2026 Delle Ventures. All rights reserved.
+      </div>
+    </div>
+
+    <div class="w-full md:w-1/2 p-8 sm:p-12 flex flex-col justify-center">
+      
+      <div class="flex flex-col items-center mb-6 md:hidden">
+        <img src="/images/delleventures.jpeg" alt="Delle Ventures Logo" class="w-32 h-auto object-contain mb-3">
+        <h1 class="text-xl font-bold text-gray-800">Order Management System</h1>
+      </div>
+
+      <div class="mb-8 hidden md:block">
+        <h3 class="text-2xl font-bold text-gray-800">Welcome Back</h3>
+        <p class="text-sm text-gray-500 mt-1">Please enter your details to sign in</p>
+      </div>
+
+      <% if (typeof error !== 'undefined' && error) { %>
+        <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-r-md flex items-start">
+          <i class="fas fa-exclamation-circle text-red-500 mt-0.5 mr-3"></i>
+          <p class="text-sm text-red-700 font-medium"><%= error %></p>
+        </div>
+      <% } %>
+
+      <form method="POST" action="/login" class="space-y-5">
+        
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Username</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+              <i class="fas fa-user text-sm"></i>
+            </div>
+            <input 
+              type="text" 
+              name="username" 
+              required
+              class="block w-full pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg text-sm focus:outline-none focus:ring-2 focus-brand-teal transition duration-200" 
+              placeholder="Enter your username"
+            >
+          </div>
+        </div>
+
+        <div>
+          <div class="flex justify-between items-center mb-1.5">
+            <label class="block text-sm font-medium text-gray-700">Password</label>
+            <a href="#" class="text-xs font-semibold text-brand-teal hover:underline">Forgot password?</a>
+          </div>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+              <i class="fas fa-lock text-sm"></i>
+            </div>
+            <input 
+              type="password" 
+              name="password" 
+              required
+              class="block w-full pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg text-sm focus:outline-none focus:ring-2 focus-brand-teal transition duration-200" 
+              placeholder="••••••••"
+            >
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-1">
+          <div class="flex items-center">
+            <input id="remember-me" name="remember-me" type="checkbox" class="h-4 w-4 text-brand-teal focus:ring-brand-teal border-gray-300 rounded cursor-pointer">
+            <label for="remember-me" class="ml-2 block text-xs text-gray-600 cursor-pointer select-none">Remember this device</label>
+          </div>
+        </div>
+
+        <div class="pt-2">
+          <button 
+            type="submit" 
+            class="w-full flex justify-center items-center py-2.5 px-4 border border-transparent rounded-lg text-sm font-semibold text-white bg-brand-gold hover-brand-gold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-colors shadow-sm duration-200"
+          >
+            Sign In <i class="fas fa-arrow-right ml-2 text-xs"></i>
+          </button>
+        </div>
+
+      </form>
+      
+    </div>
+  </div>
+
+</body>
+</html>

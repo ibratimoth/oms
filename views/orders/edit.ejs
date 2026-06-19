@@ -1,0 +1,190 @@
+<%- include('../layouts/header') %>
+
+<div class="mb-4">
+  <a 
+    href="/orders" 
+    class="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-brand-teal transition duration-150 group"
+  >
+    <i class="fas fa-arrow-left text-xs group-hover:-translate-x-0.5 transition-transform duration-150"></i>
+    <span>Cancel & Go Back</span>
+  </a>
+</div>
+
+<div class="mb-6">
+  <div class="flex items-center gap-2 text-sm font-medium text-slate-400">
+    <a href="/orders" class="hover:text-brand-teal transition duration-150">Orders</a>
+    <i class="fas fa-chevron-right text-[10px]"></i>
+    <span class="text-slate-600">Update Order</span>
+  </div>
+  <h1 class="text-2xl font-bold tracking-tight text-slate-800 mt-1">Update Order #<%= order.order_number %></h1>
+  <p class="text-sm text-slate-500 mt-1">Modify client profile details, append or remove item lines, and adjust quantities.</p>
+</div>
+
+<div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden max-w-5xl">
+  
+  <div class="h-1.5 bg-brand-gold w-full"></div>
+
+  <form method="POST" action="/orders/edit/<%= order.id %>" id="invoiceForm" class="p-6 sm:p-8 space-y-6">
+
+    <div>
+      <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Customer Details</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Customer Name</label>
+          <input 
+            type="text" 
+            name="customer_name" 
+            value="<%= order.customer_name %>"
+            required 
+            class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white transition duration-150" 
+            placeholder="e.g., John Doe"
+          >
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Customer Phone</label>
+          <input 
+            type="text" 
+            name="customer_phone" 
+            value="<%= order.customer_phone %>"
+            class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white transition duration-150" 
+            placeholder="e.g., 0712345678"
+          >
+        </div>
+
+      </div>
+    </div>
+
+    <hr class="border-slate-100">
+
+    <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-6 flex flex-col sm:flex-row items-center gap-4">
+      <div class="bg-brand-teal/10 p-3 rounded-lg text-brand-teal hidden sm:block">
+        <i class="fas fa-barcode text-2xl"></i>
+      </div>
+      <div class="flex-1 w-full">
+        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">Scan Barcode / SKU</label>
+        <input type="text" id="barcodeScannerInput" autocomplete="off"
+          class="w-full bg-white border border-slate-300 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal"
+          placeholder="Click here and scan items with your reader..." autofocus>
+      </div>
+    </div>
+    
+    <div>
+      <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Line Items Selection</h3>
+      
+      <div id="items" class="space-y-3">
+
+        <% if (order.OrderItems && order.OrderItems.length > 0) { %>
+          <% order.OrderItems.forEach((item, index) => { %>
+            <div class="grid grid-cols-12 gap-3 mb-3 items-center item-row bg-slate-50 p-3 rounded-lg border border-slate-100">
+
+              <div class="col-span-12 md:col-span-6">
+                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1 md:hidden">Select Product</label>
+                <select name="items[<%= index %>][product_id]" class="w-full bg-white border border-slate-300 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal product-select">
+                  <% products.forEach(p => { %>
+                    <option 
+                      value="<%= p.id %>" 
+                      data-barcode="<%= p.barcode %>"
+                      data-stock="<%= p.quantity_in_stock %>" 
+                      data-reorder="<%= p.reorder_level || 5 %>"
+                      <%= p.id === item.product_id ? 'selected' : '' %>
+                    >
+                      <%= p.name %> 
+                      <% if (p.quantity_in_stock <= (p.reorder_level || 5)) { %>
+                        (⚠ LOW STOCK: <%= p.quantity_in_stock %> left)
+                      <% } %>
+                    </option>
+                  <% }) %>
+                </select>
+              </div>
+
+              <div class="col-span-7 md:col-span-4">
+                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1 md:hidden">Quantity</label>
+                <div class="flex shadow-sm rounded-lg overflow-hidden bg-white">
+                  <button type="button" class="bg-slate-50 hover:bg-red-50 text-slate-500 hover:text-red-600 font-bold px-3 py-2 text-sm border border-slate-200 transition duration-150" onclick="changeQty(this, -1)">-</button>
+                  
+                  <input type="number"
+                         name="items[<%= index %>][quantity]"
+                         value="<%= item.quantity %>"
+                         min="1"
+                         class="w-full border-y border-slate-200 text-center text-sm font-semibold text-slate-800 focus:outline-none qty-input">
+                  
+                  <button type="button" class="bg-slate-50 hover:bg-emerald-50 text-slate-500 hover:text-emerald-600 font-bold px-3 py-2 text-sm border border-slate-200 transition duration-150" onclick="changeQty(this, 1)">+</button>
+                </div>
+              </div>
+
+              <div class="col-span-5 md:col-span-2 text-right">
+                <label class="block text-[10px] font-bold transparent uppercase select-none tracking-wide mb-1 md:hidden">&nbsp;</label>
+                <button type="button" class="btn-remove w-full md:w-auto inline-flex items-center justify-center gap-1 bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 font-medium py-2 px-3 text-sm border border-slate-200 hover:border-rose-200 rounded-lg shadow-sm transition duration-150">
+                  <i class="fas fa-trash-alt pointer-events-none text-xs mr-1"></i> Remove
+                </button>
+              </div>
+
+            </div>
+          <% }) %>
+        <% } else { %>
+          <div class="grid grid-cols-12 gap-3 mb-3 items-center item-row bg-slate-50 p-3 rounded-lg border border-slate-100">
+            <div class="col-span-12 md:col-span-6">
+              <select name="items[0][product_id]" class="w-full bg-white border border-slate-300 rounded-lg py-2 px-3 text-sm focus:outline-none product-select">
+                <% products.forEach(p => { %>
+                  <option value="<%= p.id %>" data-barcode="<%= p.barcode %>" data-stock="<%= p.quantity_in_stock %>" data-reorder="<%= p.reorder_level || 5 %>"><%= p.name %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-span-7 md:col-span-4">
+              <div class="flex shadow-sm rounded-lg overflow-hidden bg-white">
+                <button type="button" class="bg-slate-50 px-3 py-2" onclick="changeQty(this, -1)">-</button>
+                <input type="number" name="items[0][quantity]" value="1" min="1" class="w-full text-center qty-input">
+                <button type="button" class="bg-slate-50 px-3 py-2" onclick="changeQty(this, 1)">+</button>
+              </div>
+            </div>
+            <div class="col-span-5 md:col-span-2 text-right">
+              <button type="button" class="btn-remove bg-white p-2 text-sm border rounded-lg">Remove</button>
+            </div>
+          </div>
+        <% } %>
+
+      </div>
+    </div>
+
+    <div class="pt-2">
+      <button 
+        type="button" 
+        id="addRow"
+        class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold uppercase tracking-wider rounded-lg border border-slate-200/60 shadow-sm transition duration-150"
+      >
+        <i class="fas fa-plus text-[10px]"></i> Add Product Line
+      </button>
+    </div>
+
+    <div class="pt-5 border-t border-slate-100 flex items-center justify-end gap-3">
+      <a 
+        href="/orders" 
+        class="px-4 py-2.5 text-sm font-semibold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg border border-slate-200 shadow-sm transition duration-150"
+      >
+        Cancel
+      </a>
+      <button 
+        type="submit" 
+        class="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-brand-gold hover:bg-brand-goldHover text-white text-sm font-semibold rounded-lg shadow-md shadow-brand-gold/10 transition duration-150"
+      >
+        <i class="fas fa-save text-xs"></i> Save Changes
+      </button>
+    </div>
+
+  </form>
+</div>
+
+<select id="productOptionsTemplate" class="hidden">
+  <% products.forEach(p => { %>
+    <option value="<%= p.id %>" data-stock="<%= p.quantity_in_stock %>" data-reorder="<%= p.reorder_level || 5 %>" data-barcode="<%= p.barcode %>">
+      <%= p.name %> 
+      <% if (p.quantity_in_stock <= (p.reorder_level || 5)) { %>
+        (⚠ LOW STOCK: <%= p.quantity_in_stock %> left)
+      <% } %>
+    </option>
+  <% }) %>
+</select>
+
+<%- include('../layouts/footer') %>

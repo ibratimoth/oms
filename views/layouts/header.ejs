@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Delle Ventures</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              teal: '#1A6B78',      /* Deep Teal from logo */
+              tealDark: '#124E58',  /* Deeper shade for hover states */
+              gold: '#D49A17',      /* Rich Gold accent from logo */
+              goldHover: '#B88211'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">  
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+</head>
+
+<body class="h-full font-sans antialiased text-slate-900 selection:bg-brand-teal/10 selection:text-brand-teal">
+<div class="min-h-full flex flex-col lg:flex-row">
+
+  <header class="lg:hidden h-16 bg-brand-teal text-white flex items-center justify-between px-4 border-b border-brand-tealDark shadow-md z-40">
+    <a href="/dashboard" class="flex items-center gap-2">
+      <img src="/images/delleventures.jpeg" alt="Delle Ventures Logo" class="h-8 w-auto object-contain rounded bg-white p-0.5">
+      <span class="font-bold tracking-wide text-base text-white">Delle <span class="text-brand-gold">Ventures</span></span>
+    </a>
+    
+    <button id="mobileSidebarToggle" class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-white/10 active:bg-white/20 focus:outline-none transition duration-150">
+      <i id="hamburgerIcon" class="fas fa-bars text-xl"></i>
+    </button>
+  </header>
+
+  <aside id="mainSidebar" class="hidden lg:flex fixed lg:sticky top-0 left-0 bottom-0 w-full lg:w-64 bg-brand-teal text-white flex-col border-b lg:border-b-0 lg:border-r border-brand-tealDark shadow-xl z-30 transition-all duration-300">
+    
+    <a href="/dashboard" class="hidden lg:flex items-center gap-3 px-5 py-4 border-b border-white/10 hover:bg-white/5 transition duration-150 group">
+      <img src="/images/delleventures.jpeg" alt="Delle Ventures Logo" class="h-8 w-auto object-contain rounded-md bg-white p-0.5 shadow-sm group-hover:scale-105 transition duration-200">
+      <span class="font-bold tracking-wide text-lg text-white">Delle <span class="text-brand-gold">Ventures</span></span>
+    </a>
+
+    <div class="flex-1 px-3 py-4 overflow-y-auto space-y-6 flex flex-col justify-between">
+      
+      <div class="space-y-6">
+        <div>
+          <p class="px-4 text-[10px] font-bold text-teal-300 uppercase tracking-widest mb-2">Core Operations</p>
+          <nav class="space-y-1">
+            
+            <a href="/dashboard" class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg transition duration-150 group <%= currentPath === '/dashboard' ? 'bg-brand-gold text-white shadow-md shadow-black/10' : 'text-teal-100 hover:bg-white/10 hover:text-white' %>">
+              <i class="fas fa-home text-base w-5 text-center <%= currentPath === '/dashboard' ? 'text-white' : 'text-teal-300 group-hover:text-white' %>"></i>
+              <span>Dashboard Overview</span>
+            </a>
+
+            <div class="space-y-1">
+              <button 
+                onclick="toggleDropdownMenu('catalogDropdown', 'catalogChevron')"
+                class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium rounded-lg text-teal-100 hover:bg-white/10 hover:text-white transition duration-150 group focus:outline-none <%= currentPath.startsWith('/products') ? 'bg-white/5 text-white' : '' %>"
+              >
+                <div class="flex items-center gap-3">
+                  <i class="fas fa-box text-base text-teal-300 group-hover:text-white w-5 text-center"></i>
+                  <span>Products Catalog</span>
+                </div>
+                <i id="catalogChevron" class="fas fa-chevron-right text-[10px] transform transition-transform duration-200 <%= currentPath.startsWith('/products') ? 'rotate-90' : '' %>"></i>
+              </button>
+              
+              <div id="catalogDropdown" class="<%= currentPath.startsWith('/products') ? 'block' : 'hidden' %> pl-9 pr-2 space-y-1 py-1 bg-brand-tealDark/30 rounded-lg">
+                <a href="/products" class="block py-2 px-3 text-xs font-medium rounded-md hover:text-white transition duration-150 <%= currentPath === '/products' ? 'text-brand-gold font-bold' : 'text-teal-200 hover:bg-white/5' %>">
+                  <i class="fas fa-list-ul mr-1.5 opacity-70"></i> View All Products
+                </a>
+                <a href="/products/create" class="block py-2 px-3 text-xs font-medium rounded-md hover:text-white transition duration-150 <%= currentPath === '/products/create' ? 'text-brand-gold font-bold' : 'text-teal-200 hover:bg-white/5' %>">
+                  <i class="fas fa-plus mr-1.5 opacity-70"></i> Register New Item
+                </a>
+              </div>
+            </div>
+
+            <div class="space-y-1">
+              <button 
+                onclick="toggleDropdownMenu('ordersDropdown', 'ordersChevron')"
+                class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium rounded-lg text-teal-100 hover:bg-white/10 hover:text-white transition duration-150 group focus:outline-none <%= currentPath.startsWith('/orders') ? 'bg-white/5 text-white' : '' %>"
+              >
+                <div class="flex items-center gap-3">
+                  <i class="fas fa-shopping-cart text-base text-teal-300 group-hover:text-white w-5 text-center"></i>
+                  <span>Orders</span>
+                </div>
+                <i id="ordersChevron" class="fas fa-chevron-right text-[10px] transform transition-transform duration-200 <%= currentPath.startsWith('/orders') ? 'rotate-90' : '' %>"></i>
+              </button>
+              
+              <div id="ordersDropdown" class="<%= currentPath.startsWith('/orders') ? 'block' : 'hidden' %> pl-9 pr-2 space-y-1 py-1 bg-brand-tealDark/30 rounded-lg">
+                <a href="/orders" class="block py-2 px-3 text-xs font-medium rounded-md hover:text-white transition duration-150 <%= currentPath === '/orders' ? 'text-brand-gold font-bold' : 'text-teal-200 hover:bg-white/5' %>">
+                  <i class="fas fa-receipt mr-1.5 opacity-70"></i> Manage Orders List
+                </a>
+              </div>
+            </div>
+
+          </nav>
+        </div>
+
+        <div>
+          <p class="px-4 text-[10px] font-bold text-teal-300 uppercase tracking-widest mb-2">Business Insights</p>
+          <nav class="space-y-1">
+            
+            <a href="/analytics" class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg transition duration-150 group <%= currentPath === '/analytics' ? 'bg-brand-gold text-white shadow-md shadow-black/10' : 'text-teal-100 hover:bg-white/10 hover:text-white' %>">
+              <i class="fas fa-chart-bar text-base w-5 text-center <%= currentPath === '/analytics' ? 'text-white' : 'text-teal-300 group-hover:text-white' %>"></i>
+              <span>Performance Intel</span>
+            </a>
+
+            <div class="space-y-1">
+              <button 
+                onclick="toggleDropdownMenu('stockDropdown', 'stockChevron')"
+                class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium rounded-lg text-teal-100 hover:bg-white/10 hover:text-white transition duration-150 group focus:outline-none <%= currentPath.startsWith('/stock') ? 'bg-white/5 text-white' : '' %>"
+              >
+                <div class="flex items-center gap-3">
+                  <i class="fas fa-box-open text-base text-teal-300 group-hover:text-white w-5 text-center"></i>
+                  <span>Sales & Stock Flow Logs</span>
+                </div>
+                <i id="stockChevron" class="fas fa-chevron-right text-[10px] transform transition-transform duration-200 <%= currentPath.startsWith('/stock') ? 'rotate-90' : '' %>"></i>
+              </button>
+              
+              <div id="stockDropdown" class="<%= currentPath.startsWith('/stock') ? 'block' : 'hidden' %> pl-9 pr-2 space-y-1 py-1 bg-brand-tealDark/30 rounded-lg">
+                <a href="/stock" class="block py-2 px-3 text-xs font-medium rounded-md hover:text-white transition duration-150 <%= currentPath === '/stock' ? 'text-brand-gold font-bold' : 'text-teal-200 hover:bg-white/5' %>">
+                  <i class="fas fa-warehouse mr-1.5 opacity-70"></i> Sales & Inventory Balance
+                </a>
+              </div>
+            </div>
+
+          </nav>
+        </div>
+      </div>
+
+      <div class="lg:hidden pt-4 mt-6 border-t border-white/10">
+        <a 
+          href="/logout" 
+          class="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-rose-200 bg-rose-950/20 hover:bg-rose-900/40 rounded-xl border border-rose-500/20 transition duration-150 group"
+        >
+          <i class="fas fa-sign-out-alt text-base w-5 text-center text-rose-400 group-hover:text-rose-300"></i>
+          <span>Logout System</span>
+        </a>
+      </div>
+
+    </div>
+  </aside>
+
+  <div class="flex-1 flex flex-col min-w-0">
+    
+    <nav class="hidden lg:flex h-16 bg-white border-b border-slate-200 shadow-sm items-center justify-between px-6 z-20">
+      <div class="flex items-center">
+        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 bg-slate-100 px-2.5 py-1 rounded">
+          Enterprise Resource & Order Management
+        </span>
+      </div>
+
+      <div class="flex items-center">
+        <a href="/logout" class="flex items-center gap-2 px-3 py-1.5 border border-transparent text-sm font-medium rounded-lg text-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500/20 transition duration-150">
+          <i class="fas fa-sign-out-alt text-xs"></i>
+          <span>Logout System</span>
+        </a>
+      </div>
+    </nav>
+
+    <main class="flex-1 overflow-y-auto">
+      <div class="p-6 sm:p-8 max-w-[1600px] mx-auto space-y-6">

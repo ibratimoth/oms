@@ -1,0 +1,194 @@
+<%- include('../layouts/header') %>
+
+<!-- Top Row Action Header & Breadcrumbs -->
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+  <div>
+    <div class="flex items-center gap-2 text-sm font-medium text-slate-400">
+      <a href="/orders" class="hover:text-brand-teal transition duration-150">Orders</a>
+      <i class="fas fa-chevron-right text-[10px]"></i>
+      <span class="text-slate-600">Order Details</span>
+    </div>
+    <h1 class="text-2xl font-bold tracking-tight text-slate-800 mt-1">Order #<%= order.order_number %></h1>
+  </div>
+  
+  <!-- Top Quick Actions -->
+  <div class="flex items-center gap-3 flex-wrap sm:flex-nowrap">
+    <a 
+      href="/orders" 
+      class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-lg border border-slate-200 transition duration-150"
+    >
+      <i class="fas fa-arrow-left text-xs"></i> Back to List
+    </a>
+
+    <!-- Top Conditional Complete Action -->
+    <% if (order.status !== 'completed') { %>
+      <a 
+        href="/orders/complete/<%= order.id %>" 
+        onclick="return confirm('Mark order #<%= order.order_number %> as completed? This will finalize transactions.')"
+        class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg shadow-sm shadow-emerald-600/10 transition duration-150"
+      >
+        <i class="fas fa-check text-xs"></i> Complete Order
+      </a>
+    <% } %>
+
+    <a 
+      href="/orders/invoice/<%= order.id %>" 
+      target="_blank" 
+      class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-brand-teal hover:bg-brand-tealDark text-white text-sm font-semibold rounded-lg shadow-sm shadow-brand-teal/10 transition duration-150"
+    >
+      <i class="fas fa-print text-xs"></i> Print Invoice
+    </a>
+  </div>
+</div>
+
+<!-- METADATA OVERVIEW GRID -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
+  
+  <!-- Customer Details Card -->
+  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
+    <div class="truncate">
+      <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Customer</p>
+      <h3 class="text-sm font-bold text-slate-800 truncate mt-1">
+        <%= order.customer_name || 'Walk-in Customer' %>
+      </h3>
+      <% if (order.customer_phone) { %>
+        <p class="text-xs font-mono text-slate-500 mt-0.5"><%= order.customer_phone %></p>
+      <% } else { %>
+        <p class="text-xs italic text-slate-400 mt-0.5">No phone provided</p>
+      <% } %>
+    </div>
+    <div class="text-slate-300 shrink-0 pl-2"><i class="fas fa-user text-xl"></i></div>
+  </div>
+
+  <!-- Status Box -->
+  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
+    <div>
+      <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Fulfillment Status</p>
+      <div class="mt-1.5">
+        <% if (order.status === 'completed') { %>
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
+            <%= order.status %>
+          </span>
+        <% } else if (order.status === 'pending') { %>
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-100">
+            <span class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5 animate-pulse"></span>
+            <%= order.status %>
+          </span>
+        <% } else { %>
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+            <span class="w-1.5 h-1.5 rounded-full bg-blue-500 mr-1.5"></span>
+            <%= order.status %>
+          </span>
+        <% } %>
+      </div>
+    </div>
+    <div class="text-slate-300 shrink-0"><i class="fas fa-info-circle text-xl"></i></div>
+  </div>
+
+  <!-- Total Amount Box -->
+  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
+    <div>
+      <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Order Total</p>
+      <h3 class="text-lg font-bold text-slate-900 mt-0.5">TSh <%= Number(order.total_amount).toLocaleString() %></h3>
+    </div>
+    <div class="text-brand-gold shrink-0"><i class="fas fa-coins text-xl"></i></div>
+  </div>
+
+  <!-- Date Created Box -->
+  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
+    <div>
+      <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Placement Date</p>
+      <h3 class="text-sm font-semibold text-slate-700 mt-1.5">
+        <%= new Date(order.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }) %>
+      </h3>
+    </div>
+    <div class="text-slate-300 shrink-0"><i class="fas fa-calendar-alt text-xl"></i></div>
+  </div>
+
+</div>
+
+<!-- ORDER ITEMS TABLE CARD CONTAINER -->
+<div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-6">
+  <div class="px-5 py-4 border-b border-slate-100 bg-slate-50/50">
+    <h3 class="font-bold text-slate-800 text-sm tracking-wide uppercase">Purchased Items Ledger</h3>
+  </div>
+  
+  <div class="overflow-x-auto">
+    <table class="w-full text-left border-collapse whitespace-nowrap">
+      
+      <thead>
+        <tr class="bg-slate-50/70 border-b border-slate-200 text-slate-400 text-xs font-bold uppercase tracking-wider">
+          <th class="py-3 px-6 w-12 text-center">#</th>
+          <th class="py-3 px-6">Product Description</th>
+          <th class="py-3 px-6 text-center w-24">Quantity</th>
+          <th class="py-3 px-6 text-right w-36">Unit Price</th>
+          <th class="py-3 px-6 text-right w-40">Subtotal Amount</th>
+        </tr>
+      </thead>
+
+      <tbody class="text-sm divide-y divide-slate-100 text-slate-700">
+        <% order.OrderItems.forEach((item, index) => { %>
+          <tr class="hover:bg-slate-50/50 transition duration-150">
+            
+            <td class="py-3.5 px-6 text-center font-mono text-xs text-slate-400">
+              <%= index + 1 %>
+            </td>
+            
+            <td class="py-3.5 px-6 font-medium text-slate-800">
+              <%= item.Product.name %>
+            </td>
+            
+            <td class="py-3.5 px-6 text-center font-mono font-medium text-slate-600">
+              <%= item.quantity %>
+            </td>
+            
+            <td class="py-3.5 px-6 text-right font-mono text-slate-600">
+              TSh <%= Number(item.unit_price).toLocaleString() %>
+            </td>
+            
+            <td class="py-3.5 px-6 text-right font-mono font-bold text-slate-900">
+              TSh <%= Number(item.subtotal).toLocaleString() %>
+            </td>
+
+          </tr>
+        <% }) %>
+      </tbody>
+
+    </table>
+  </div>
+</div>
+
+<!-- BOTTOM RETRO-SUMMARY & ACTION BANNER -->
+<div class="flex flex-col md:flex-row justify-between items-center bg-slate-100 rounded-xl border border-slate-200/60 p-5 gap-4">
+  <div class="text-xs font-medium text-slate-500 text-center md:text-left max-w-xl">
+    <% if (order.status !== 'completed') { %>
+      This order is currently active. You can review items above, trigger an official print copy, or finalize the financial transaction once fulfilled.
+    <% } else { %>
+      This transaction is closed and fully completed. Need a physical fallback copy? Launch the pop-up print wizard directly to generate an A4 sheet.
+    <% } %>
+  </div>
+  
+  <div class="w-full md:w-auto flex flex-col sm:flex-row items-center gap-3">
+    <!-- Bottom Conditional Complete Action Button -->
+    <% if (order.status !== 'completed') { %>
+      <a 
+        href="/orders/complete/<%= order.id %>" 
+        onclick="return confirm('Mark order #<%= order.order_number %> as completed? This will finalize transactions.')"
+        class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg shadow-sm transition duration-150 whitespace-nowrap"
+      >
+        <i class="fas fa-check text-xs"></i> Finalize & Complete
+      </a>
+    <% } %>
+
+    <a 
+      href="/orders/invoice/<%= order.id %>" 
+      target="_blank" 
+      class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-brand-gold hover:bg-brand-goldHover text-white text-sm font-semibold rounded-lg shadow-sm shadow-brand-gold/10 transition duration-150 whitespace-nowrap"
+    >
+      <i class="fas fa-print text-xs"></i> Open Printing Dialogue
+    </a>
+  </div>
+</div>
+
+<%- include('../layouts/footer') %>
