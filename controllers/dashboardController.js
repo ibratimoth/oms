@@ -7,11 +7,17 @@ exports.index = async (req, res) => {
 
     const userId = req.session.user.id;
 
+    const userFilter = {
+      created_by: userId 
+    };
+
     const orderFilter = {
       created_by: userId
     };
 
-    const totalProducts = await Product.count();
+    const totalProducts = await Product.count({
+      where: userFilter
+    });
 
     const totalOrders = await Order.count({
       where: orderFilter
