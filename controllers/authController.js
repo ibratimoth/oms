@@ -1,5 +1,6 @@
 const bcrypt = require('bcrypt');
 const { User } = require('../models');
+const logger = require('./../utils/logger');
 
 exports.showLogin = (req, res) => {
   res.render('auth/login');
@@ -24,7 +25,7 @@ exports.login = async (req, res) => {
 
   req.session.user = {
     id: user.id,
-    name: user.full_name,
+    full_name: user.full_name,
     role: user.role
   };
 

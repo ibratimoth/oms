@@ -1,11 +1,38 @@
 <%- include('../layouts/header') %>
 
-  <div class="mb-4">
+  <% if (typeof messages !== 'undefined' && messages.error && messages.error.length > 0) { %>
+    <div class="mb-6 max-w-5xl bg-rose-50 border border-rose-200 rounded-xl p-4 flex items-start gap-3 shadow-sm animate-fade-in non-printable">
+      <div class="bg-rose-100 text-rose-600 p-1.5 rounded-lg shrink-0">
+        <i class="fas fa-exclamation-circle text-lg"></i>
+      </div>
+      <div class="flex-1">
+        <h4 class="text-sm font-bold text-rose-800">Processing Error Encountered</h4>
+        <p class="text-xs text-rose-600 mt-0.5"><%= messages.error %></p>
+      </div>
+    </div>
+  <% } else if (typeof error !== 'undefined' && error && error.length > 0) { %>
+    <div class="mb-6 max-w-5xl bg-rose-50 border border-rose-200 rounded-xl p-4 flex items-start gap-3 shadow-sm animate-fade-in non-printable">
+      <div class="bg-rose-100 text-rose-600 p-1.5 rounded-lg shrink-0">
+        <i class="fas fa-exclamation-circle text-lg"></i>
+      </div>
+      <div class="flex-1">
+        <h4 class="text-sm font-bold text-rose-800">Processing Error Encountered</h4>
+        <p class="text-xs text-rose-600 mt-0.5"><%= error %></p>
+      </div>
+    </div>
+  <% } %>
+
+  <div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 non-printable">
     <a href="/orders"
       class="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-brand-teal transition duration-150 group">
       <i class="fas fa-arrow-left text-xs group-hover:-translate-x-0.5 transition-transform duration-150"></i>
       <span>Cancel & Go Back</span>
     </a>
+
+    <button type="button" id="downloadTemplateBtn"
+      class="inline-flex items-center gap-1.5 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 py-1.5 px-3 text-xs font-semibold rounded-md shadow-sm transition duration-150 cursor-pointer">
+      <i class="fas fa-download text-emerald-600"></i> Download Upload Template (.xlsx)
+    </button>
   </div>
 
   <div class="mb-6">
@@ -16,6 +43,34 @@
     </div>
     <h1 class="text-2xl font-bold tracking-tight text-slate-800 mt-1">Create Invoice Order</h1>
     <p class="text-sm text-slate-500 mt-1">Compile client item choices, verify current stock reserves, and queue transaction logs.</p>
+  </div>
+
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-6 max-w-5xl">
+    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+      <i class="fas fa-file-excel text-emerald-600 text-sm"></i> Bulk Upload Orders via Document
+    </h3>
+    
+    <form action="/orders/bulk-upload" method="POST" enctype="multipart/form-data" class="flex flex-col sm:flex-row items-center gap-4">
+      <div class="w-full sm:flex-1">
+        <input 
+          type="file" 
+          name="excel_file" 
+          accept=".xlsx, .xls, .csv"
+          required
+          class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition duration-150 border border-slate-200 rounded-lg p-1 bg-slate-50 focus:outline-none"
+        >
+      </div>
+      <button 
+        type="submit" 
+        class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg transition shadow-sm cursor-pointer"
+      >
+        <i class="fas fa-upload text-xs"></i> Process Bulk Import Run
+      </button>
+    </form>
+    
+    <p class="text-[11px] text-slate-400 mt-2">
+      * Required header file setup layout format: <span class="font-mono bg-slate-100 px-1 py-0.5 rounded text-slate-600">customer_name</span>, <span class="font-mono bg-slate-100 px-1 py-0.5 rounded text-slate-600">customer_phone</span>, <span class="font-mono bg-slate-100 px-1 py-0.5 rounded text-slate-600">barcode</span>, <span class="font-mono bg-slate-100 px-1 py-0.5 rounded text-slate-600">quantity</span>.
+    </p>
   </div>
 
   <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden max-w-5xl">

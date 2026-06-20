@@ -4,6 +4,7 @@ const { Op } = require('sequelize');
 exports.history = async (req, res) => {
   try {
     const userId = req.session.user.id;
+    const username = req.session.user.full_name;
 
     const page = parseInt(req.query.page) || 1;
     const limit = 20;
@@ -109,7 +110,8 @@ exports.history = async (req, res) => {
       from,
       to,
       date,
-      search: search || ''
+      search: search || '',
+      username
     });
 
   } catch (err) {

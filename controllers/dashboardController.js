@@ -1,12 +1,14 @@
 const { Order, Product, sequelize } = require('../models');
 const { Op } = require('sequelize');
+const logger = require('./../utils/logger');
 
 exports.index = async (req, res) => {
 
   try {
 
     const userId = req.session.user.id;
-
+    const username = req.session.user.full_name;
+    
     const userFilter = {
       created_by: userId 
     };
@@ -79,7 +81,8 @@ exports.index = async (req, res) => {
       totalProfit: totalProfit || 0,
       lowStockProducts,
       recentOrders,
-      dailySales
+      dailySales,
+      username
     });
 
   } catch (error) {

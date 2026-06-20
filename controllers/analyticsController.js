@@ -52,6 +52,7 @@ const { Product, OrderItem, sequelize } = require('../models');
 exports.index = async (req, res) => {
   try {
     const userId = req.session.user.id;
+    const username = req.session.user.full_name;
 
     const userFilter = {
       created_by: userId 
@@ -93,7 +94,8 @@ exports.index = async (req, res) => {
 
     res.render('analytics/index', {
       stockData,
-      topProducts
+      topProducts,
+      username
     });
 
   } catch (err) {

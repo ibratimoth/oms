@@ -1,588 +1,726 @@
 <%- include('../layouts/header') %>
 
-<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 
-<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 non-printable">
-  <div>
-    <h1 class="text-2xl font-bold tracking-tight text-slate-800">Products Inventory</h1>
-    <p class="text-sm text-slate-500 mt-1">Manage stock entries, and corporate catalog pricing models.</p>
-  </div>
-  <div class="flex items-center flex-wrap gap-2">
-    <button 
-      type="button"
-      onclick="openBulkPrintModal('grid')"
-      class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-700 hover:bg-slate-800 text-white text-sm font-semibold rounded-lg shadow-sm transition duration-150 whitespace-nowrap"
-    >
-      <i class="fas fa-th text-xs"></i> Print All Labels (A4 Grid)
-    </button>
-    
-    <button 
-      type="button"
-      onclick="openBulkPrintModal('thermal')"
-      class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-950 text-white text-sm font-semibold rounded-lg shadow-sm transition duration-150 whitespace-nowrap"
-    >
-      <i class="fas fa-scroll text-xs"></i> Print All (Thermal Roll)
-    </button>
-
-    <a 
-      href="/products/create" 
-      class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-teal hover:bg-brand-tealDark text-white text-sm font-semibold rounded-lg shadow-sm shadow-brand-teal/10 transition duration-150 whitespace-nowrap"
-    >
-      <i class="fas fa-plus text-xs"></i> Add Product
-    </a>
-  </div>
-</div>
-
-<div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-6 non-printable">
-  <form method="GET" action="/products" class="flex flex-col md:flex-row flex-wrap items-end gap-4">
-    
-    <div class="w-full md:w-64 min-w-[200px]">
-      <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-        <i class="fas fa-barcode text-brand-teal text-xs"></i> Hardware Scan Focus
-      </label>
-      <div class="relative">
-        <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-brand-teal">
-          <i class="fas fa-camera text-xs"></i>
-        </span>
-        <input 
-          type="text" 
-          name="barcode" 
-          id="barcodeScanInput"
-          value="<%= typeof query !== 'undefined' && query.barcode ? query.barcode : '' %>"
-          placeholder="Flash item barcode..."
-          class="w-full bg-teal-50/40 border border-teal-200 text-slate-700 font-mono rounded-lg pl-9 pr-3 py-1.5 text-sm focus:outline-none focus:border-brand-teal transition duration-150"
-          autocomplete="off"
-        >
-      </div>
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 non-printable">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight text-slate-800">Products Inventory</h1>
+      <p class="text-sm text-slate-500 mt-1">Manage stock entries, and corporate catalog pricing models.</p>
     </div>
-    
-    <div class="w-full md:flex-1 min-w-[200px]">
-      <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Search Name</label>
-      <div class="relative">
-        <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
-          <i class="fas fa-search text-xs"></i>
-        </span>
-        <input 
-          type="text" 
-          name="search" 
-          value="<%= typeof query !== 'undefined' && query.search ? query.search : '' %>"
-          placeholder="Type product title..."
-          class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg pl-9 pr-3 py-1.5 text-sm focus:outline-none focus:border-brand-teal transition duration-150"
-        >
-      </div>
-    </div>
-
-    <div class="w-full sm:flex-1 md:w-48 min-w-[150px]">
-      <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Stock Status</label>
-      <select 
-        name="status" 
-        class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-brand-teal transition duration-150"
-      >
-        <% let selectedStatus = (typeof query !== 'undefined' && query.status) ? query.status : '' %>
-        <option value="" <%= selectedStatus === '' ? 'selected' : '' %>>All Inventory Statuses</option>
-        <option value="available" <%= selectedStatus === 'available' ? 'selected' : '' %>>Available (Good Stock)</option>
-        <option value="low" <%= selectedStatus === 'low' ? 'selected' : '' %>>Low Stock Alert</option>
-      </select>
-    </div>
-
-    <div class="w-full sm:flex-1 md:w-52 min-w-[150px]">
-      <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Max Retail Price (TSh)</label>
-      <div class="relative">
-        <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-xs font-semibold text-slate-400">
-          TSh
-        </span>
-        <input 
-          type="number" 
-          name="maxPrice" 
-          value="<%= typeof query !== 'undefined' && query.maxPrice ? query.maxPrice : '' %>"
-          placeholder="Max price ceiling"
-          class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg pl-10 pr-3 py-1.5 text-sm focus:outline-none focus:border-brand-teal transition duration-150"
-        >
-      </div>
-    </div>
-
-    <div class="w-full md:w-auto flex items-center gap-2 shrink-0 pt-2 md:pt-0">
-      <button 
-        type="submit"
-        class="flex-1 md:flex-none inline-flex items-center justify-center gap-2 px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold rounded-lg transition duration-150 shadow-sm"
-      >
-        <i class="fas fa-sliders-h text-xs text-slate-400"></i> Apply Filters
+    <div class="flex items-center flex-wrap gap-2">
+      <button type="button" onclick="openBulkPrintModal('grid')"
+        class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-700 hover:bg-slate-800 text-white text-sm font-semibold rounded-lg shadow-sm transition duration-150 whitespace-nowrap">
+        <i class="fas fa-th text-xs"></i> Print All Labels (A4 Grid)
       </button>
 
-      <a 
-        href="/products" 
-        class="inline-flex items-center justify-center px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 text-sm font-semibold rounded-lg border border-slate-200 transition duration-150"
-      >
-        Clear
+      <button type="button" onclick="openBulkPrintModal('thermal')"
+        class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-950 text-white text-sm font-semibold rounded-lg shadow-sm transition duration-150 whitespace-nowrap">
+        <i class="fas fa-scroll text-xs"></i> Print All (Thermal Roll)
+      </button>
+
+      <a href="/products/create"
+        class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-teal hover:bg-brand-tealDark text-white text-sm font-semibold rounded-lg shadow-sm shadow-brand-teal/10 transition duration-150 whitespace-nowrap">
+        <i class="fas fa-plus text-xs"></i> Add Product
       </a>
     </div>
+  </div>
 
-  </form>
-</div>
+  <div id="bulkActionBar"
+    class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900 text-white px-6 py-3.5 rounded-xl shadow-xl border border-slate-800 flex items-center gap-6 animate-bounce-short non-printable">
+    <div class="text-xs font-semibold tracking-wide">
+      <span id="bulkSelectCount" class="bg-brand-teal text-white px-2 py-0.5 rounded-md mr-1.5 font-bold">0</span> items
+      selected
+    </div>
+    <div class="h-4 w-px bg-slate-700"></div>
+    <button type="button" onclick="executeBulkDelete()"
+      class="inline-flex items-center gap-2 text-xs font-bold text-rose-400 hover:text-rose-300 transition duration-150">
+      <i class="fas fa-trash-alt"></i> Delete Selected Entries
+    </button>
+  </div>
 
-<div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-6 non-printable">
-  <div class="overflow-x-auto">
-    <table class="w-full text-left border-collapse whitespace-nowrap">
-      <thead>
-        <tr class="bg-slate-50 border-b border-slate-200 text-slate-400 text-xs font-bold uppercase tracking-wider">
-          <th class="py-3.5 px-6">Product Name</th>
-          <th class="py-3.5 px-6">Barcode / Tag</th>
-          <th class="py-3.5 px-6">Stock Status</th>
-          <th class="py-3.5 px-6">Cost Price (Buy)</th>
-          <th class="py-3.5 px-6">Retail Price (Sell)</th>
-          <th class="py-3.5 px-6 text-right">Actions</th>
-        </tr>
-      </thead>
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-6 non-printable">
+    <form method="GET" action="/products" class="flex flex-col md:flex-row flex-wrap items-end gap-4">
 
-      <tbody class="text-sm divide-y divide-slate-100">
-        <% if (products && products.length > 0) { %>
-          <% products.forEach(p => { %>
-            <tr class="hover:bg-slate-50/70 transition duration-150 group">
-              <td class="py-4 px-6 font-medium text-slate-800"><%= p.name %></td>
-              
-              <td class="py-4 px-6">
-                <% if (p.barcode) { %>
-                  <div class="flex flex-col gap-1">
-                    <svg class="table-barcode" data-value="<%= p.barcode %>"></svg>
-                  </div>
-                <% } else { %>
-                  <span class="text-xs text-slate-400 italic">No Barcode</span>
-                <% } %>
-              </td>
+      <div class="w-full md:w-64 min-w-[200px]">
+        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+          <i class="fas fa-barcode text-brand-teal text-xs"></i> Hardware Scan Focus
+        </label>
+        <div class="relative">
+          <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-brand-teal">
+            <i class="fas fa-camera text-xs"></i>
+          </span>
+          <input type="text" name="barcode" id="barcodeScanInput"
+            value="<%= typeof query !== 'undefined' && query.barcode ? query.barcode : '' %>"
+            placeholder="Flash item barcode..."
+            class="w-full bg-teal-50/40 border border-teal-200 text-slate-700 font-mono rounded-lg pl-9 pr-3 py-1.5 text-sm focus:outline-none focus:border-brand-teal transition duration-150"
+            autocomplete="off">
+        </div>
+      </div>
 
-              <td class="py-4 px-6">
-                <% if (p.quantity_in_stock <= (p.reorder_level || 5)) { %>
-                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-100">
-                    <span class="w-1.5 h-1.5 rounded-full bg-rose-500 mr-1.5 animate-pulse"></span>
-                    <%= p.quantity_in_stock %> low stock
-                  </span>
-                <% } else { %>
-                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
-                    <%= p.quantity_in_stock %> available
-                  </span>
-                <% } %>
-              </td>
-              <td class="py-4 px-6 text-slate-600 font-mono text-xs">TSh <%= Number(p.buy_price || 0).toLocaleString() %></td>
-              <td class="py-4 px-6 font-semibold text-slate-900 font-mono text-xs">TSh <%= Number(p.sell_price || 0).toLocaleString() %></td>
-              <td class="py-4 px-6 text-right">
-                <div class="inline-flex items-center gap-2 opacity-90 group-hover:opacity-100 transition duration-150">
-                  
-                  <% if (p.barcode) { %>
-                    <button 
-                      type="button"
-                      onclick="openPrintModal('<%= p.barcode %>', '<%= p.name %>', 'TSh <%= Number(p.sell_price || 0).toLocaleString() %>')"
-                      class="inline-flex items-center gap-1.5 bg-white hover:bg-teal-50 text-slate-600 hover:text-brand-teal py-1.5 px-3 text-xs font-semibold border border-slate-200 hover:border-teal-200 rounded-md shadow-sm transition duration-150"
-                    >
-                      <i class="fas fa-print text-[10px]"></i> Label
-                    </button>
-                  <% } %>
+      <div class="w-full md:flex-1 min-w-[200px]">
+        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Search Name</label>
+        <div class="relative">
+          <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+            <i class="fas fa-search text-xs"></i>
+          </span>
+          <input type="text" name="search"
+            value="<%= typeof query !== 'undefined' && query.search ? query.search : '' %>"
+            placeholder="Type product title..."
+            class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg pl-9 pr-3 py-1.5 text-sm focus:outline-none focus:border-brand-teal transition duration-150">
+        </div>
+      </div>
 
-                  <a href="/products/edit/<%= p.id %>" class="inline-flex items-center gap-1.5 bg-white hover:bg-brand-gold/10 text-slate-600 hover:text-brand-goldHover py-1.5 px-3 text-xs font-semibold border border-slate-200 hover:border-brand-gold/30 rounded-md shadow-sm transition duration-150">
-                    <i class="fas fa-edit text-[10px]"></i> Edit
-                  </a>
-                  <a href="/products/delete/<%= p.id %>" class="inline-flex items-center gap-1.5 bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 py-1.5 px-3 text-xs font-semibold border border-slate-200 hover:border-rose-200 rounded-md shadow-sm transition duration-150" onclick="return confirm('Are you sure?')">
-                    <i class="fas fa-trash-alt text-[10px]"></i> Delete
-                  </a>
-                </div>
-              </td>
-            </tr>
-          <% }) %>
-        <% } else { %>
-          <tr>
-            <td colspan="6" class="py-12 text-center">
-              <div class="text-slate-300 mb-2"><i class="fas fa-box-open text-4xl"></i></div>
-              <p class="text-sm text-slate-400 italic">No products match your filter parameters.</p>
-            </td>
+      <div class="w-full sm:flex-1 md:w-48 min-w-[150px]">
+        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Stock Status</label>
+        <select name="status"
+          class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-brand-teal transition duration-150">
+          <% let selectedStatus=(typeof query !=='undefined' && query.status) ? query.status : '' %>
+            <option value="" <%=selectedStatus==='' ? 'selected' : '' %>>All Inventory Statuses</option>
+            <option value="available" <%=selectedStatus==='available' ? 'selected' : '' %>>Available (Good Stock)
+            </option>
+            <option value="low" <%=selectedStatus==='low' ? 'selected' : '' %>>Low Stock Alert</option>
+        </select>
+      </div>
+
+      <div class="w-full sm:flex-1 md:w-52 min-w-[150px]">
+        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Max Retail Price
+          (TSh)</label>
+        <div class="relative">
+          <span
+            class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-xs font-semibold text-slate-400">
+            TSh
+          </span>
+          <input type="number" name="maxPrice"
+            value="<%= typeof query !== 'undefined' && query.maxPrice ? query.maxPrice : '' %>"
+            placeholder="Max price ceiling"
+            class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg pl-10 pr-3 py-1.5 text-sm focus:outline-none focus:border-brand-teal transition duration-150">
+        </div>
+      </div>
+
+      <div class="w-full md:w-auto flex items-center gap-2 shrink-0 pt-2 md:pt-0">
+        <button type="submit"
+          class="flex-1 md:flex-none inline-flex items-center justify-center gap-2 px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold rounded-lg transition duration-150 shadow-sm">
+          <i class="fas fa-sliders-h text-xs text-slate-400"></i> Apply Filters
+        </button>
+
+        <a href="/products"
+          class="inline-flex items-center justify-center px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 text-sm font-semibold rounded-lg border border-slate-200 transition duration-150">
+          Clear
+        </a>
+      </div>
+
+    </form>
+  </div>
+
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-6 non-printable">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse whitespace-nowrap">
+        <thead>
+          <tr class="bg-slate-50 border-b border-slate-200 text-slate-400 text-xs font-bold uppercase tracking-wider">
+            <th class="py-3.5 px-6 w-10">
+              <input type="checkbox" id="masterCheckbox" onclick="toggleAllCheckboxes(this)"
+                class="rounded border-slate-300 text-brand-teal focus:ring-brand-teal w-4 h-4 cursor-pointer">
+            </th>
+            <th class="py-3.5 px-6">Product Name</th>
+            <th class="py-3.5 px-6">Barcode / Tag</th>
+            <th class="py-3.5 px-6">Stock Status</th>
+            <th class="py-3.5 px-6">Cost Price (Buy)</th>
+            <th class="py-3.5 px-6">Retail Price (Sell)</th>
+            <th class="py-3.5 px-6 text-right">Actions</th>
           </tr>
+        </thead>
+
+        <tbody class="text-sm divide-y divide-slate-100">
+          <% if (products && products.length> 0) { %>
+            <% products.forEach(p=> { %>
+              <tr class="hover:bg-slate-50/70 transition duration-150 group">
+                <td class="py-4 px-6 w-10">
+                  <input type="checkbox" name="product_ids" value="<%= p.id %>" onchange="evaluateRowSelections()"
+                    class="product-item-checkbox rounded border-slate-300 text-brand-teal focus:ring-brand-teal w-4 h-4 cursor-pointer">
+                </td>
+                <td class="py-4 px-6 font-medium text-slate-800">
+                  <%= p.name %>
+                </td>
+
+                <td class="py-4 px-6">
+                  <% if (p.barcode) { %>
+                    <div class="flex flex-col gap-1">
+                      <svg class="table-barcode" data-value="<%= p.barcode %>"></svg>
+                    </div>
+                    <% } else { %>
+                      <span class="text-xs text-slate-400 italic">No Barcode</span>
+                      <% } %>
+                </td>
+
+                <td class="py-4 px-6">
+                  <% if (p.quantity_in_stock <=(p.reorder_level || 5)) { %>
+                    <span
+                      class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-100">
+                      <span class="w-1.5 h-1.5 rounded-full bg-rose-500 mr-1.5 animate-pulse"></span>
+                      <%= p.quantity_in_stock %> low stock
+                    </span>
+                    <% } else { %>
+                      <span
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
+                        <%= p.quantity_in_stock %> available
+                      </span>
+                      <% } %>
+                </td>
+                <td class="py-4 px-6 text-slate-600 font-mono text-xs">TSh <%= Number(p.buy_price || 0).toLocaleString()
+                    %>
+                </td>
+                <td class="py-4 px-6 font-semibold text-slate-900 font-mono text-xs">TSh <%= Number(p.sell_price ||
+                    0).toLocaleString() %>
+                </td>
+                <td class="py-4 px-6 text-right">
+                  <div
+                    class="inline-flex items-center gap-2 opacity-90 group-hover:opacity-100 transition duration-150">
+
+                    <% if (p.barcode) { %>
+                      <button type="button"
+                        onclick="openPrintModal('<%= p.barcode %>', '<%= p.name %>', 'TSh <%= Number(p.sell_price || 0).toLocaleString() %>')"
+                        class="inline-flex items-center gap-1.5 bg-white hover:bg-teal-50 text-slate-600 hover:text-brand-teal py-1.5 px-3 text-xs font-semibold border border-slate-200 hover:border-teal-200 rounded-md shadow-sm transition duration-150">
+                        <i class="fas fa-print text-[10px]"></i> Label
+                      </button>
+                      <% } %>
+
+                        <a href="/products/edit/<%= p.id %>"
+                          class="inline-flex items-center gap-1.5 bg-white hover:bg-brand-gold/10 text-slate-600 hover:text-brand-goldHover py-1.5 px-3 text-xs font-semibold border border-slate-200 hover:border-brand-gold/30 rounded-md shadow-sm transition duration-150">
+                          <i class="fas fa-edit text-[10px]"></i> Edit
+                        </a>
+                        <a href="/products/delete/<%= p.id %>"
+                          class="inline-flex items-center gap-1.5 bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 py-1.5 px-3 text-xs font-semibold border border-slate-200 hover:border-rose-200 rounded-md shadow-sm transition duration-150"
+                          onclick="return confirm('Are you sure?')">
+                          <i class="fas fa-trash-alt text-[10px]"></i> Delete
+                        </a>
+                  </div>
+                </td>
+              </tr>
+              <% }) %>
+                <% } else { %>
+                  <tr>
+                    <td colspan="7" class="py-12 text-center">
+                      <div class="text-slate-300 mb-2"><i class="fas fa-box-open text-4xl"></i></div>
+                      <p class="text-sm text-slate-400 italic">No products match your filter parameters.</p>
+                    </td>
+                  </tr>
+                  <% } %>
+        </tbody>
+      </table>
+    </div>
+
+    <% if (typeof totalPages !=='undefined' && totalPages> 1) { %>
+      <% function getPageUrl(targetPage) { let params=new URLSearchParams(); if (query.barcode) params.set('barcode',
+        query.barcode); if (query.search) params.set('search', query.search); if (query.status) params.set('status',
+        query.status); if (query.maxPrice) params.set('maxPrice', query.maxPrice); params.set('page', targetPage);
+        return '/products?' + params.toString(); } %>
+        <div class="bg-slate-50 border-t border-slate-200 px-6 py-4 flex items-center justify-between">
+          <div class="text-xs font-medium text-slate-500">
+            Showing Page <span class="text-slate-800 font-bold">
+              <%= currentPage %>
+            </span> of <span class="text-slate-800 font-bold">
+              <%= totalPages %>
+            </span> pages
+          </div>
+
+          <div class="inline-flex items-center gap-1">
+            <% if (currentPage> 1) { %>
+              <a href="<%= getPageUrl(currentPage - 1) %>"
+                class="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-xs font-semibold transition duration-150">
+                <i class="fas fa-chevron-left"></i>
+              </a>
+              <% } else { %>
+                <span
+                  class="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 bg-slate-100 text-slate-300 text-xs cursor-not-allowed">
+                  <i class="fas fa-chevron-left"></i>
+                </span>
+                <% } %>
+
+                  <% for(let i=1; i <=totalPages; i++) { %>
+                    <% if (i===currentPage) { %>
+                      <span
+                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-brand-teal text-white text-xs font-bold shadow-sm shadow-brand-teal/10">
+                        <%= i %>
+                      </span>
+                      <% } else { %>
+                        <a href="<%= getPageUrl(i) %>"
+                          class="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-xs font-medium transition duration-150">
+                          <%= i %>
+                        </a>
+                        <% } %>
+                          <% } %>
+
+                            <% if (currentPage < totalPages) { %>
+                              <a href="<%= getPageUrl(currentPage + 1) %>"
+                                class="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-xs font-semibold transition duration-150">
+                                <i class="fas fa-chevron-right"></i>
+                              </a>
+                              <% } else { %>
+                                <span
+                                  class="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 bg-slate-100 text-slate-300 text-xs cursor-not-allowed">
+                                  <i class="fas fa-chevron-right"></i>
+                                </span>
+                                <% } %>
+          </div>
+        </div>
         <% } %>
-      </tbody>
-    </table>
   </div>
 
-  <% if (typeof totalPages !== 'undefined' && totalPages > 1) { %>
-    <% 
-      function getPageUrl(targetPage) {
-        let params = new URLSearchParams();
-        if (query.barcode) params.set('barcode', query.barcode);
-        if (query.search) params.set('search', query.search);
-        if (query.status) params.set('status', query.status);
-        if (query.maxPrice) params.set('maxPrice', query.maxPrice);
-        params.set('page', targetPage);
-        return '/products?' + params.toString();
-      }
-    %>
-    <div class="bg-slate-50 border-t border-slate-200 px-6 py-4 flex items-center justify-between">
-      <div class="text-xs font-medium text-slate-500">
-        Showing Page <span class="text-slate-800 font-bold"><%= currentPage %></span> of <span class="text-slate-800 font-bold"><%= totalPages %></span> pages
-      </div>
-      
-      <div class="inline-flex items-center gap-1">
-        <% if (currentPage > 1) { %>
-          <a href="<%= getPageUrl(currentPage - 1) %>" class="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-xs font-semibold transition duration-150">
-            <i class="fas fa-chevron-left"></i>
-          </a>
-        <% } else { %>
-          <span class="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 bg-slate-100 text-slate-300 text-xs cursor-not-allowed">
-            <i class="fas fa-chevron-left"></i>
-          </span>
-        <% } %>
-
-        <% for(let i = 1; i <= totalPages; i++) { %>
-          <% if (i === currentPage) { %>
-            <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-brand-teal text-white text-xs font-bold shadow-sm shadow-brand-teal/10">
-              <%= i %>
-            </span>
-          <% } else { %>
-            <a href="<%= getPageUrl(i) %>" class="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-xs font-medium transition duration-150">
-              <%= i %>
-            </a>
-          <% } %>
-        <% } %>
-
-        <% if (currentPage < totalPages) { %>
-          <a href="<%= getPageUrl(currentPage + 1) %>" class="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-xs font-semibold transition duration-150">
-            <i class="fas fa-chevron-right"></i>
-          </a>
-        <% } else { %>
-          <span class="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 bg-slate-100 text-slate-300 text-xs cursor-not-allowed">
-            <i class="fas fa-chevron-right"></i>
-          </span>
-        <% } %>
-      </div>
-    </div>
-  <% } %>
-</div>
-
-<div id="customPrintModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 non-printable">
-  <div class="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden transform transition-all">
-    <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-      <h3 class="font-bold text-slate-800 flex items-center gap-2">
-        <i class="fas fa-print text-brand-teal"></i> Barcode Sticker Label Preview
-      </h3>
-      <button type="button" onclick="closePrintModal()" class="text-slate-400 hover:text-slate-600 transition">
-        <i class="fas fa-times"></i>
-      </button>
-    </div>
-    
-    <div class="p-8 flex justify-center items-center bg-slate-100">
-      <div class="bg-white shadow-md border border-slate-300 p-4 rounded text-center w-[50mm] min-h-[30mm] flex flex-col items-center justify-center font-mono text-black">
-        <div id="modalProductName" class="text-[10px] font-bold uppercase tracking-wide truncate w-full mb-1"></div>
-        <svg id="modalBarcodeCanvas"></svg>
-        <div id="modalProductPrice" class="text-[11px] font-bold mt-1 border-t border-dashed border-black pt-1 w-full"></div>
-      </div>
-    </div>
-
-    <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
-      <button type="button" onclick="closePrintModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200 rounded-lg transition">
-        Cancel
-      </button>
-      <button type="button" onclick="triggerHardwarePrint()" class="px-5 py-2 text-xs font-bold text-white bg-brand-teal hover:bg-brand-tealDark rounded-lg shadow transition flex items-center gap-2">
-        <i class="fas fa-check"></i> Send to Thermal Printer
-      </button>
-    </div>
-  </div>
-</div>
-
-<div id="customBulkPrintModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 non-printable">
-  <div class="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-4xl overflow-hidden transform transition-all">
-    <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-      <h3 class="font-bold text-slate-800 flex items-center gap-2">
-        <i class="fas fa-layer-group text-brand-teal"></i> <span id="bulkModalTitle">Bulk Print Layout Review</span>
-      </h3>
-      <button type="button" onclick="closeBulkPrintModal()" class="text-slate-400 hover:text-slate-600 transition">
-        <i class="fas fa-times"></i>
-      </button>
-    </div>
-    
-    <div class="p-6 bg-slate-100 max-h-[60vh] overflow-y-auto justify-items-center" id="bulkModalStickersContainer">
-    </div>
-
-    <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-      <span class="text-xs text-slate-500 font-medium" id="bulkQueueCounterSummary">Total: 0 Items ready</span>
-      <div class="flex items-center gap-3">
-        <button type="button" onclick="closeBulkPrintModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200 rounded-lg transition">
-          Cancel
+  <div id="customPrintModal"
+    class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 non-printable">
+    <div
+      class="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden transform transition-all">
+      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+        <h3 class="font-bold text-slate-800 flex items-center gap-2">
+          <i class="fas fa-print text-brand-teal"></i> Barcode Sticker Label Preview
+        </h3>
+        <button type="button" onclick="closePrintModal()" class="text-slate-400 hover:text-slate-600 transition">
+          <i class="fas fa-times"></i>
         </button>
-        <button type="button" id="bulkPrintExecutionBtn" onclick="triggerBulkHardwarePrint()" class="px-5 py-2 text-xs font-bold text-white bg-slate-800 hover:bg-slate-900 rounded-lg shadow transition flex items-center gap-2">
-          <i class="fas fa-print"></i> Execute Print Run
-        </button>
+      </div>
+
+      <div class="p-8 flex justify-center items-center bg-slate-100">
+        <div
+          class="bg-white shadow-md border border-slate-300 p-4 rounded text-center w-[50mm] min-h-[30mm] flex flex-col items-center justify-center font-mono text-black">
+          <div id="modalProductName" class="text-[10px] font-bold uppercase tracking-wide truncate w-full mb-1"></div>
+          <svg id="modalBarcodeCanvas"></svg>
+          <div id="modalProductPrice"
+            class="text-[11px] font-bold mt-1 border-t border-dashed border-black pt-1 w-full"></div>
+        </div>
+      </div>
+
+      <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
+        <button type="button" onclick="closePrintModal()"
+          class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200 rounded-lg transition">
+          <Cancel </button>
+            <button type="button" onclick="triggerHardwarePrint()"
+              class="px-5 py-2 text-xs font-bold text-white bg-brand-teal hover:bg-brand-tealDark rounded-lg shadow transition flex items-center gap-2">
+              <i class="fas fa-check"></i> Send to Thermal Printer
+            </button>
       </div>
     </div>
   </div>
-</div>
 
-<div id="singlePrintProductionContainer" class="production-only-target">
-  <div class="single-sticker-page">
-    <div id="spProductName" style="font-size: 10px; font-weight: bold; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; margin-bottom: 2px;"></div>
-    <svg id="spBarcodeCanvas"></svg>
-    <div id="spProductPrice" style="font-size: 11px; font-weight: bold; margin-top: 2px; border-top: 1px dashed #000; padding-top: 1px; width: 90%; margin-left: auto; margin-right: auto;"></div>
+  <div id="customBulkPrintModal"
+    class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 non-printable">
+    <div
+      class="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-4xl overflow-hidden transform transition-all">
+      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+        <h3 class="font-bold text-slate-800 flex items-center gap-2">
+          <i class="fas fa-layer-group text-brand-teal"></i> <span id="bulkModalTitle">Bulk Print Layout Review</span>
+        </h3>
+        <button type="button" onclick="closeBulkPrintModal()" class="text-slate-400 hover:text-slate-600 transition">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="p-6 bg-slate-100 max-h-[60vh] overflow-y-auto justify-items-center" id="bulkModalStickersContainer">
+      </div>
+
+      <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+        <span class="text-xs text-slate-500 font-medium" id="bulkQueueCounterSummary">Total: 0 Items ready</span>
+        <div class="flex items-center gap-3">
+          <button type="button" onclick="closeBulkPrintModal()"
+            class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200 rounded-lg transition">
+            Cancel
+          </button>
+          <button type="button" id="bulkPrintExecutionBtn" onclick="triggerBulkHardwarePrint()"
+            class="px-5 py-2 text-xs font-bold text-white bg-slate-800 hover:bg-slate-900 rounded-lg shadow transition flex items-center gap-2">
+            <i class="fas fa-print"></i> Execute Print Run
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
-</div>
 
-<div id="bulkPrintProductionContainer" class="production-only-target"></div>
+  <div id="singlePrintProductionContainer" class="production-only-target">
+    <div class="single-sticker-page">
+      <div id="spProductName"
+        style="font-size: 10px; font-weight: bold; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; margin-bottom: 2px;">
+      </div>
+      <svg id="spBarcodeCanvas"></svg>
+      <div id="spProductPrice"
+        style="font-size: 11px; font-weight: bold; margin-top: 2px; border-top: 1px dashed #000; padding-top: 1px; width: 90%; margin-left: auto; margin-right: auto;">
+      </div>
+    </div>
+  </div>
 
+  <div id="bulkPrintProductionContainer" class="production-only-target"></div>
 
-<style>
-  .production-only-target {
-    display: none !important;
-  }
-
-  @media print {
-    .non-printable, 
-    #customPrintModal, 
-    #customBulkPrintModal,
-    header, footer, nav {
+  <style>
+    .production-only-target {
       display: none !important;
     }
 
-    body, html {
-      background-color: #fff !important;
-      margin: 0 !important;
-      padding: 0 !important;
+    /* Minor animation utility for floating selection bar appearance */
+    @keyframes bounceShort {
+
+      0%,
+      100% {
+        transform: translate(-50%, 0);
+      }
+
+      50% {
+        transform: translate(-50%, -4px);
+      }
     }
 
-    /* 1. SINGLE THERMAL LABEL MODE */
-    body.printing-single #singlePrintProductionContainer {
-      display: block !important;
-      position: absolute !important;
-      left: 0 !important;
-      top: 0 !important;
-      width: 50mm !important;
-    }
-    body.printing-single .single-sticker-page {
-      display: flex !important;
-      flex-direction: column !important;
-      align-items: center !important;
-      justify-content: center !important;
-      text-align: center !important;
-      font-family: monospace !important;
-      color: #000 !important;
-      width: 50mm !important;
-      height: 30mm !important;
-      padding: 5px !important;
-      box-sizing: border-box !important;
+    .animate-bounce-short {
+      animation: bounceShort 2s infinite ease-in-out;
     }
 
-    /* 2. BULK A4 SHEET GRID MODE */
-    body.printing-bulk-grid #bulkPrintProductionContainer {
-      display: grid !important;
-      grid-template-columns: repeat(3, 1fr) !important;
-      gap: 12px !important;
-      padding: 15px !important;
-      width: 100% !important;
-      box-sizing: border-box !important;
-    }
-    body.printing-bulk-grid .bulk-sticker-page {
-      display: flex !important;
-      flex-direction: column !important;
-      align-items: center !important;
-      justify-content: center !important;
-      text-align: center !important;
-      font-family: monospace !important;
-      color: #000 !important;
-      padding: 8px 5px !important;
-      height: 32mm !important; 
-      border: 1px dashed #ccc !important;
-      border-radius: 4px !important;
-      box-sizing: border-box !important;
-      background-color: #fff !important;
-      page-break-inside: avoid !important;
-      break-inside: avoid !important;
-    }
+    @media print {
 
-    /* 3. BULK THERMAL ROLL CONTINUOUS STREAM MODE */
-    body.printing-bulk-thermal #bulkPrintProductionContainer {
-      display: block !important;
-      width: 50mm !important;
-    }
-    body.printing-bulk-thermal .bulk-sticker-page {
-      display: flex !important;
-      flex-direction: column !important;
-      align-items: center !important;
-      justify-content: center !important;
-      text-align: center !important;
-      font-family: monospace !important;
-      color: #000 !important;
-      width: 50mm !important;
-      height: 30mm !important;
-      padding: 4px !important;
-      box-sizing: border-box !important;
-      background-color: #fff !important;
-      page-break-after: always !important; /* Forces layout tracking to isolate elements item-by-item on a continuous feed */
-      break-after: page !important;
-    }
-  }
-</style>
+      .non-printable,
+      #customPrintModal,
+      #customBulkPrintModal,
+      #bulkActionBar,
+      header,
+      footer,
+      nav {
+        display: none !important;
+      }
 
-<%- include('../layouts/footer') %>
+      body,
+      html {
+        background-color: #fff !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
 
-<script>
-  let currentActiveBarcode = '';
-  let currentBulkMode = 'grid'; 
-  let productRows = [];
+      body.printing-single #singlePrintProductionContainer {
+        display: block !important;
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 50mm !important;
+      }
+
+      body.printing-single .single-sticker-page {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-align: center !important;
+        font-family: monospace !important;
+        color: #000 !important;
+        width: 50mm !important;
+        height: 30mm !important;
+        padding: 5px !important;
+        box-sizing: border-box !important;
+      }
+
+      body.printing-bulk-grid #bulkPrintProductionContainer {
+        display: grid !important;
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 12px !important;
+        padding: 15px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+      }
+
+      body.printing-bulk-grid .bulk-sticker-page {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-align: center !important;
+        font-family: monospace !important;
+        color: #000 !important;
+        padding: 8px 5px !important;
+        height: 32mm !important;
+        border: 1px dashed #ccc !important;
+        border-radius: 4px !important;
+        box-sizing: border-box !important;
+        background-color: #fff !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+
+      body.printing-bulk-thermal #bulkPrintProductionContainer {
+        display: block !important;
+        width: 50mm !important;
+      }
+
+      body.printing-bulk-thermal .bulk-sticker-page {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-align: center !important;
+        font-family: monospace !important;
+        color: #000 !important;
+        width: 50mm !important;
+        height: 30mm !important;
+        padding: 4px !important;
+        box-sizing: border-box !important;
+        background-color: #fff !important;
+        page-break-after: always !important;
+        break-after: page !important;
+      }
+    }
+  </style>
+
+  <%- include('../layouts/footer') %>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+      let currentActiveBarcode = '';
+      let currentBulkMode = 'grid';
+      let productRows = [];
 
   <% if (products && products.length > 0) { %>
     <% products.forEach(p => { %>
       <% if (p.barcode) { %>
-        productRows.push({
-          barcode: '<%= p.barcode %>',
-          name: '<%= p.name %>',
-          price: 'TSh <%= Number(p.sell_price || 0).toLocaleString() %>'
-        });
+          productRows.push({
+            barcode: '<%= p.barcode %>',
+            name: '<%= p.name %>',
+            price: 'TSh <%= Number(p.sell_price || 0).toLocaleString() %>'
+          });
       <% } %>
     <% }) %>
   <% } %>
 
-  document.addEventListener("DOMContentLoaded", function() {
-    const barcodeInput = document.getElementById("barcodeScanInput");
-    if(barcodeInput) {
-      barcodeInput.focus();
-      if(barcodeInput.value !== '') barcodeInput.select();
-    }
+        document.addEventListener("DOMContentLoaded", function () {
+          const barcodeInput = document.getElementById("barcodeScanInput");
+          if (barcodeInput) {
+            barcodeInput.focus();
+            if (barcodeInput.value !== '') barcodeInput.select();
+          }
 
-    document.querySelectorAll('.table-barcode').forEach(function(svg) {
-      const val = svg.getAttribute('data-value');
-      JsBarcode(svg, val, {
-        format: "CODE128",
-        width: 1.2,
-        height: 25,
-        displayValue: true,
-        fontSize: 10,
-        margin: 0
-      });
-    });
-  });
+          document.querySelectorAll('.table-barcode').forEach(function (svg) {
+            const val = svg.getAttribute('data-value');
+            JsBarcode(svg, val, {
+              format: "CODE128",
+              width: 1.2,
+              height: 25,
+              displayValue: true,
+              fontSize: 10,
+              margin: 0
+            });
+          });
+        });
 
-  // --- SINGLE LABEL MODAL ACTIONS ---
-  function openPrintModal(barcodeValue, productName, productPrice) {
-    currentActiveBarcode = barcodeValue;
-    document.getElementById('modalProductName').innerText = productName;
-    document.getElementById('modalProductPrice').innerText = productPrice;
+      // --- NEW FEATURE: CLIENT ACTION SELECTION HANDLERS ---
+      function toggleAllCheckboxes(master) {
+        const checkboxes = document.querySelectorAll('.product-item-checkbox');
+        checkboxes.forEach(cb => cb.checked = master.checked);
+        evaluateRowSelections();
+      }
 
-    JsBarcode("#modalBarcodeCanvas", barcodeValue, {
-      format: "CODE128",
-      width: 1.8,
-      height: 35,
-      displayValue: true,
-      fontSize: 10,
-      margin: 0
-    });
+      function evaluateRowSelections() {
+        const checkboxes = document.querySelectorAll('.product-item-checkbox');
+        const checkedBoxes = document.querySelectorAll('.product-item-checkbox:checked');
+        const bulkBar = document.getElementById('bulkActionBar');
+        const counterDisplay = document.getElementById('bulkSelectCount');
+        const masterCheckbox = document.getElementById('masterCheckbox');
 
-    document.getElementById('spProductName').innerText = productName;
-    document.getElementById('spProductPrice').innerText = productPrice;
+        // Synchronize Master layout header box status
+        if (checkedBoxes.length === 0) {
+          masterCheckbox.checked = false;
+          masterCheckbox.indeterminate = false;
+        } else if (checkedBoxes.length === checkboxes.length) {
+          masterCheckbox.checked = true;
+          masterCheckbox.indeterminate = false;
+        } else {
+          masterCheckbox.checked = false;
+          masterCheckbox.indeterminate = true;
+        }
 
-    JsBarcode("#spBarcodeCanvas", barcodeValue, {
-      format: "CODE128",
-      width: 1.8,
-      height: 38,
-      displayValue: true,
-      fontSize: 11,
-      margin: 0
-    });
+        // Toggle Floating Panel visibility
+        if (checkedBoxes.length > 0) {
+          counterDisplay.textContent = checkedBoxes.length;
+          bulkBar.classList.remove('hidden');
+        } else {
+          bulkBar.classList.add('hidden');
+        }
+      }
 
-    document.getElementById('customPrintModal').classList.remove('hidden');
-  }
+      function executeBulkDelete() {
+        const checkedBoxes = document.querySelectorAll('.product-item-checkbox:checked');
+        if (checkedBoxes.length === 0) return;
 
-  function closePrintModal() {
-    document.getElementById('customPrintModal').classList.add('hidden');
-    document.body.classList.remove('printing-single');
-  }
+        Swal.fire({
+          title: 'Are you absolutely sure?',
+          text: `You are about to permanently delete ${checkedBoxes.length} selected items from inventory. This action cannot be undone!`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#e11d48', // rose-600 to match your UI's destructive actions
+          cancelButtonColor: '#64748b',  // slate-500
+          confirmButtonText: '<i class="fas fa-trash-alt mr-1.5"></i> Yes, delete them!',
+          cancelButtonText: 'Cancel',
+          background: '#ffffff',
+          customClass: {
+            popup: 'rounded-xl border border-slate-200 shadow-xl',
+            title: 'text-slate-800 font-bold text-lg',
+            htmlContainer: 'text-slate-500 text-sm',
+            confirmButton: 'px-5 py-2.5 text-xs font-bold text-white rounded-lg transition shadow-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20',
+            cancelButton: 'px-4 py-2.5 text-xs font-semibold text-white rounded-lg transition shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-500/20'
+          },
+          buttonsStyling: true // Set to false if you want to override completely with pure Tailwind classes
+        }).then((result) => {
+          if (result.isConfirmed) {
+            // Gather array list matching your router requirements
+            const idsToDelete = Array.from(checkedBoxes).map(cb => cb.value);
 
-  function triggerHardwarePrint() {
-    document.body.classList.add('printing-single');
-    setTimeout(() => {
-      window.print();
-      setTimeout(() => { closePrintModal(); }, 200);
-    }, 150);
-  }
+            // Programmatically forge clean form post dispatch architecture
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/products/bulk-delete';
 
-  // --- ADAPTIVE BULK ACTIONS (GRID vs THERMAL) ---
-  function openBulkPrintModal(mode) {
-    if (productRows.length === 0) {
-      alert('There are no items with scannable barcode signatures to print.');
-      return;
-    }
+            idsToDelete.forEach(id => {
+              const input = document.createElement('input');
+              input.type = 'hidden';
+              input.name = 'productIds';
+              input.value = id;
+              form.appendChild(input);
+            });
 
-    currentBulkMode = mode;
-    const modalContainer = document.getElementById('bulkModalStickersContainer');
-    const productionContainer = document.getElementById('bulkPrintProductionContainer');
-    const modalTitle = document.getElementById('bulkModalTitle');
-    
-    modalContainer.innerHTML = '';
-    productionContainer.innerHTML = '';
+            document.body.appendChild(form);
+            form.submit();
+          }
+        });
+      }
 
-    if (mode === 'grid') {
-      modalTitle.innerText = "Bulk Print Sheet Layout Review (A4 Grid Mode)";
-      modalContainer.className = "p-6 bg-slate-100 max-h-[60vh] overflow-y-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 justify-items-center";
-    } else {
-      modalTitle.innerText = "Bulk Print Stream Layout Review (Continuous Thermal Mode)";
-      modalContainer.className = "p-6 bg-slate-100 max-h-[60vh] overflow-y-auto flex flex-col items-center gap-4";
-    }
+      // --- SINGLE LABEL MODAL ACTIONS ---
+      function openPrintModal(barcodeValue, productName, productPrice) {
+        currentActiveBarcode = barcodeValue;
+        document.getElementById('modalProductName').innerText = productName;
+        document.getElementById('modalProductPrice').innerText = productPrice;
 
-    document.getElementById('bulkQueueCounterSummary').innerText = `Total: ${productRows.length} Items ready`;
+        JsBarcode("#modalBarcodeCanvas", barcodeValue, {
+          format: "CODE128",
+          width: 1.8,
+          height: 35,
+          displayValue: true,
+          fontSize: 10,
+          margin: 0
+        });
 
-    productRows.forEach((prod, index) => {
-      // Create On-Screen Visual UI representative card
-      const previewCard = document.createElement('div');
-      previewCard.className = "bg-white shadow border border-slate-300 p-4 rounded text-center w-[50mm] min-h-[30mm] flex flex-col items-center justify-center font-mono text-black shrink-0";
-      previewCard.innerHTML = `
+        document.getElementById('spProductName').innerText = productName;
+        document.getElementById('spProductPrice').innerText = productPrice;
+
+        JsBarcode("#spBarcodeCanvas", barcodeValue, {
+          format: "CODE128",
+          width: 1.8,
+          height: 38,
+          displayValue: true,
+          fontSize: 11,
+          margin: 0
+        });
+
+        document.getElementById('customPrintModal').classList.remove('hidden');
+      }
+
+      function closePrintModal() {
+        document.getElementById('customPrintModal').classList.add('hidden');
+        document.body.classList.remove('printing-single');
+      }
+
+      function triggerHardwarePrint() {
+        document.body.classList.add('printing-single');
+        setTimeout(() => {
+          window.print();
+          setTimeout(() => { closePrintModal(); }, 200);
+        }, 150);
+      }
+
+      // --- ADAPTIVE BULK ACTIONS (GRID vs THERMAL) ---
+      function openBulkPrintModal(mode) {
+        if (productRows.length === 0) {
+          Swal.fire({
+            title: 'No Printable Items',
+            text: 'There are no products with registered barcode signatures available in this view to print.',
+            icon: 'info',
+            confirmButtonColor: '#0f172a',
+            confirmButtonText: 'Understood',
+            customClass: {
+              popup: 'rounded-xl border border-slate-200 shadow-xl',
+              title: 'text-slate-800 font-bold text-lg',
+              htmlContainer: 'text-slate-500 text-sm',
+              confirmButton: 'px-5 py-2.5 text-xs font-bold text-white rounded-lg transition shadow-sm'
+            }
+          });
+          return;
+        }
+
+        currentBulkMode = mode;
+        const modalContainer = document.getElementById('bulkModalStickersContainer');
+        const productionContainer = document.getElementById('bulkPrintProductionContainer');
+        const modalTitle = document.getElementById('bulkModalTitle');
+
+        modalContainer.innerHTML = '';
+        productionContainer.innerHTML = '';
+
+        if (mode === 'grid') {
+          modalTitle.innerText = "Bulk Print Sheet Layout Review (A4 Grid Mode)";
+          modalContainer.className = "p-6 bg-slate-100 max-h-[60vh] overflow-y-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 justify-items-center";
+        } else {
+          modalTitle.innerText = "Bulk Print Stream Layout Review (Continuous Thermal Mode)";
+          modalContainer.className = "p-6 bg-slate-100 max-h-[60vh] overflow-y-auto flex flex-col items-center gap-4";
+        }
+
+        document.getElementById('bulkQueueCounterSummary').innerText = `Total: ${productRows.length} Items ready`;
+
+        productRows.forEach((prod, index) => {
+          const previewCard = document.createElement('div');
+          previewCard.className = "bg-white shadow border border-slate-300 p-4 rounded text-center w-[50mm] min-h-[30mm] flex flex-col items-center justify-center font-mono text-black shrink-0";
+          previewCard.innerHTML = `
         <div style="font-size: 9px; font-weight: bold; text-transform: uppercase; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; max-w-[45mm] mb-1 w-full">${prod.name}</div>
         <svg id="modalBulkSvg_${index}"></svg>
         <div style="font-size: 10px; font-weight: bold; margin-top: 4px; border-t: 1px dashed #000; padding-top: 2px; w-full">${prod.price}</div>
       `;
-      modalContainer.appendChild(previewCard);
+          modalContainer.appendChild(previewCard);
 
-      JsBarcode(`#modalBulkSvg_${index}`, prod.barcode, {
-        format: "CODE128",
-        width: 1.5,
-        height: 35,
-        displayValue: true,
-        fontSize: 9,
-        margin: 0
-      });
+          JsBarcode(`#modalBulkSvg_${index}`, prod.barcode, {
+            format: "CODE128",
+            width: 1.5,
+            height: 35,
+            displayValue: true,
+            fontSize: 9,
+            margin: 0
+          });
 
-      // Construct Native Hardware Frame output nodes
-      const stickerDiv = document.createElement('div');
-      stickerDiv.className = 'bulk-sticker-page';
-      stickerDiv.innerHTML = `
+          const stickerDiv = document.createElement('div');
+          stickerDiv.className = 'bulk-sticker-page';
+          stickerDiv.innerHTML = `
         <div style="font-size: 10px; font-weight: bold; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; margin-bottom: 2px; color: #000;">${prod.name}</div>
         <svg id="bulkPrintSvg_${index}"></svg>
         <div style="font-size: 11px; font-weight: bold; margin-top: 2px; border-top: 1px dashed #000; padding-top: 1px; width: 90%; margin-left: auto; margin-right: auto; color: #000;">${prod.price}</div>
       `;
-      productionContainer.appendChild(stickerDiv);
+          productionContainer.appendChild(stickerDiv);
 
-      JsBarcode(`#bulkPrintSvg_${index}`, prod.barcode, {
-        format: "CODE128",
-        width: (mode === 'grid' ? 1.6 : 1.8), 
-        height: (mode === 'grid' ? 32 : 36),
-        displayValue: true,
-        fontSize: 10,
-        margin: 0
-      });
-    });
+          JsBarcode(`#bulkPrintSvg_${index}`, prod.barcode, {
+            format: "CODE128",
+            width: (mode === 'grid' ? 1.6 : 1.8),
+            height: (mode === 'grid' ? 32 : 36),
+            displayValue: true,
+            fontSize: 10,
+            margin: 0
+          });
+        });
 
-    document.getElementById('customBulkPrintModal').classList.remove('hidden');
-  }
+        document.getElementById('customBulkPrintModal').classList.remove('hidden');
+      }
 
-  function closeBulkPrintModal() {
-    document.getElementById('customBulkPrintModal').classList.add('hidden');
-    document.body.classList.remove('printing-bulk-grid', 'printing-bulk-thermal');
-  }
+      function closeBulkPrintModal() {
+        document.getElementById('customBulkPrintModal').classList.add('hidden');
+        document.body.classList.remove('printing-bulk-grid', 'printing-bulk-thermal');
+      }
 
-  function triggerBulkHardwarePrint() {
-    if (currentBulkMode === 'grid') {
-      document.body.classList.add('printing-bulk-grid');
-    } else {
-      document.body.classList.add('printing-bulk-thermal');
-    }
-    
-    setTimeout(() => {
-      window.print();
-      setTimeout(() => {
-        closeBulkPrintModal();
-        document.getElementById('bulkPrintProductionContainer').innerHTML = '';
-      }, 300);
-    }, 150);
-  }
-</script>
+      function triggerBulkHardwarePrint() {
+        if (currentBulkMode === 'grid') {
+          document.body.classList.add('printing-bulk-grid');
+        } else {
+          document.body.classList.add('printing-bulk-thermal');
+        }
+
+        setTimeout(() => {
+          window.print();
+          setTimeout(() => {
+            closeBulkPrintModal();
+            document.getElementById('bulkPrintProductionContainer').innerHTML = '';
+          }, 300);
+        }, 150);
+      }
+    </script>

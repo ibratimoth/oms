@@ -1,13 +1,15 @@
-</div> </main>
+</div>
+</main>
 
-    <footer class="bg-white border-t border-slate-200 py-4 px-6 sm:px-8 text-center sm:text-left text-xs font-medium text-slate-400 mt-auto flex flex-col sm:flex-row justify-between items-center gap-2">
-      <div>
-        &copy; 2026 <span class="font-semibold text-brand-teal">Delle Ventures</span>. All rights reserved.
-      </div>
-      <div class="text-slate-300 hidden sm:block">
-        Order Management Portal
-      </div>
-    </footer>
+<footer
+  class="bg-white border-t border-slate-200 py-4 px-6 sm:px-8 text-center sm:text-left text-xs font-medium text-slate-400 mt-auto flex flex-col sm:flex-row justify-between items-center gap-2">
+  <div>
+    &copy; 2026 <span class="font-semibold text-brand-teal">Delle Ventures</span>. All rights reserved.
+  </div>
+  <div class="text-slate-300 hidden sm:block">
+    Order Management Portal
+  </div>
+</footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 
@@ -15,51 +17,55 @@
 
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
 <script>
-$(document).ready(function () {
+  $(document).ready(function () {
 
-  // Auto-focus barcode scanner input field
-  $('#barcodeScannerInput').focus();
-  
-  // Keep focus on scanner box during idle clicks
-  $(document).on('click', function(e) {
-    if (!$(e.target).closest('input, select, .select2-container, button').length) {
-      $('#barcodeScannerInput').focus();
-    }
-  });
+    // Auto-focus barcode scanner input field
+    $('#barcodeScannerInput').focus();
 
-  // 1. INITIALIZE SELECT2
-  $('.product-select').select2();
+    // Keep focus on scanner box during idle clicks
+    $(document).on('click', function (e) {
+      if (!$(e.target).closest('input, select, .select2-container, button').length) {
+        $('#barcodeScannerInput').focus();
+      }
+    });
 
-  // 2. STOCK WARNINGS
-  $(document).on('change', '.product-select', function () {
-    const stock = $(this).find(':selected').data('stock');
-    const reorder = $(this).find(':selected').data('reorder') || 5;
-    const row = $(this).closest('.item-row');
-    let warning = row.find('.stock-warning');
+    // 1. INITIALIZE SELECT2
+    $('.product-select').select2();
 
-    if (warning.length === 0) {
-      row.append('<small class="stock-warning text-xs font-semibold text-red-500 mt-1 block col-span-12"></small>');
-      warning = row.find('.stock-warning');
-    }
+    // 2. STOCK WARNINGS
+    $(document).on('change', '.product-select', function () {
+      const stock = $(this).find(':selected').data('stock');
+      const reorder = $(this).find(':selected').data('reorder') || 5;
+      const row = $(this).closest('.item-row');
+      let warning = row.find('.stock-warning');
 
-    if (stock !== undefined && stock <= reorder) {
-      warning.text('⚠ Low stock: ' + stock);
-    } else {
-      warning.text('');
-    }
-  });
+      if (warning.length === 0) {
+        row.append('<small class="stock-warning text-xs font-semibold text-red-500 mt-1 block col-span-12"></small>');
+        warning = row.find('.stock-warning');
+      }
 
-  // 3. CORE ROW GENERATOR
-  function addProductRow(productId = null, qty = 1) {
-    const container = document.getElementById('items');
-    const currentIndex = $('.item-row').length; 
-    const template = document.getElementById('productOptionsTemplate').innerHTML;
+      if (stock !== undefined && stock <= reorder) {
+        warning.text('⚠ Low stock: ' + stock);
+      } else {
+        warning.text('');
+      }
+    });
 
-    const row = document.createElement('div');
-    row.className = 'grid grid-cols-12 gap-3 mb-3 items-center item-row bg-slate-50 p-3 rounded-lg border border-slate-100';
+    // 3. CORE ROW GENERATOR
+    function addProductRow(productId = null, qty = 1) {
+      const container = document.getElementById('items');
+      const currentIndex = $('.item-row').length;
+      const template = document.getElementById('productOptionsTemplate').innerHTML;
 
-    row.innerHTML = `
+      const row = document.createElement('div');
+      row.className = 'grid grid-cols-12 gap-3 mb-3 items-center item-row bg-slate-50 p-3 rounded-lg border border-slate-100';
+
+      row.innerHTML = `
       <div class="col-span-12 md:col-span-6">
         <select name="items[${currentIndex}][product_id]" class="w-full bg-white border border-slate-300 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal product-select">
           ${template}
@@ -86,120 +92,149 @@ $(document).ready(function () {
       </div>
     `;
 
-    container.appendChild(row);
+      container.appendChild(row);
 
-    const $select = $(row).find('.product-select');
-    $select.select2();
-    
-    if (productId) {
-      $select.val(productId).trigger('change');
-    } else {
-      $select.trigger('change');
+      const $select = $(row).find('.product-select');
+      $select.select2();
+
+      if (productId) {
+        $select.val(productId).trigger('change');
+      } else {
+        $select.trigger('change');
+      }
     }
-  }
 
-  $('#addRow').on('click', function () {
-    addProductRow();
-  });
+    $('#addRow').on('click', function () {
+      addProductRow();
+    });
 
-  // 4. HARDENED BARCODE PROCESSING ENGINE
-  $('#barcodeScannerInput').on('keydown keypress', function (e) {
-    if (e.keyCode === 13 || e.key === 'Enter') {
-      e.preventDefault();
-      e.stopPropagation();
+    // 4. HARDENED BARCODE PROCESSING ENGINE
+    $('#barcodeScannerInput').on('keydown keypress', function (e) {
+      if (e.keyCode === 13 || e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
 
-      const inputField = $(this);
-      const scannedCode = inputField.val().trim();
-      
-      if (!scannedCode) return false;
+        const inputField = $(this);
+        const scannedCode = inputField.val().trim();
 
-      let matchedProductId = null;
+        if (!scannedCode) return false;
 
-      // Scan through template items
-      $('#productOptionsTemplate option').each(function () {
-        const targetBarcode = String($(this).data('barcode') || '').trim();
-        if (targetBarcode === scannedCode) {
-          matchedProductId = $(this).val();
-          return false; 
-        }
-      });
+        let matchedProductId = null;
 
-      if (matchedProductId) {
-        let alreadyInCart = false;
-        
-        $('.item-row').each(function () {
-          const currentSelect = $(this).find('.product-select');
-          if (currentSelect.val() === matchedProductId) {
-            const qtyInput = $(this).find('.qty-input');
-            qtyInput.val(parseInt(qtyInput.val() || 0) + 1);
-            alreadyInCart = true;
-            return false; 
+        // Scan through template items
+        $('#productOptionsTemplate option').each(function () {
+          const targetBarcode = String($(this).data('barcode') || '').trim();
+          if (targetBarcode === scannedCode) {
+            matchedProductId = $(this).val();
+            return false;
           }
         });
 
-        if (!alreadyInCart) {
-          const firstRow = $('.item-row').first();
-          const firstSelect = firstRow.find('.product-select');
-          const firstQty = firstRow.find('.qty-input');
-          const templateFirstVal = $('#productOptionsTemplate option:first').val();
+        if (matchedProductId) {
+          let alreadyInCart = false;
 
-          if ($('.item-row').length === 1 && firstSelect.val() == templateFirstVal && firstQty.val() == 1) {
-             firstSelect.val(matchedProductId).trigger('change');
-          } else {
-             addProductRow(matchedProductId, 1);
+          $('.item-row').each(function () {
+            const currentSelect = $(this).find('.product-select');
+            if (currentSelect.val() === matchedProductId) {
+              const qtyInput = $(this).find('.qty-input');
+              qtyInput.val(parseInt(qtyInput.val() || 0) + 1);
+              alreadyInCart = true;
+              return false;
+            }
+          });
+
+          if (!alreadyInCart) {
+            const firstRow = $('.item-row').first();
+            const firstSelect = firstRow.find('.product-select');
+            const firstQty = firstRow.find('.qty-input');
+            const templateFirstVal = $('#productOptionsTemplate option:first').val();
+
+            if ($('.item-row').length === 1 && firstSelect.val() == templateFirstVal && firstQty.val() == 1) {
+              firstSelect.val(matchedProductId).trigger('change');
+            } else {
+              addProductRow(matchedProductId, 1);
+            }
           }
+        } else {
+          Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'error',
+            title: 'Barcode Not Found',
+            text: `Product "${scannedCode}" is not registered.`,
+            showConfirmButton: false,
+            timer: 2500,
+            timerProgressBar: true,
+            didClose: () => {
+              const input = document.getElementById("barcodeScanInput");
+              if (input) {
+                input.value = '';
+                input.focus();
+              }
+            }
+          });
         }
-      } else {
-        alert(`Product barcode "${scannedCode}" not registered in the system.`);
-      }
 
-      // Safe immediate text clearance 
-      inputField.val('');
-      
-      // Secondary execution delay loop to cleanly swallow extra scanner characters
-      setTimeout(function() {
+        // Safe immediate text clearance 
         inputField.val('');
-        inputField.focus();
-      }, 30);
 
-      return false;
-    }
+        // Secondary execution delay loop to cleanly swallow extra scanner characters
+        setTimeout(function () {
+          inputField.val('');
+          inputField.focus();
+        }, 30);
+
+        return false;
+      }
+    });
+
+    // Prevents the global form from submission handling if an unexpected enter event bubbles up
+    $('#invoiceForm').on('submit', function (e) {
+      if (document.activeElement.id === 'barcodeScannerInput') {
+        e.preventDefault();
+        return false;
+      }
+    });
+
+    // 5. DELETION HANDLING
+    $(document).on('click', '.btn-remove', function () {
+      if ($('.item-row').length > 1) {
+        $(this).closest('.item-row').remove();
+      } else {
+        Swal.fire({
+          title: 'Empty Order',
+          text: 'An order must contain at least one item line before it can be processed.',
+          icon: 'warning',
+          confirmButtonColor: '#0ea5e9', // Matches your template's action buttons (brand-teal or blue)
+          confirmButtonText: 'Got it',
+          background: '#ffffff',
+          customClass: {
+            popup: 'rounded-xl border border-slate-200 shadow-xl',
+            title: 'text-slate-800 font-bold text-lg',
+            htmlContainer: 'text-slate-500 text-sm',
+            confirmButton: 'px-5 py-2.5 text-xs font-bold text-white bg-slate-800 hover:bg-slate-900 rounded-lg transition shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-500/20'
+          }
+        });
+      }
+    });
+
   });
 
-  // Prevents the global form from submission handling if an unexpected enter event bubbles up
-  $('#invoiceForm').on('submit', function(e) {
-    if (document.activeElement.id === 'barcodeScannerInput') {
-      e.preventDefault();
-      return false;
-    }
-  });
-
-  // 5. DELETION HANDLING
-  $(document).on('click', '.btn-remove', function () {
-    if ($('.item-row').length > 1) {
-      $(this).closest('.item-row').remove();
-    } else {
-      alert('An order must contain at least one item line.');
-    }
-  });
-
-});
-
-function changeQty(btn, value) {
-  const input = btn.parentNode.querySelector('.qty-input');
-  let current = parseInt(input.value || 1);
-  current += value;
-  if (current < 1) current = 1;
-  input.value = current;
-}
+  function changeQty(btn, value) {
+    const input = btn.parentNode.querySelector('.qty-input');
+    let current = parseInt(input.value || 1);
+    current += value;
+    if (current < 1) current = 1;
+    input.value = current;
+  }
 </script>
 
 <script src="">
-  document.getElementById('addRow').addEventListener('click', function() {
-  // Counts how many rows are on screen to dynamically assign the correct next index array pointer
-  const index = document.querySelectorAll('.item-row').length; 
-  
-  const html = `
+  document.getElementById('addRow').addEventListener('click', function () {
+    // Counts how many rows are on screen to dynamically assign the correct next index array pointer
+    const index = document.querySelectorAll('.item-row').length;
+
+    const html = `
     <div class="grid grid-cols-12 gap-3 mb-3 items-center item-row bg-slate-50 p-3 rounded-lg border border-slate-100">
       <div class="col-span-12 md:col-span-6">
         <select name="items[${index}][product_id]" class="w-full bg-white border border-slate-300 rounded-lg py-2 px-3 text-sm product-select">
@@ -208,9 +243,9 @@ function changeQty(btn, value) {
       </div>
       <!-- Add matching dynamic quantity inputs & remove buttons mapping to index -->
     </div>`;
-  
-  document.getElementById('items').insertAdjacentHTML('beforeend', html);
-});
+
+    document.getElementById('items').insertAdjacentHTML('beforeend', html);
+  });
 </script>
 
 <script>
@@ -226,7 +261,7 @@ function changeQty(btn, value) {
       mainSidebarEl.classList.toggle('fixed');
       mainSidebarEl.classList.toggle('inset-y-0');
       mainSidebarEl.classList.toggle('right-0');
-      
+
       // Swap font icons based on open or closed menu layout status
       if (mainSidebarEl.classList.contains('hidden')) {
         hamburgerIconEl.className = "fas fa-bars text-xl";
@@ -240,7 +275,7 @@ function changeQty(btn, value) {
   function toggleDropdownMenu(menuId, chevronId) {
     const activeSubmenu = document.getElementById(menuId);
     const targetChevron = document.getElementById(chevronId);
-    
+
     if (activeSubmenu) {
       activeSubmenu.classList.toggle('hidden');
     }
@@ -249,5 +284,92 @@ function changeQty(btn, value) {
     }
   }
 </script>
+
+<!-- for excel file upload -->
+<script>
+  function switchMode(mode) {
+    const singleTab = document.getElementById('tabSingleBtn');
+    const bulkTab = document.getElementById('tabBulkBtn');
+    const singleForm = document.getElementById('formSingleMode');
+    const bulkForm = document.getElementById('formBulkMode');
+
+    if (mode === 'single') {
+      singleTab.className = "py-2.5 px-5 text-sm font-semibold border-b-2 border-brand-teal text-brand-teal transition-all duration-150 focus:outline-none";
+      bulkTab.className = "py-2.5 px-5 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-all duration-150 focus:outline-none";
+      singleForm.classList.remove('hidden');
+      bulkForm.classList.add('hidden');
+    } else {
+      bulkTab.className = "py-2.5 px-5 text-sm font-semibold border-b-2 border-emerald-500 text-emerald-600 transition-all duration-150 focus:outline-none";
+      singleTab.className = "py-2.5 px-5 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-all duration-150 focus:outline-none";
+      bulkForm.classList.remove('hidden');
+      singleForm.classList.add('hidden');
+    }
+  }
+
+  function updateFileNameLabel(input) {
+    const display = document.getElementById('fileNameDisplay');
+    if (input.files && input.files[0]) {
+      display.innerHTML = `<span class="text-emerald-600 font-semibold"><i class="fas fa-check-circle mr-1"></i> ${input.files[0].name}</span>`;
+    } else {
+      display.textContent = "No spreadsheet selected (.xlsx or .xls only)";
+    }
+  }
+
+  function downloadExcelTemplate() {
+    const templateData = [
+      {
+        "Product Name": "Bic Evolution Pencil HB",
+        "Cost Price": 300,
+        "Selling Price": 500,
+        "Initial Stock": 100,
+        "Low Stock Limit": 10
+      },
+      {
+        "Product Name": "A4 Counter Book 2-Quire",
+        "Cost Price": 2500,
+        "Selling Price": 3500,
+        "Initial Stock": 50,
+        "Low Stock Limit": 5
+      }
+    ];
+
+    const worksheet = XLSX.utils.json_to_sheet(templateData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Products Template");
+
+    XLSX.writeFile(workbook, "products_bulk_import_template.xlsx");
+  }
+</script>
+
+<script>
+  $(document).ready(function() {
+    $('#downloadTemplateBtn').on('click', function(e) {
+      e.preventDefault();
+      
+      const templateData = [
+        {
+          "customer_name": "John Doe",
+          "customer_phone": "0712345678",
+          "barcode": "690123456789",
+          "quantity": 2
+        },
+        {
+          "customer_name": "Jane Smith",
+          "customer_phone": "0789123456",
+          "barcode": "690987654321",
+          "quantity": 5
+        }
+      ];
+
+      const worksheet = XLSX.utils.json_to_sheet(templateData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Orders Template");
+
+      XLSX.writeFile(workbook, "bulk_order_template.xlsx");
+    });
+  });
+</script>
+
 </body>
+
 </html>

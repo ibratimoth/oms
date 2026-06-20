@@ -52,6 +52,16 @@
     <div class="flex-1 px-3 py-4 overflow-y-auto space-y-6 flex flex-col justify-between">
       
       <div class="space-y-6">
+        <div class="px-4 py-3 bg-brand-tealDark/40 border border-white/10 rounded-xl flex items-center gap-3">
+          <div class="w-9 h-9 rounded-lg bg-white/10 border border-teal-300/20 flex items-center justify-center text-brand-gold font-bold text-sm">
+            <%= username ? username.charAt(0).toUpperCase() : 'U' %>
+          </div>
+          <div class="min-w-0">
+            <p class="text-xs font-bold tracking-wide text-white truncate"><%= username || 'Operator' %></p>
+            <p class="text-[10px] text-teal-300 font-medium tracking-wider uppercase">System Operator</p>
+          </div>
+        </div>
+
         <div>
           <p class="px-4 text-[10px] font-bold text-teal-300 uppercase tracking-widest mb-2">Core Operations</p>
           <nav class="space-y-1">
@@ -159,7 +169,16 @@
         </span>
       </div>
 
-      <div class="flex items-center">
+      <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2.5 border-r border-slate-200 pr-4">
+          <div class="w-7 h-7 rounded bg-brand-teal/10 text-brand-teal font-bold text-xs flex items-center justify-center shadow-inner">
+            <%= username ? username.charAt(0).toUpperCase() : 'U' %>
+          </div>
+          <span class="text-sm font-semibold text-slate-700">
+            <%= username || 'System Operator' %>
+          </span>
+        </div>
+
         <a href="/logout" class="flex items-center gap-2 px-3 py-1.5 border border-transparent text-sm font-medium rounded-lg text-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500/20 transition duration-150">
           <i class="fas fa-sign-out-alt text-xs"></i>
           <span>Logout System</span>

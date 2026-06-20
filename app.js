@@ -13,6 +13,7 @@ const morgan = require('morgan');
 const logger = require('./utils/logger');
 const { RedisStore } = require('connect-redis');
 const redisClient = require('./config/redis');
+const flash = require('connect-flash');
 
 const pinoHttp = require('pino-http')({
   logger,
@@ -58,6 +59,16 @@ app.use(
     }
   })
 );
+
+app.use(flash());
+
+app.use((req, res, next) => {
+  res.locals.messages = {
+    error: req.flash('error'),
+    success: req.flash('success')
+  };
+  next();
+});
 
 app.use((req, res, next) => {
   res.locals.currentPath = req.path;
