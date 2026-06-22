@@ -48,6 +48,7 @@ exports.index = async (req, res) => {
 
     const lowStockProducts = await Product.findAll({
       where: {
+        ...userFilter,
         quantity_in_stock: {
           [Op.lte]: 5
         }

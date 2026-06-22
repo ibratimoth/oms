@@ -22,9 +22,12 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: true
     },
-
     customer_phone: {
       type: DataTypes.STRING,
+      allowNull: true
+    },
+    created_by: {
+      type: DataTypes.INTEGER,
       allowNull: true
     }
   }, {
