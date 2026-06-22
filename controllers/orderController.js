@@ -81,7 +81,12 @@ exports.list = async (req, res) => {
 exports.createPage = async (req, res) => {
   try {
     const username = req.session.user?.full_name || 'User';
-    const products = await Product.findAll();
+    const userId = req.session.user.id;
+    const products = await Product.findAll({
+      where: {
+        created_by: userId
+      }
+    });
     
     let errorMessage = '';
     if (typeof req.flash === 'function') {
