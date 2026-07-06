@@ -18,6 +18,10 @@ module.exports = (sequelize) => {
     role: {
       type: DataTypes.ENUM('sales_officer', 'store_officer', 'admin'),
       defaultValue: 'sales_officer'
+    },
+    business_id: {
+      type: DataTypes.UUID,
+      allowNull: true
     }
   }, {
     tableName: 'Users',

@@ -158,42 +158,109 @@ exports.bulkUpload = async (req, res) => {
   try {
     const userId = req.session.user.id;
 
-    // 1. FIX: Check req.file (singular) because you are using Multer
+    // 1. Structural Check: Check if Multer intercepted a file
     if (!req.file) {
-      return res.status(400).send('No file uploaded.');
+      return res.status(400).json({ success: false, message: 'No spreadsheet file discovered in payload request.' });
     }
 
-    // 2. Read from the disk path provided by Multer
+    // 2. Read spreadsheet from local temporary cache
     const workbook = xlsx.readFile(req.file.path);
     const sheetName = workbook.SheetNames[0];
     const sheetData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
 
-    const productsToCreate = sheetData.map(row => ({
-      name: row['Product Name'] || row['name'],
-      // Safe check for barcodes to avoid errors if the column is blank or evaluated as a number
-      barcode: (row['Barcode'] || row['barcode']) ? String(row['Barcode'] || row['barcode']).trim() : null,
-      buy_price: Number(row['Cost Price'] || row['buy_price'] || 0),
-      sell_price: Number(row['Selling Price'] || row['sell_price'] || 0),
-      quantity_in_stock: parseInt(row['Initial Stock'] || row['quantity_in_stock'] || 0),
-      reorder_level: parseInt(row['Low Stock Limit'] || row['reorder_level'] || 5),
-      created_by: userId
-    })).filter(p => p.name); // Filter out rows with missing names
-
-    if (productsToCreate.length > 0) {
-      await Product.bulkCreate(productsToCreate);
+    // Check if sheet contains entries
+    if (!sheetData || sheetData.length === 0) {
+      removeTempFile(req.file.path);
+      return res.status(400).json({ success: false, message: 'The uploaded Excel sheet is empty.' });
     }
 
-    // 3. GOOD PRACTICE: Delete the temporary file from your 'uploads/' folder 
-    // so your server disk space doesn't fill up over time.
-    try {
-      fs.unlinkSync(req.file.path);
-    } catch (unlinkError) {
-      console.error('Failed to delete temporary file:', unlinkError);
+    // 3. Document Scheme Mapping & Schema Safeguards
+    const productsToCreate = [];
+    
+    for (let i = 0; i < sheetData.length; i++) {
+      const row = sheetData[i];
+      const name = row['Product Name'] || row['name'];
+      
+      // Data Integrity Guardrail: Skip empty placeholder rows safely, but throw notice if name field is broken
+      if (!name) continue; 
+
+      const buyPrice = Number(row['Cost Price'] || row['buy_price'] || 0);
+      const sellPrice = Number(row['Selling Price'] || row['sell_price'] || 0);
+
+      // Business Rule Validation: Cost price should not be higher than retail market value
+      if (buyPrice > sellPrice) {
+        removeTempFile(req.file.path);
+        return res.status(400).json({ 
+          success: false, 
+          message: `Row ${i + 2}: "${name}" features a Cost Price higher than its Selling Price.` 
+        });
+      }
+
+      productsToCreate.push({
+        name: name,
+        barcode: (row['Barcode'] || row['barcode']) ? String(row['Barcode'] || row['barcode']).trim() : null,
+        buy_price: buyPrice,
+        sell_price: sellPrice,
+        quantity_in_stock: parseInt(row['Initial Stock'] || row['quantity_in_stock'] || 0),
+        reorder_level: parseInt(row['Low Stock Limit'] || row['reorder_level'] || 5),
+        created_by: userId
+      });
     }
 
-    res.redirect('/products');
+    if (productsToCreate.length === 0) {
+      removeTempFile(req.file.path);
+      return res.status(400).json({ success: false, message: 'No valid products with name attributes found to import.' });
+    }
+
+    // Execution Block
+    await Product.bulkCreate(productsToCreate);
+
+    // Drop temporary Multer caching file asset cleanly
+    removeTempFile(req.file.path);
+
+    // Return clean JSON success response
+    return res.status(200).json({ 
+      success: true, 
+      message: `Successfully processed and imported ${productsToCreate.length} products into storage inventory.` 
+    });
+
   } catch (error) {
     console.error('Bulk excel import failed:', error);
-    res.status(500).send('Error processing excel spreadsheet validation.');
+    if (req.file && req.file.path) removeTempFile(req.file.path);
+    
+    return res.status(500).json({ 
+      success: false, 
+      message: 'System failed to parse or validate the Excel document data structure.' 
+    });
+  }
+};
+
+function removeTempFile(filePath) {
+  try {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  } catch (err) {
+    console.error('Failed to clear temporary ledger upload file:', err);
+  }
+}
+
+exports.getAllPrintableProducts = async (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    
+    const products = await Product.findAll({
+      where: { 
+        created_by: userId,
+        barcode: { 
+          [Op.ne]: null 
+        } 
+      }
+    });
+
+    return res.json(products);
+  } catch (err) {
+    console.error('Error fetching printable products layout:', err);
+    return res.status(500).json({ error: 'Failed to retrieve product items data stream.' });
   }
 };

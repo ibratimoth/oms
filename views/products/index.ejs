@@ -1,6 +1,7 @@
 <%- include('../layouts/header') %>
 
-  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+  <!-- <script src="https://cdn.jsdelivr.net/npm/bwip-js@3.4.3/dist/bwip-js-min.js"></script> -->
+   <script src="/js/bwip-js-min.js"></script>
 
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 non-printable">
     <div>
@@ -8,12 +9,7 @@
       <p class="text-sm text-slate-500 mt-1">Manage stock entries, and corporate catalog pricing models.</p>
     </div>
     <div class="flex items-center flex-wrap gap-2">
-      <button type="button" onclick="openBulkPrintModal('grid')"
-        class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-700 hover:bg-slate-800 text-white text-sm font-semibold rounded-lg shadow-sm transition duration-150 whitespace-nowrap">
-        <i class="fas fa-th text-xs"></i> Print All Labels (A4 Grid)
-      </button>
-
-      <button type="button" onclick="openBulkPrintModal('thermal')"
+      <button type="button" onclick="loadAndPrintAllLabels('thermal')"
         class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-950 text-white text-sm font-semibold rounded-lg shadow-sm transition duration-150 whitespace-nowrap">
         <i class="fas fa-scroll text-xs"></i> Print All (Thermal Roll)
       </button>
@@ -50,7 +46,7 @@
             <i class="fas fa-camera text-xs"></i>
           </span>
           <input type="text" name="barcode" id="barcodeScanInput"
-            value="<%= typeof query !== 'undefined' && query.barcode ? query.barcode : '' %>"
+            value="<%= (typeof query !== 'undefined' && query.barcode) ? query.barcode : '' %>"
             placeholder="Flash item barcode..."
             class="w-full bg-teal-50/40 border border-teal-200 text-slate-700 font-mono rounded-lg pl-9 pr-3 py-1.5 text-sm focus:outline-none focus:border-brand-teal transition duration-150"
             autocomplete="off">
@@ -64,7 +60,7 @@
             <i class="fas fa-search text-xs"></i>
           </span>
           <input type="text" name="search"
-            value="<%= typeof query !== 'undefined' && query.search ? query.search : '' %>"
+            value="<%= (typeof query !== 'undefined' && query.search) ? query.search : '' %>"
             placeholder="Type product title..."
             class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg pl-9 pr-3 py-1.5 text-sm focus:outline-none focus:border-brand-teal transition duration-150">
         </div>
@@ -74,24 +70,21 @@
         <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Stock Status</label>
         <select name="status"
           class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-brand-teal transition duration-150">
-          <% let selectedStatus=(typeof query !=='undefined' && query.status) ? query.status : '' %>
-            <option value="" <%=selectedStatus==='' ? 'selected' : '' %>>All Inventory Statuses</option>
-            <option value="available" <%=selectedStatus==='available' ? 'selected' : '' %>>Available (Good Stock)
-            </option>
-            <option value="low" <%=selectedStatus==='low' ? 'selected' : '' %>>Low Stock Alert</option>
+          <% let selectedStatus = (typeof query !== 'undefined' && query.status) ? query.status : ''; %>
+          <option value="" <%= selectedStatus === '' ? 'selected' : '' %>>All Inventory Statuses</option>
+          <option value="available" <%= selectedStatus === 'available' ? 'selected' : '' %>>Available (Good Stock)</option>
+          <option value="low" <%= selectedStatus === 'low' ? 'selected' : '' %>>Low Stock Alert</option>
         </select>
       </div>
 
       <div class="w-full sm:flex-1 md:w-52 min-w-[150px]">
-        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Max Retail Price
-          (TSh)</label>
+        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Max Retail Price (TSh)</label>
         <div class="relative">
-          <span
-            class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-xs font-semibold text-slate-400">
+          <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-xs font-semibold text-slate-400">
             TSh
           </span>
           <input type="number" name="maxPrice"
-            value="<%= typeof query !== 'undefined' && query.maxPrice ? query.maxPrice : '' %>"
+            value="<%= (typeof query !== 'undefined' && query.maxPrice) ? query.maxPrice : '' %>"
             placeholder="Max price ceiling"
             class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg pl-10 pr-3 py-1.5 text-sm focus:outline-none focus:border-brand-teal transition duration-150">
         </div>
@@ -122,7 +115,8 @@
                 class="rounded border-slate-300 text-brand-teal focus:ring-brand-teal w-4 h-4 cursor-pointer">
             </th>
             <th class="py-3.5 px-6">Product Name</th>
-            <th class="py-3.5 px-6">Barcode / Tag</th>
+            <th class="py-3.5 px-6">Tag</th>
+            <th class="py-3.5 px-6">Barcode</th>
             <th class="py-3.5 px-6">Stock Status</th>
             <th class="py-3.5 px-6">Cost Price (Buy)</th>
             <th class="py-3.5 px-6">Retail Price (Sell)</th>
@@ -131,8 +125,8 @@
         </thead>
 
         <tbody class="text-sm divide-y divide-slate-100">
-          <% if (products && products.length> 0) { %>
-            <% products.forEach(p=> { %>
+          <% if (products && products.length > 0) { %>
+            <% products.forEach(p => { %>
               <tr class="hover:bg-slate-50/70 transition duration-150 group">
                 <td class="py-4 px-6 w-10">
                   <input type="checkbox" name="product_ids" value="<%= p.id %>" onchange="evaluateRowSelections()"
@@ -145,126 +139,139 @@
                 <td class="py-4 px-6">
                   <% if (p.barcode) { %>
                     <div class="flex flex-col gap-1">
-                      <svg class="table-barcode" data-value="<%= p.barcode %>"></svg>
+                      <canvas class="table-barcode" data-value="<%= p.barcode %>"></canvas>
                     </div>
-                    <% } else { %>
-                      <span class="text-xs text-slate-400 italic">No Barcode</span>
-                      <% } %>
+                  <% } else { %>
+                    <span class="text-xs text-slate-400 italic">No Barcode</span>
+                  <% } %>
                 </td>
 
                 <td class="py-4 px-6">
-                  <% if (p.quantity_in_stock <=(p.reorder_level || 5)) { %>
+                  <%= p.barcode %>
+                </td>
+
+                <td class="py-4 px-6">
+                  <% if (p.quantity_in_stock <= (p.reorder_level || 5)) { %>
                     <span
                       class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-100">
                       <span class="w-1.5 h-1.5 rounded-full bg-rose-500 mr-1.5 animate-pulse"></span>
                       <%= p.quantity_in_stock %> low stock
                     </span>
-                    <% } else { %>
-                      <span
-                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
-                        <%= p.quantity_in_stock %> available
-                      </span>
-                      <% } %>
+                  <% } else { %>
+                    <span
+                      class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                      <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
+                      <%= p.quantity_in_stock %> available
+                    </span>
+                  <% } %>
                 </td>
-                <td class="py-4 px-6 text-slate-600 font-mono text-xs">TSh <%= Number(p.buy_price || 0).toLocaleString()
-                    %>
-                </td>
-                <td class="py-4 px-6 font-semibold text-slate-900 font-mono text-xs">TSh <%= Number(p.sell_price ||
-                    0).toLocaleString() %>
-                </td>
+                <td class="py-4 px-6 text-slate-600 font-mono text-xs">TSh <%= Number(p.buy_price || 0).toLocaleString() %></td>
+                <td class="py-4 px-6 font-semibold text-slate-900 font-mono text-xs">TSh <%= Number(p.sell_price || 0).toLocaleString() %></td>
                 <td class="py-4 px-6 text-right">
-                  <div
-                    class="inline-flex items-center gap-2 opacity-90 group-hover:opacity-100 transition duration-150">
-
+                  <div class="inline-flex items-center gap-2 opacity-90 group-hover:opacity-100 transition duration-150">
                     <% if (p.barcode) { %>
                       <button type="button"
                         onclick="openPrintModal('<%= p.barcode %>', '<%= p.name %>', 'TSh <%= Number(p.sell_price || 0).toLocaleString() %>')"
                         class="inline-flex items-center gap-1.5 bg-white hover:bg-teal-50 text-slate-600 hover:text-brand-teal py-1.5 px-3 text-xs font-semibold border border-slate-200 hover:border-teal-200 rounded-md shadow-sm transition duration-150">
                         <i class="fas fa-print text-[10px]"></i> Label
                       </button>
-                      <% } %>
+                    <% } %>
 
-                        <a href="/products/edit/<%= p.id %>"
-                          class="inline-flex items-center gap-1.5 bg-white hover:bg-brand-gold/10 text-slate-600 hover:text-brand-goldHover py-1.5 px-3 text-xs font-semibold border border-slate-200 hover:border-brand-gold/30 rounded-md shadow-sm transition duration-150">
-                          <i class="fas fa-edit text-[10px]"></i> Edit
-                        </a>
-                        <a href="/products/delete/<%= p.id %>"
-                          class="inline-flex items-center gap-1.5 bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 py-1.5 px-3 text-xs font-semibold border border-slate-200 hover:border-rose-200 rounded-md shadow-sm transition duration-150"
-                          onclick="return confirm('Are you sure?')">
-                          <i class="fas fa-trash-alt text-[10px]"></i> Delete
-                        </a>
+                    <a href="/products/edit/<%= p.id %>"
+                      class="inline-flex items-center gap-1.5 bg-white hover:bg-brand-gold/10 text-slate-600 hover:text-brand-goldHover py-1.5 px-3 text-xs font-semibold border border-slate-200 hover:border-brand-gold/30 rounded-md shadow-sm transition duration-150">
+                      <i class="fas fa-edit text-[10px]"></i> Edit
+                    </a>
+                    <!-- <a href="/products/delete/<%= p.id %>"
+                      class="inline-flex items-center gap-1.5 bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 py-1.5 px-3 text-xs font-semibold border border-slate-200 hover:border-rose-200 rounded-md shadow-sm transition duration-150"
+                      onclick="return confirm('Are you sure?')">
+                      <i class="fas fa-trash-alt text-[10px]"></i> Delete
+                    </a> -->
+                    <a href="#" 
+   data-url="/products/delete/<%= p.id %>"
+   class="delete-btn inline-flex items-center gap-1.5 bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 py-1.5 px-3 text-xs font-semibold border border-slate-200 hover:border-rose-200 rounded-md shadow-sm transition duration-150">
+   <i class="fa-solid fa-trash-can"></i> Delete
+</a>
                   </div>
                 </td>
               </tr>
-              <% }) %>
-                <% } else { %>
-                  <tr>
-                    <td colspan="7" class="py-12 text-center">
-                      <div class="text-slate-300 mb-2"><i class="fas fa-box-open text-4xl"></i></div>
-                      <p class="text-sm text-slate-400 italic">No products match your filter parameters.</p>
-                    </td>
-                  </tr>
-                  <% } %>
+            <% }) %>
+          <% } else { %>
+            <tr>
+              <td colspan="7" class="py-12 text-center">
+                <div class="text-slate-300 mb-2"><i class="fas fa-box-open text-4xl"></i></div>
+                <p class="text-sm text-slate-400 italic">No products match your filter parameters.</p>
+              </td>
+            </tr>
+          <% } %>
         </tbody>
       </table>
     </div>
 
-    <% if (typeof totalPages !=='undefined' && totalPages> 1) { %>
-      <% function getPageUrl(targetPage) { let params=new URLSearchParams(); if (query.barcode) params.set('barcode',
-        query.barcode); if (query.search) params.set('search', query.search); if (query.status) params.set('status',
-        query.status); if (query.maxPrice) params.set('maxPrice', query.maxPrice); params.set('page', targetPage);
-        return '/products?' + params.toString(); } %>
+    <% if (typeof totalPages !== 'undefined' && totalPages > 1) { %>
         <div class="bg-slate-50 border-t border-slate-200 px-6 py-4 flex items-center justify-between">
           <div class="text-xs font-medium text-slate-500">
-            Showing Page <span class="text-slate-800 font-bold">
-              <%= currentPage %>
-            </span> of <span class="text-slate-800 font-bold">
-              <%= totalPages %>
-            </span> pages
+            Showing Page <span class="text-slate-800 font-bold"><%= currentPage %></span> of <span class="text-slate-800 font-bold"><%= totalPages %></span> pages
           </div>
 
           <div class="inline-flex items-center gap-1">
-            <% if (currentPage> 1) { %>
-              <a href="<%= getPageUrl(currentPage - 1) %>"
+            <% if (currentPage > 1) { 
+                let prevParams = new URLSearchParams();
+                if (query.barcode) prevParams.set('barcode', query.barcode);
+                if (query.search) prevParams.set('search', query.search);
+                if (query.status) prevParams.set('status', query.status);
+                if (query.maxPrice) prevParams.set('maxPrice', query.maxPrice);
+                prevParams.set('page', currentPage - 1);
+            %>
+              <a href="/products?<%= prevParams.toString() %>"
                 class="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-xs font-semibold transition duration-150">
                 <i class="fas fa-chevron-left"></i>
               </a>
-              <% } else { %>
-                <span
-                  class="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 bg-slate-100 text-slate-300 text-xs cursor-not-allowed">
-                  <i class="fas fa-chevron-left"></i>
+            <% } else { %>
+              <span class="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 bg-slate-100 text-slate-300 text-xs cursor-not-allowed">
+                <i class="fas fa-chevron-left"></i>
+              </span>
+            <% } %>
+
+            <% for(let i = 1; i <= totalPages; i++) { 
+                let pageParams = new URLSearchParams();
+                if (query.barcode) pageParams.set('barcode', query.barcode);
+                if (query.search) pageParams.set('search', query.search);
+                if (query.status) pageParams.set('status', query.status);
+                if (query.maxPrice) pageParams.set('maxPrice', query.maxPrice);
+                pageParams.set('page', i);
+            %>
+              <% if (i === currentPage) { %>
+                <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-brand-teal text-white text-xs font-bold shadow-sm shadow-brand-teal/10">
+                  <%= i %>
                 </span>
-                <% } %>
+              <% } else { %>
+                <a href="/products?<%= pageParams.toString() %>"
+                  class="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-xs font-medium transition duration-150">
+                  <%= i %>
+                </a>
+              <% } %>
+            <% } %>
 
-                  <% for(let i=1; i <=totalPages; i++) { %>
-                    <% if (i===currentPage) { %>
-                      <span
-                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-brand-teal text-white text-xs font-bold shadow-sm shadow-brand-teal/10">
-                        <%= i %>
-                      </span>
-                      <% } else { %>
-                        <a href="<%= getPageUrl(i) %>"
-                          class="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-xs font-medium transition duration-150">
-                          <%= i %>
-                        </a>
-                        <% } %>
-                          <% } %>
-
-                            <% if (currentPage < totalPages) { %>
-                              <a href="<%= getPageUrl(currentPage + 1) %>"
-                                class="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-xs font-semibold transition duration-150">
-                                <i class="fas fa-chevron-right"></i>
-                              </a>
-                              <% } else { %>
-                                <span
-                                  class="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 bg-slate-100 text-slate-300 text-xs cursor-not-allowed">
-                                  <i class="fas fa-chevron-right"></i>
-                                </span>
-                                <% } %>
+            <% if (currentPage < totalPages) { 
+                let nextParams = new URLSearchParams();
+                if (query.barcode) nextParams.set('barcode', query.barcode);
+                if (query.search) nextParams.set('search', query.search);
+                if (query.status) nextParams.set('status', query.status);
+                if (query.maxPrice) nextParams.set('maxPrice', query.maxPrice);
+                nextParams.set('page', currentPage + 1);
+            %>
+              <a href="/products?<%= nextParams.toString() %>"
+                class="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-xs font-semibold transition duration-150">
+                <i class="fas fa-chevron-right"></i>
+              </a>
+            <% } else { %>
+              <span class="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 bg-slate-100 text-slate-300 text-xs cursor-not-allowed">
+                <i class="fas fa-chevron-right"></i>
+              </span>
+            <% } %>
           </div>
         </div>
-        <% } %>
+    <% } %>
   </div>
 
   <div id="customPrintModal"
@@ -282,22 +289,23 @@
 
       <div class="p-8 flex justify-center items-center bg-slate-100">
         <div
-          class="bg-white shadow-md border border-slate-300 p-4 rounded text-center w-[50mm] min-h-[30mm] flex flex-col items-center justify-center font-mono text-black">
-          <div id="modalProductName" class="text-[10px] font-bold uppercase tracking-wide truncate w-full mb-1"></div>
-          <svg id="modalBarcodeCanvas"></svg>
+          class="bg-white shadow-md border border-slate-300 p-4 rounded text-center w-[40mm] min-h-[30mm] flex flex-col items-center justify-center font-mono text-black">
+          <div id="modalProductName" class="text-[9px] font-bold uppercase tracking-wide truncate w-full mb-1"></div>
+          <canvas id="modalBarcodeCanvas"></canvas>
           <div id="modalProductPrice"
-            class="text-[11px] font-bold mt-1 border-t border-dashed border-black pt-1 w-full"></div>
+            class="text-[10px] font-bold mt-1 border-t border-dashed border-black pt-1 w-full"></div>
         </div>
       </div>
 
       <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
         <button type="button" onclick="closePrintModal()"
           class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200 rounded-lg transition">
-          <Cancel </button>
-            <button type="button" onclick="triggerHardwarePrint()"
-              class="px-5 py-2 text-xs font-bold text-white bg-brand-teal hover:bg-brand-tealDark rounded-lg shadow transition flex items-center gap-2">
-              <i class="fas fa-check"></i> Send to Thermal Printer
-            </button>
+          Cancel
+        </button>
+        <button type="button" onclick="triggerHardwarePrint()"
+          class="px-5 py-2 text-xs font-bold text-white bg-brand-teal hover:bg-brand-tealDark rounded-lg shadow transition flex items-center gap-2">
+          <i class="fas fa-check"></i> Send to Thermal Printer
+        </button>
       </div>
     </div>
   </div>
@@ -337,11 +345,11 @@
   <div id="singlePrintProductionContainer" class="production-only-target">
     <div class="single-sticker-page">
       <div id="spProductName"
-        style="font-size: 10px; font-weight: bold; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; margin-bottom: 2px;">
+        style="font-size: 9px; font-weight: bold; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; margin-bottom: 2px;">
       </div>
-      <svg id="spBarcodeCanvas"></svg>
+      <canvas id="spBarcodeCanvas"></canvas>
       <div id="spProductPrice"
-        style="font-size: 11px; font-weight: bold; margin-top: 2px; border-top: 1px dashed #000; padding-top: 1px; width: 90%; margin-left: auto; margin-right: auto;">
+        style="font-size: 10px; font-weight: bold; margin-top: 2px; border-top: 1px dashed #000; padding-top: 1px; width: 90%; margin-left: auto; margin-right: auto;">
       </div>
     </div>
   </div>
@@ -349,159 +357,117 @@
   <div id="bulkPrintProductionContainer" class="production-only-target"></div>
 
   <style>
-    .production-only-target {
-      display: none !important;
-    }
-
-    /* Minor animation utility for floating selection bar appearance */
-    @keyframes bounceShort {
-
-      0%,
-      100% {
-        transform: translate(-50%, 0);
-      }
-
-      50% {
-        transform: translate(-50%, -4px);
-      }
-    }
-
-    .animate-bounce-short {
-      animation: bounceShort 2s infinite ease-in-out;
-    }
-
+    /* --- PRINT STYLE OVERRIDES --- */
     @media print {
-
-      .non-printable,
-      #customPrintModal,
-      #customBulkPrintModal,
-      #bulkActionBar,
-      header,
-      footer,
-      nav {
-        display: none !important;
+      body * {
+        visibility: hidden;
       }
 
-      body,
-      html {
-        background-color: #fff !important;
+      #bulkPrintProductionContainer,
+      #bulkPrintProductionContainer * {
+        visibility: visible;
+      }
+
+      #bulkPrintProductionContainer {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        display: block !important;
+      }
+
+      body.printing-bulk-thermal {
         margin: 0 !important;
         padding: 0 !important;
       }
 
-      body.printing-single #singlePrintProductionContainer {
-        display: block !important;
-        position: absolute !important;
-        left: 0 !important;
-        top: 0 !important;
-        width: 50mm !important;
-      }
-
-      body.printing-single .single-sticker-page {
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        justify-content: center !important;
-        text-align: center !important;
-        font-family: monospace !important;
-        color: #000 !important;
-        width: 50mm !important;
-        height: 30mm !important;
-        padding: 5px !important;
-        box-sizing: border-box !important;
-      }
-
-      body.printing-bulk-grid #bulkPrintProductionContainer {
-        display: grid !important;
-        grid-template-columns: repeat(3, 1fr) !important;
-        gap: 12px !important;
-        padding: 15px !important;
-        width: 100% !important;
-        box-sizing: border-box !important;
-      }
-
-      body.printing-bulk-grid .bulk-sticker-page {
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        justify-content: center !important;
-        text-align: center !important;
-        font-family: monospace !important;
-        color: #000 !important;
-        padding: 8px 5px !important;
-        height: 32mm !important;
-        border: 1px dashed #ccc !important;
-        border-radius: 4px !important;
-        box-sizing: border-box !important;
-        background-color: #fff !important;
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
-      }
-
-      body.printing-bulk-thermal #bulkPrintProductionContainer {
-        display: block !important;
-        width: 50mm !important;
-      }
-
       body.printing-bulk-thermal .bulk-sticker-page {
+        width: 40mm !important;
+        height: 30mm !important;
+        max-width: 40mm !important;
+        max-height: 30mm !important;
+
         display: flex !important;
         flex-direction: column !important;
         align-items: center !important;
         justify-content: center !important;
         text-align: center !important;
-        font-family: monospace !important;
-        color: #000 !important;
-        width: 50mm !important;
-        height: 30mm !important;
-        padding: 4px !important;
-        box-sizing: border-box !important;
-        background-color: #fff !important;
+
         page-break-after: always !important;
         break-after: page !important;
+        box-sizing: border-box !important;
+        padding: 1.5mm !important;
+        overflow: hidden !important;
+      }
+
+      @page {
+        size: 40mm 30mm !important;
+        margin: 0 !important;
       }
     }
   </style>
 
   <%- include('../layouts/footer') %>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script> -->
+     <script src="/js/sweetalert2.all.min.js"></script>
     <script>
       let currentActiveBarcode = '';
       let currentBulkMode = 'grid';
       let productRows = [];
 
-  <% if (products && products.length > 0) { %>
-    <% products.forEach(p => { %>
-      <% if (p.barcode) { %>
-          productRows.push({
-            barcode: '<%= p.barcode %>',
-            name: '<%= p.name %>',
-            price: 'TSh <%= Number(p.sell_price || 0).toLocaleString() %>'
-          });
+      <% if (products && products.length > 0) { %>
+        <% products.forEach(p => { %>
+          <% if (p.barcode) { %>
+              productRows.push({
+                barcode: `<%= p.barcode %>`,
+                name: `<%= p.name %>`,
+                price: `TSh <%= Number(p.sell_price || 0).toLocaleString() %>`
+              });
+          <% } %>
+        <% }) %>
       <% } %>
-    <% }) %>
-  <% } %>
 
-        document.addEventListener("DOMContentLoaded", function () {
-          const barcodeInput = document.getElementById("barcodeScanInput");
-          if (barcodeInput) {
-            barcodeInput.focus();
-            if (barcodeInput.value !== '') barcodeInput.select();
+      document.addEventListener("DOMContentLoaded", function () {
+        const barcodeInput = document.getElementById("barcodeScanInput");
+        if (barcodeInput) {
+          barcodeInput.focus();
+          if (barcodeInput.value !== '') barcodeInput.select();
+        }
+
+        // CHANGED: Implemented bwip-js rendering logic for table listings
+        document.querySelectorAll('.table-barcode').forEach(function (canvas) {
+          const val = canvas.getAttribute('data-value');
+          
+          if (val && val.trim() !== '' && val !== 'null') {
+            try {
+              bwipjs.toCanvas(canvas, {
+                bcid:        'code128',       
+                text:        val,             
+                scaleX:      1,               
+                scaleY:      1,               
+                height:      8,               
+                includetext: true,            
+                textxalign:  'center',        
+                textsize:    7                
+              });
+            } catch (e) {
+              console.error("Table barcode drawing crash fallback:", e);
+            }
+          } else {
+            canvas.style.display = 'none';
+            const parent = canvas.parentElement;
+            if (parent && !parent.querySelector('.no-barcode-text')) {
+              const fallbackText = document.createElement('span');
+              fallbackText.className = 'no-barcode-text text-[10px] text-slate-400 italic';
+              fallbackText.innerText = 'No Barcode';
+              parent.appendChild(fallbackText);
+            }
           }
-
-          document.querySelectorAll('.table-barcode').forEach(function (svg) {
-            const val = svg.getAttribute('data-value');
-            JsBarcode(svg, val, {
-              format: "CODE128",
-              width: 1.2,
-              height: 25,
-              displayValue: true,
-              fontSize: 10,
-              margin: 0
-            });
-          });
         });
+      });
 
-      // --- NEW FEATURE: CLIENT ACTION SELECTION HANDLERS ---
       function toggleAllCheckboxes(master) {
         const checkboxes = document.querySelectorAll('.product-item-checkbox');
         checkboxes.forEach(cb => cb.checked = master.checked);
@@ -515,7 +481,6 @@
         const counterDisplay = document.getElementById('bulkSelectCount');
         const masterCheckbox = document.getElementById('masterCheckbox');
 
-        // Synchronize Master layout header box status
         if (checkedBoxes.length === 0) {
           masterCheckbox.checked = false;
           masterCheckbox.indeterminate = false;
@@ -527,7 +492,6 @@
           masterCheckbox.indeterminate = true;
         }
 
-        // Toggle Floating Panel visibility
         if (checkedBoxes.length > 0) {
           counterDisplay.textContent = checkedBoxes.length;
           bulkBar.classList.remove('hidden');
@@ -545,8 +509,8 @@
           text: `You are about to permanently delete ${checkedBoxes.length} selected items from inventory. This action cannot be undone!`,
           icon: 'warning',
           showCancelButton: true,
-          confirmButtonColor: '#e11d48', // rose-600 to match your UI's destructive actions
-          cancelButtonColor: '#64748b',  // slate-500
+          confirmButtonColor: '#e11d48',
+          cancelButtonColor: '#64748b',
           confirmButtonText: '<i class="fas fa-trash-alt mr-1.5"></i> Yes, delete them!',
           cancelButtonText: 'Cancel',
           background: '#ffffff',
@@ -557,13 +521,10 @@
             confirmButton: 'px-5 py-2.5 text-xs font-bold text-white rounded-lg transition shadow-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20',
             cancelButton: 'px-4 py-2.5 text-xs font-semibold text-white rounded-lg transition shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-500/20'
           },
-          buttonsStyling: true // Set to false if you want to override completely with pure Tailwind classes
+          buttonsStyling: true
         }).then((result) => {
           if (result.isConfirmed) {
-            // Gather array list matching your router requirements
             const idsToDelete = Array.from(checkedBoxes).map(cb => cb.value);
-
-            // Programmatically forge clean form post dispatch architecture
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = '/products/bulk-delete';
@@ -575,39 +536,49 @@
               input.value = id;
               form.appendChild(input);
             });
-
             document.body.appendChild(form);
             form.submit();
           }
         });
       }
 
-      // --- SINGLE LABEL MODAL ACTIONS ---
       function openPrintModal(barcodeValue, productName, productPrice) {
         currentActiveBarcode = barcodeValue;
         document.getElementById('modalProductName').innerText = productName;
+        document.getElementById('document.getElementById');
         document.getElementById('modalProductPrice').innerText = productPrice;
 
-        JsBarcode("#modalBarcodeCanvas", barcodeValue, {
-          format: "CODE128",
-          width: 1.8,
-          height: 35,
-          displayValue: true,
-          fontSize: 10,
-          margin: 0
-        });
+        // CHANGED: Replaced JsBarcode calls with 1:1 crisp bwipjs canvas injections
+        try {
+          bwipjs.toCanvas('modalBarcodeCanvas', {
+            bcid:        'code128',
+            text:        barcodeValue,
+            scaleX:      1.2,
+            scaleY:      1.2,
+            height:      12,
+            includetext: true,
+            textxalign:  'center',
+            textsize:    8,
+            sizetofit:   true
+          });
+        } catch(e) { console.error(e); }
 
         document.getElementById('spProductName').innerText = productName;
         document.getElementById('spProductPrice').innerText = productPrice;
 
-        JsBarcode("#spBarcodeCanvas", barcodeValue, {
-          format: "CODE128",
-          width: 1.8,
-          height: 38,
-          displayValue: true,
-          fontSize: 11,
-          margin: 0
-        });
+        try {
+          bwipjs.toCanvas('spBarcodeCanvas', {
+            bcid:        'code128',
+            text:        barcodeValue,
+            scaleX:      1,
+            scaleY:      1,
+            height:      10,
+            includetext: true,
+            textxalign:  'center',
+            textsize:    8,
+            sizetofit:   true
+          });
+        } catch(e) { console.error(e); }
 
         document.getElementById('customPrintModal').classList.remove('hidden');
       }
@@ -625,7 +596,38 @@
         }, 150);
       }
 
-      // --- ADAPTIVE BULK ACTIONS (GRID vs THERMAL) ---
+      async function loadAndPrintAllLabels(mode) {
+        Swal.fire({
+          title: 'Generating Labels...',
+          text: 'Compiling all inventory barcodes across all pages.',
+          allowOutsideClick: false,
+          didOpen: () => { Swal.showLoading(); }
+        });
+        try {
+          const response = await fetch('/products/all-printable');
+          const allProducts = await response.json();
+
+          if (!allProducts || allProducts.length === 0) {
+            Swal.fire('No Printable Items', 'No products found with barcodes.', 'info');
+            return;
+          }
+
+          const originalRows = productRows;
+          productRows = allProducts.map(p => ({
+            name: p.name,
+            barcode: p.barcode,
+            price: typeof p.sell_price === 'number' ? `TZS ${p.sell_price.toLocaleString()}` : p.sell_price
+          }));
+          
+          Swal.close();
+          openBulkPrintModal(mode);
+          productRows = originalRows;
+        } catch (error) {
+          console.error(error);
+          Swal.fire('Error', 'Could not load complete item records for printing.', 'error');
+        }
+      }
+
       function openBulkPrintModal(mode) {
         if (productRows.length === 0) {
           Swal.fire({
@@ -633,13 +635,7 @@
             text: 'There are no products with registered barcode signatures available in this view to print.',
             icon: 'info',
             confirmButtonColor: '#0f172a',
-            confirmButtonText: 'Understood',
-            customClass: {
-              popup: 'rounded-xl border border-slate-200 shadow-xl',
-              title: 'text-slate-800 font-bold text-lg',
-              htmlContainer: 'text-slate-500 text-sm',
-              confirmButton: 'px-5 py-2.5 text-xs font-bold text-white rounded-lg transition shadow-sm'
-            }
+            confirmButtonText: 'Understood'
           });
           return;
         }
@@ -651,7 +647,7 @@
 
         modalContainer.innerHTML = '';
         productionContainer.innerHTML = '';
-
+        
         if (mode === 'grid') {
           modalTitle.innerText = "Bulk Print Sheet Layout Review (A4 Grid Mode)";
           modalContainer.className = "p-6 bg-slate-100 max-h-[60vh] overflow-y-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 justify-items-center";
@@ -661,43 +657,55 @@
         }
 
         document.getElementById('bulkQueueCounterSummary').innerText = `Total: ${productRows.length} Items ready`;
-
+        
         productRows.forEach((prod, index) => {
+          // CHANGED: Updated preview arrays to hold HTML5 <canvas> fields for bwipjs mapping execution
           const previewCard = document.createElement('div');
-          previewCard.className = "bg-white shadow border border-slate-300 p-4 rounded text-center w-[50mm] min-h-[30mm] flex flex-col items-center justify-center font-mono text-black shrink-0";
+          previewCard.className = "bg-white shadow border border-slate-300 p-4 rounded text-center w-[40mm] min-h-[30mm] flex flex-col items-center justify-center font-mono text-black shrink-0";
           previewCard.innerHTML = `
-        <div style="font-size: 9px; font-weight: bold; text-transform: uppercase; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; max-w-[45mm] mb-1 w-full">${prod.name}</div>
-        <svg id="modalBulkSvg_${index}"></svg>
-        <div style="font-size: 10px; font-weight: bold; margin-top: 4px; border-t: 1px dashed #000; padding-top: 2px; w-full">${prod.price}</div>
-      `;
+            <div style="font-size: 9px; font-weight: bold; text-transform: uppercase; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; max-w-[36mm]; mb-1; w-full;">${prod.name}</div>
+            <canvas id="modalBulkCanvas_${index}"></canvas>
+            <div style="font-size: 10px; font-weight: bold; margin-top: 4px; border-t: 1px dashed #000; padding-top: 2px; width: 100%;">${prod.price}</div>
+          `;
           modalContainer.appendChild(previewCard);
 
-          JsBarcode(`#modalBulkSvg_${index}`, prod.barcode, {
-            format: "CODE128",
-            width: 1.5,
-            height: 35,
-            displayValue: true,
-            fontSize: 9,
-            margin: 0
-          });
+          try {
+            bwipjs.toCanvas(`modalBulkCanvas_${index}`, {
+              bcid:        'code128',
+              text:        prod.barcode,
+              scaleX:      1,
+              scaleY:      1,
+              height:      10,
+              includetext: true,
+              textxalign:  'center',
+              textsize:    10,
+              sizetofit:   true
+            });
+          } catch(e){ console.error(e); }
 
           const stickerDiv = document.createElement('div');
           stickerDiv.className = 'bulk-sticker-page';
           stickerDiv.innerHTML = `
-        <div style="font-size: 10px; font-weight: bold; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; margin-bottom: 2px; color: #000;">${prod.name}</div>
-        <svg id="bulkPrintSvg_${index}"></svg>
-        <div style="font-size: 11px; font-weight: bold; margin-top: 2px; border-top: 1px dashed #000; padding-top: 1px; width: 90%; margin-left: auto; margin-right: auto; color: #000;">${prod.price}</div>
-      `;
+            <div style="font-size: 9px; font-weight: bold; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; margin-bottom: 2px; color: #000; font-family: monospace;">${prod.name}</div>
+            <canvas id="bulkPrintCanvas_${index}"></canvas>
+            <div style="font-size: 10px; font-weight: bold; margin-top: 2px; border-top: 1px dashed #000; padding-top: 1px; width: 100%; color: #000; font-family: monospace;">${prod.price}</div>
+          `;
           productionContainer.appendChild(stickerDiv);
 
-          JsBarcode(`#bulkPrintSvg_${index}`, prod.barcode, {
-            format: "CODE128",
-            width: (mode === 'grid' ? 1.6 : 1.8),
-            height: (mode === 'grid' ? 32 : 36),
-            displayValue: true,
-            fontSize: 10,
-            margin: 0
-          });
+          // CHANGED: Draws sharp, 1-bit style lines that won't bleed under thermal heat
+          try {
+            bwipjs.toCanvas(`bulkPrintCanvas_${index}`, {
+              bcid:        'code128',
+              text:        prod.barcode,
+              scaleX:      (mode === 'grid' ? 1.4 : 1), 
+              scaleY:      (mode === 'grid' ? 1.4 : 1), 
+              height:      10,
+              includetext: true,
+              textxalign:  'center',
+              textsize:    10,
+              sizetofit:   true
+            });
+          } catch(e){ console.error(e); }
         });
 
         document.getElementById('customBulkPrintModal').classList.remove('hidden');
@@ -723,4 +731,36 @@
           }, 300);
         }, 150);
       }
+
+      document.addEventListener('DOMContentLoaded', function() {
+    // 1. Attach a click event listener to the document wrapper (supports dynamic content)
+    document.addEventListener('click', function(event) {
+        // Find the closest ancestor matching the selector (handles clicking on nested text or icons)
+        const deleteButton = event.target.closest('.delete-btn');
+        
+        if (deleteButton) {
+            // 2. Prevent the link from instantly redirecting
+            event.preventDefault();
+            
+            const deleteUrl = deleteButton.getAttribute('data-url');
+
+            // 3. Fire the SweetAlert2 Modal
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "You won't be able to revert this data!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#e11d48', // Tailwind rose-600 to match your hover style
+                cancelButtonColor: '#64748b',  // Tailwind slate-500
+                confirmButtonText: 'Yes, delete it!',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                // 4. If the user confirmed, redirect them to the backend endpoint
+                if (result.isConfirmed) {
+                    window.location.href = deleteUrl;
+                }
+            });
+        }
+    });
+});
     </script>

@@ -40,4 +40,6 @@ router.post('/bulk-delete', auth, productController.bulkDelete);
 
 router.post('/bulk-upload', auth, upload.single('excel_file'), productController.bulkUpload);
 
+router.get('/all-printable', productController.getAllPrintableProducts);
+
 module.exports = router;
