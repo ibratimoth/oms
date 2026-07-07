@@ -81,6 +81,7 @@ app.use('/products', require('./routes/productRoutes'));
 app.use('/orders', require('./routes/orderRoutes'));
 app.use('/analytics', require('./routes/analyticsRoutes'));
 app.use('/stock', require('./routes/stockRoutes'));
+app.use('/business', require('./routes/businessRoutes'));
 
 Sentry.setupExpressErrorHandler(app);
 

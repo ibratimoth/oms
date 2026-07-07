@@ -8,9 +8,9 @@ exports.index = async (req, res) => {
 
     const userId = req.session.user.id;
     const username = req.session.user.full_name;
-    
+
     const userFilter = {
-      created_by: userId 
+      created_by: userId
     };
 
     const orderFilter = {
@@ -83,11 +83,16 @@ exports.index = async (req, res) => {
       lowStockProducts,
       recentOrders,
       dailySales,
-      username
+      username,
+      userRole: req.session.user?.role
     });
 
   } catch (error) {
     console.error(error);
-    res.status(500).send('Dashboard error');
+    return res.status(500).render('error', {
+      message: 'Failed to open user dashboard panel.',
+      username,
+      userRole: req.session.user?.role
+    });
   }
 };

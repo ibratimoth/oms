@@ -1,0 +1,47 @@
+<%- include('../layouts/header') %>
+
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div class="mb-6 max-w-xl bg-rose-50 border border-rose-200 rounded-xl p-4 flex items-start gap-3 shadow-sm">
+      <div class="bg-rose-100 text-rose-600 p-1.5 rounded-lg shrink-0">
+        <i class="fas fa-exclamation-circle text-lg"></i>
+      </div>
+      <div class="flex-1">
+        <h4 class="text-sm font-bold text-rose-800">Registration Failure</h4>
+        <p class="text-xs text-rose-600 mt-0.5"><%= error %></p>
+      </div>
+    </div>
+  <% } %>
+
+  <div class="mb-4">
+    <a href="/business" class="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-brand-teal transition duration-150 group">
+      <i class="fas fa-arrow-left text-xs group-hover:-translate-x-0.5 transition-transform duration-150"></i>
+      <span>Go Back</span>
+    </a>
+  </div>
+
+  <div class="mb-6">
+    <h1 class="text-2xl font-bold tracking-tight text-slate-800">Register New Shop</h1>
+    <p class="text-sm text-slate-500 mt-1">Initialize your enterprise profile workspace container instance.</p>
+  </div>
+
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden max-w-xl">
+    <div class="h-1.5 bg-brand-teal w-full"></div>
+    
+    <form method="POST" action="/business/create" class="p-6 space-y-4">
+      <div>
+        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Official Brand / Shop Name</label>
+        <input type="text" name="name" required
+          class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white transition duration-150"
+          placeholder="e.g., Delle Ventures">
+      </div>
+
+      <div class="pt-2 border-t border-slate-100 flex items-center justify-end gap-3">
+        <a href="/business" class="px-4 py-2.5 text-sm font-semibold text-slate-500 hover:bg-slate-100 rounded-lg border border-slate-200 shadow-sm transition">Cancel</a>
+        <button type="submit" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-brand-teal hover:bg-brand-tealDark text-white text-sm font-semibold rounded-lg shadow-md shadow-brand-teal/10 transition duration-150">
+          <i class="fas fa-check text-xs"></i> Provision Workspace
+        </button>
+      </div>
+    </form>
+  </div>
+
+<%- include('../layouts/footer') %>

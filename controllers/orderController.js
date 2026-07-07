@@ -70,12 +70,17 @@ exports.list = async (req, res) => {
       currentPage,
       totalPages,
       totalCount: count,
-      username
+      username,
+      userRole: req.session.user?.role
     });
 
   } catch (error) {
     console.error('Error generating consolidated orders profile collection:', error);
-    res.status(500).send('Internal Server Error while computing transaction logs.');
+      return res.status(500).render('error', { 
+      message: 'Failed to open user order panel.', 
+      username ,
+      userRole: req.session.user?.role
+    });
   }
 };
 
@@ -102,12 +107,17 @@ exports.createPage = async (req, res) => {
       products, 
       username,
       error: errorMessage,             
-      messages: { error: errorMessage } 
+      messages: { error: errorMessage },
+       userRole: req.session.user?.role
     });
 
   } catch (err) {
     console.error('Error rendering order creation view layer:', err);
-    res.status(500).send('Internal Server view generation exception logged.');
+     return res.status(500).render('error', { 
+      message: 'Failed to open user order panel.', 
+      username ,
+      userRole: req.session.user?.role
+    });
   }
 };
 
@@ -176,7 +186,11 @@ exports.create = async (req, res) => {
 
   } catch (err) {
     await t.rollback();
-    res.send(err.message);
+    return res.status(500).render('error', { 
+      message: 'Failed to create order.', 
+      username ,
+      userRole: req.session.user?.role
+    });
   }
 };
 
@@ -217,7 +231,11 @@ exports.completeOrder = async (req, res) => {
 
   } catch (err) {
     await t.rollback();
-    res.send(err.message);
+    return res.status(500).render('error', { 
+      message: 'Failed to complete order.', 
+      username ,
+      userRole: req.session.user?.role
+    });
   }
 };
 
@@ -227,7 +245,7 @@ exports.invoice = async (req, res) => {
     include: OrderItem
   });
 
-  res.render('orders/invoice', { order , username });
+  res.render('orders/invoice', { order , username, userRole: req.session.user?.role });
 };
 
 exports.view = async (req, res) => {
@@ -252,7 +270,7 @@ exports.view = async (req, res) => {
   }
 
   logger.info(order.toJSON());
-  res.render('orders/view', { order, username });
+  res.render('orders/view', { order, username, userRole: req.session.user?.role });
 };
 
 exports.editForm = async (req, res) => {
@@ -288,7 +306,8 @@ exports.editForm = async (req, res) => {
   res.render('orders/edit', {
     order,
     products,
-    username
+    username,
+    userRole: req.session.user?.role
   });
 };
 
@@ -393,7 +412,6 @@ exports.update = async (req, res) => {
 };
 
 exports.bulkUploadExcel = async (req, res) => {
-  // Guard Check: Verify file payload exists
   if (!req.file) {
     return res.status(400).json({ success: false, message: 'Please select and upload a valid Excel file.' });
   }
@@ -414,7 +432,6 @@ exports.bulkUploadExcel = async (req, res) => {
 
     const userId = req.session.user.id;
 
-    // --- STEP 1: GROUP ROWS BY CUSTOMER ---
     const orderGroups = {};
     let currentOriginalRowIdx = 2; 
 
@@ -570,160 +587,3 @@ function removeTempFile(path) {
   }
 }
 
-// exports.bulkUploadExcel = async (req, res) => {
-//   const fallbackTarget = req.get('Referer') || '/orders/create';
-
-//   if (!req.file) {
-//     if (typeof req.flash === 'function') req.flash('error', 'Please select and upload a valid Excel file.');
-//     else req.session.error = 'Please select and upload a valid Excel file.';
-    
-//     return req.session.save(() => res.redirect(fallbackTarget));
-//   }
-
-//   const t = await sequelize.transaction();
-
-//   try {
-//     const filePath = req.file.path; 
-//     const workbook = XLSX.readFile(filePath); 
-    
-//     const sheetName = workbook.SheetNames[0];
-//     const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-
-//     if (sheetData.length === 0) {
-//       await t.rollback();
-//       if (typeof req.flash === 'function') req.flash('error', 'Bulk Upload Failed! The uploaded Excel sheet contains no data entries.');
-//       else req.session.error = 'Bulk Upload Failed! The uploaded Excel sheet contains no data entries.';
-      
-//       return req.session.save(() => res.redirect(fallbackTarget));
-//     }
-
-//     const userId = req.session.user.id;
-//     let total = 0;
-//     let totalProfit = 0;
-    
-//     const customerName = sheetData[0].customer_name || 'Excel Bulk Customer';
-//     let rawPhone = sheetData[0].customer_phone ? String(sheetData[0].customer_phone).trim() : '';
-//     let customerPhone = '';
-
-//     if (rawPhone) {
-//       let cleanedPhone = rawPhone.replace(/\D/g, '');
-//       if (cleanedPhone.startsWith('0')) {
-//         customerPhone = '255' + cleanedPhone.substring(1);
-//       } else if (cleanedPhone.startsWith('255')) {
-//         customerPhone = cleanedPhone;
-//       } else if (cleanedPhone.length >= 9) {
-//         customerPhone = '255' + cleanedPhone;
-//       } else {
-//         customerPhone = cleanedPhone;
-//       }
-//     }
-
-//     const order = await Order.create({
-//       order_number: 'ORD-XL-' + Date.now(),
-//       status: 'pending',
-//       total_amount: 0,
-//       profit_amount: 0,
-//       created_by: userId,
-//       customer_name: customerName,
-//       customer_phone: customerPhone
-//     }, { transaction: t });
-
-//     let rowNumber = 2; 
-//     for (let row of sheetData) {
-//       const barcodeStr = row.barcode ? String(row.barcode).trim() : null;
-//       const qty = parseInt(row.quantity);
-
-//       if (!barcodeStr) {
-//         await t.rollback();
-//         const msg = `Bulk Upload Failed! Row ${rowNumber}: Barcode field entry is missing.`;
-//         if (typeof req.flash === 'function') req.flash('error', msg);
-//         else req.session.error = msg;
-        
-//         return req.session.save(() => res.redirect(fallbackTarget));
-//       }
-//       if (!qty || qty <= 0) {
-//         await t.rollback();
-//         const msg = `Bulk Upload Failed! Row ${rowNumber} [Barcode: ${barcodeStr}]: Invalid quantity execution entry.`;
-//         if (typeof req.flash === 'function') req.flash('error', msg);
-//         else req.session.error = msg;
-        
-//         return req.session.save(() => res.redirect(fallbackTarget));
-//       }
-
-//       const product = await Product.findOne({
-//         where: { barcode: barcodeStr },
-//         transaction: t
-//       });
-
-//       if (!product) {
-//         await t.rollback();
-//         const msg = `Bulk Upload Failed! Row ${rowNumber}: Barcode signature "${barcodeStr}" is not registered in the system.`;
-//         if (typeof req.flash === 'function') req.flash('error', msg);
-//         else req.session.error = msg;
-        
-//         return req.session.save(() => res.redirect(fallbackTarget));
-//       }
-
-//       if (product.quantity_in_stock < qty) {
-//         await t.rollback();
-//         const msg = `Bulk Upload Failed! Row ${rowNumber}: Insufficient inventory for item "${product.name}". Requested: ${qty}, Available: ${product.quantity_in_stock}`;
-//         if (typeof req.flash === 'function') req.flash('error', msg);
-//         else req.session.error = msg;
-        
-//         return req.session.save(() => res.redirect(fallbackTarget));
-//       }
-
-//       const subtotal = product.sell_price * qty;
-//       const profit = (product.sell_price - product.buy_price) * qty;
-
-//       total += subtotal;
-//       totalProfit += profit;
-
-//       await OrderItem.create({
-//         order_id: order.id,
-//         product_id: product.id,
-//         quantity: qty,
-//         unit_price: product.sell_price,
-//         subtotal
-//       }, { transaction: t });
-
-//       await product.update({
-//         quantity_in_stock: product.quantity_in_stock - qty
-//       }, { transaction: t });
-
-//       rowNumber++;
-//     }
-
-//     await order.update({
-//       total_amount: total,
-//       profit_amount: totalProfit
-//     }, { transaction: t });
-
-//     await t.commit();
-    
-//     if (typeof req.flash === 'function') {
-//       req.flash('success', 'Bulk orders imported successfully!');
-//       res.redirect('/orders');
-//     } else {
-//       req.session.save(() => {
-//         res.redirect('/orders');
-//       });
-//     }
-
-//   } catch (err) {
-//     if (!t.finished) await t.rollback();
-//     console.error('Excel Multer Import Exception Logged:', err);
-    
-//     const catchMsg = `Bulk Upload Failed Unexpectedly! ${err.message}`;
-//     if (typeof req.flash === 'function') {
-//       req.flash('error', catchMsg);
-//     } else {
-//       req.session.error = catchMsg;
-//     }
-    
-//     // ASYNC SAFE FORWARD GUARD
-//     return req.session.save(() => {
-//       res.redirect(fallbackTarget);
-//     });
-//   }
-// };

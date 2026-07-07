@@ -14,11 +14,11 @@ module.exports = {
         type: Sequelize.STRING,
         allowNull: false
       },
-      createdAt: {
+      created_at: {
         allowNull: false,
         type: Sequelize.DATE
       },
-      updatedAt: {
+      updated_at: {
         allowNull: false,
         type: Sequelize.DATE
       }
@@ -63,8 +63,8 @@ module.exports = {
 
   async down(queryInterface, Sequelize) {
     // Revert everything in exact reverse order
-    await queryInterface.removeColumn('Orders', 'business_id');
-    await queryInterface.removeColumn('Products', 'business_id');
+    await queryInterface.removeColumn('orders', 'business_id');
+    await queryInterface.removeColumn('products', 'business_id');
     await queryInterface.removeColumn('Users', 'business_id');
     await queryInterface.dropTable('Businesses');
   }
