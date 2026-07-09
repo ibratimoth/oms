@@ -9,6 +9,7 @@ exports.list = async (req, res) => {
   try {
     const userId = req.session.user.id;
     const username = req.session.user.full_name;
+    const business_id = req.session.user.business_id;
     
     const { orderNo, customer, maxAmount, status } = req.query;
     const currentPage = parseInt(req.query.page) || 1;
@@ -16,7 +17,7 @@ exports.list = async (req, res) => {
     const offset = (currentPage - 1) * itemsPerPage;
 
     let whereCondition = {
-      created_by: userId
+      business_id: business_id
     };
 
     if (orderNo && orderNo.trim() !== '') {
@@ -88,9 +89,10 @@ exports.createPage = async (req, res) => {
   try {
     const username = req.session.user?.full_name || 'User';
     const userId = req.session.user.id;
+    const business_id = req.session.user.business_id;
     const products = await Product.findAll({
       where: {
-        created_by: userId
+        business_id: business_id
       }
     });
     
@@ -128,6 +130,7 @@ exports.create = async (req, res) => {
     const { items } = req.body;
     const userId = req.session.user.id;
     const username = req.session.user.full_name;
+    const business_id = req.session.user.business_id;
 
     let total = 0;
     let totalProfit = 0;
@@ -138,6 +141,7 @@ exports.create = async (req, res) => {
       total_amount: 0,
       profit_amount: 0,
       created_by: userId,
+      business_id: business_id,
       customer_name: req.body.customer_name,
       customer_phone: req.body.customer_phone
     }, { transaction: t });
@@ -198,6 +202,8 @@ exports.completeOrder = async (req, res) => {
   const t = await sequelize.transaction();
   const userId = req.session.user.id;
   const username = req.session.user.full_name;
+  const business_id = req.session.user.business_id;
+
 
   try {
     const order = await Order.findByPk(req.params.id, {
@@ -217,7 +223,8 @@ exports.completeOrder = async (req, res) => {
         type: 'OUT',
         quantity: item.quantity,
         reference: order.order_number,
-        created_by: userId
+        created_by: userId,
+        business_id: business_id
       }, { transaction: t });
     }
 
@@ -252,10 +259,12 @@ exports.view = async (req, res) => {
 
   const userId = req.session.user.id;
   const username = req.session.user.full_name;
+  const business_id = req.session.user.business_id;
+
   const order = await Order.findOne({
     where: {
       id: req.params.id,
-      created_by: userId
+      business_id: business_id
     },
     include: [
       {
@@ -275,11 +284,12 @@ exports.view = async (req, res) => {
 
 exports.editForm = async (req, res) => {
   const username = req.session.user.full_name;
+  const business_id = req.session.user.business_id;
 
   const order = await Order.findOne({
     where: {
       id: req.params.id,
-      created_by: req.session.user.id
+      business_id: business_id
     },
     include: [
       {
@@ -299,7 +309,7 @@ exports.editForm = async (req, res) => {
 
   const products = await Product.findAll({
     where: {
-      created_by: req.session.user.id
+      business_id: business_id
     }
   });
 
@@ -315,13 +325,14 @@ exports.update = async (req, res) => {
 
   const t = await sequelize.transaction();
   const username = req.session.user.full_name;
+  const business_id = req.session.user.business_id;
 
   try {
 
     const order = await Order.findOne({
       where: {
         id: req.params.id,
-        created_by: req.session.user.id
+        business_id: business_id
       },
       include: [OrderItem]
     });
@@ -359,7 +370,7 @@ exports.update = async (req, res) => {
       const product = await Product.findOne({
         where: {
           id: item.product_id,
-          created_by: req.session.user.id
+          business_id: req.session.user.business_id
         }
       });
 
@@ -480,6 +491,7 @@ exports.bulkUploadExcel = async (req, res) => {
         total_amount: 0,
         profit_amount: 0,
         created_by: userId,
+        business_id: req.session.user.business_id,
         customer_name: group.customer_name,
         customer_phone: group.customer_phone
       }, { transaction: t });

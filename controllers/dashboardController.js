@@ -8,17 +8,19 @@ exports.index = async (req, res) => {
 
     const userId = req.session.user.id;
     const username = req.session.user.full_name;
+    const business_id = req.session.user.business_id;
 
-    const userFilter = {
-      created_by: userId
+
+    const businessFilter = {
+      business_id: business_id
     };
 
     const orderFilter = {
-      created_by: userId
+      business_id: business_id
     };
 
     const totalProducts = await Product.count({
-      where: userFilter
+      where: businessFilter
     });
 
     const totalOrders = await Order.count({
@@ -48,7 +50,7 @@ exports.index = async (req, res) => {
 
     const lowStockProducts = await Product.findAll({
       where: {
-        created_by: userId,
+        business_id: business_id,
         quantity_in_stock: {
           [Op.lte]: 5
         }

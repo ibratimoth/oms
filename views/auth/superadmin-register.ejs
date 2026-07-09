@@ -1,0 +1,119 @@
+<%- include('../layouts/header') %>
+
+<div class="max-w-4xl mx-auto my-6 px-4">
+  <!-- Top Navigation Context -->
+  <div class="mb-6 flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-black tracking-tight text-slate-800">Global Infrastructure Hub</h1>
+      <p class="text-xs text-slate-500 mt-1">Provision corporate identities and bind operational business fields.</p>
+    </div>
+    <a href="/dashboard" class="px-3.5 py-2 text-xs font-bold uppercase tracking-wider bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl border border-slate-200 transition duration-150">
+      System Overview
+    </a>
+  </div>
+
+  <!-- Session Alerts -->
+  <% if (error) { %>
+    <div class="mb-6 p-4 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-xl flex items-center gap-3 shadow-sm animate-fade-in">
+      <i class="fas fa-exclamation-circle text-base"></i>
+      <p class="font-medium"><%= error %></p>
+    </div>
+  <% } %>
+
+  <% if (success) { %>
+    <div class="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded-xl flex items-center gap-3 shadow-sm animate-fade-in">
+      <i class="fas fa-check-circle text-base"></i>
+      <p class="font-medium"><%= success %></p>
+    </div>
+  <% } %>
+
+  <!-- Main Blueprint Workspace -->
+  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+    <div class="p-6 bg-slate-50 border-b border-slate-200 flex items-center gap-4">
+      <div class="w-11 h-11 bg-brand-gold/10 rounded-xl flex items-center justify-center text-brand-gold text-xl">
+        <i class="fas fa-user-shield"></i>
+      </div>
+      <div>
+        <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wide">Register Business Admin / Owner</h2>
+        <p class="text-xs text-slate-400">Created managers inherit absolute administrative scope inside their explicit enterprise boundary.</p>
+      </div>
+    </div>
+
+    <form action="/superadmin/register" method="POST" class="p-6 space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        <!-- Full Name input -->
+        <div class="space-y-2">
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-600">Owner / Admin Full Name</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 text-xs">
+              <i class="fas fa-id-card"></i>
+            </span>
+            <input type="text" name="full_name" placeholder="e.g., Ibrahimu Mwakipesile" required
+                   class="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50/50 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-teal focus:bg-white transition duration-150">
+          </div>
+        </div>
+
+        <!-- Username Input -->
+        <div class="space-y-2">
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-600">System Username</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 text-xs">
+              <i class="fas fa-user-tag"></i>
+            </span>
+            <input type="text" name="username" placeholder="e.g., ibrahimu.admin" required
+                   class="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50/50 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-teal focus:bg-white transition duration-150">
+          </div>
+        </div>
+
+        <!-- Password Input -->
+        <div class="space-y-2">
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-600">Initial Password</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 text-xs">
+              <i class="fas fa-lock"></i>
+            </span>
+            <input type="password" name="password" placeholder="••••••••" required
+                   class="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50/50 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-teal focus:bg-white transition duration-150">
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Enterprise Binding Framework -->
+      <div class="p-5 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+        <div class="flex items-start gap-3">
+          <input type="checkbox" id="assign_scope" class="mt-1 rounded border-slate-300 text-brand-teal focus:ring-brand-teal" checked disabled>
+          <div>
+            <label for="assign_scope" class="block text-xs font-bold uppercase tracking-wider text-slate-700">Franchise Venture Mapping</label>
+            <p class="text-xs text-slate-400 mt-0.5">Isolates this owner's analytical tracking datasets exclusively to the selected target entity branch.</p>
+          </div>
+        </div>
+        
+        <div class="relative max-w-md mt-2">
+          <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 text-xs">
+            <i class="fas fa-store-alt"></i>
+          </span>
+          <select name="business_id" required class="w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-brand-teal transition duration-150">
+            <option value="none" disabled selected>-- Choose Target Business/Shop Profile --</option>
+            <% businesses.forEach(function(biz) { %>
+              <option value="<%= biz.id %>"><%= biz.name %></option>
+            <% }); %>
+          </select>
+        </div>
+      </div>
+
+      <!-- Submission Control Actions -->
+      <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+        <button type="reset" class="px-5 py-2.5 text-xs font-bold uppercase tracking-wider bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition duration-150">
+          Clear
+        </button>
+        <button type="submit" class="px-6 py-2.5 text-xs font-bold uppercase tracking-wider bg-brand-teal hover:bg-brand-tealDark text-white rounded-xl shadow-sm transition duration-150">
+          Provision Business Administrator
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<%- include('../layouts/footer') %>

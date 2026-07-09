@@ -20,6 +20,9 @@ Product.belongsTo(Business, { foreignKey: 'business_id' });
 Business.hasMany(Order, { foreignKey: 'business_id', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
 Order.belongsTo(Business, { foreignKey: 'business_id' });
 
+Business.hasMany(StockMovement, { foreignKey: 'business_id', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+StockMovement.belongsTo(Business, { foreignKey: 'business_id' });
+
 // User → Orders
 User.hasMany(Order, { foreignKey: 'created_by' });
 Order.belongsTo(User, { foreignKey: 'created_by' });

@@ -5,6 +5,7 @@ exports.history = async (req, res) => {
   try {
     const userId = req.session.user.id;
     const username = req.session.user.full_name;
+    const business_id = req.session.user.business_id;
 
     const page = parseInt(req.query.page) || 1;
     const limit = 20;
@@ -46,7 +47,7 @@ exports.history = async (req, res) => {
 
     const { rows: movements, count } = await StockMovement.findAndCountAll({
       where: {
-        created_by: userId,
+        business_id: business_id,
         ...dateFilter
       },
       include: [{
@@ -66,7 +67,7 @@ exports.history = async (req, res) => {
         [sequelize.fn('SUM', sequelize.col('quantity')), 'total_quantity']
       ],
       where: {
-        created_by: userId,
+        business_id: business_id,
         ...dateFilter
       },
       include: [{
@@ -84,7 +85,7 @@ exports.history = async (req, res) => {
 
     const totalSales = await Order.sum('total_amount', {
       where: {
-        created_by: userId,
+        business_id: business_id,
         status: 'completed',
         ...(dateFilter.created_at ? { created_at: dateFilter.created_at } : {})
       }
@@ -92,7 +93,7 @@ exports.history = async (req, res) => {
 
     const totalProfit = await Order.sum('profit_amount', {
       where: {
-        created_by: userId,
+        business_id: business_id,
         status: 'completed',
         ...(dateFilter.created_at ? { created_at: dateFilter.created_at } : {})
       }

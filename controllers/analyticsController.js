@@ -4,13 +4,14 @@ exports.index = async (req, res) => {
   try {
     const userId = req.session.user.id;
     const username = req.session.user.full_name;
+    const business_id = req.session.user.business_id;
 
-    const userFilter = {
-      created_by: userId 
+    const businessFilter = {
+      business_id: business_id
     };
 
     const products = await Product.findAll({
-      where: userFilter
+      where: businessFilter
     });
 
     const stockData = await Promise.all(products.map(async (p) => {
@@ -36,7 +37,7 @@ exports.index = async (req, res) => {
       include: [{
         model: Product,
         required: true,
-        where: userFilter 
+        where: businessFilter 
       }],
       group: ['product_id', 'Product.id'],
       order: [[sequelize.literal('total_sold'), 'DESC']],

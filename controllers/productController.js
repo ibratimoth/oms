@@ -7,14 +7,15 @@ exports.list = async (req, res) => {
   try {
     const userId = req.session.user.id;
     const username = req.session.user.full_name;
-    
+    const business_id = req.session.user.business_id;
+
     const { search, status, maxPrice, barcode } = req.query;
     const currentPage = parseInt(req.query.page) || 1;
     const itemsPerPage = 10; 
     const offset = (currentPage - 1) * itemsPerPage;
 
     let whereCondition = {
-      created_by: userId
+      business_id: business_id
     };
 
     if (barcode && barcode.trim() !== '') {
@@ -82,6 +83,8 @@ exports.createPage = (req, res) => {
 exports.create = async (req, res) => {
   const userId = req.session.user.id;
   const username = req.session.user.full_name;
+  const business_id = req.session.user.business_id;
+
   try {
     const {
       name,
@@ -99,7 +102,8 @@ exports.create = async (req, res) => {
       sell_price,
       quantity_in_stock,
       reorder_level,
-      created_by: userId
+      created_by: userId,
+      business_id: business_id
     });
 
     res.redirect('/products');
@@ -135,6 +139,7 @@ exports.bulkDelete = async (req, res) => {
   try {
     const { productIds } = req.body;
     const userId = req.session.user.id;
+    const business_id = req.session.user.business_id;
 
     if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
       return res.status(400).send('No products selected for deletion.');
@@ -143,7 +148,7 @@ exports.bulkDelete = async (req, res) => {
     await Product.destroy({
       where: {
         id: { [Op.in]: productIds },
-        created_by: userId
+        business_id: business_id
       }
     });
 
@@ -157,6 +162,7 @@ exports.bulkDelete = async (req, res) => {
 exports.bulkUpload = async (req, res) => {
   try {
     const userId = req.session.user.id;
+    const business_id = req.session.user.business_id;
 
     // 1. Structural Check: Check if Multer intercepted a file
     if (!req.file) {
@@ -203,7 +209,8 @@ exports.bulkUpload = async (req, res) => {
         sell_price: sellPrice,
         quantity_in_stock: parseInt(row['Initial Stock'] || row['quantity_in_stock'] || 0),
         reorder_level: parseInt(row['Low Stock Limit'] || row['reorder_level'] || 5),
-        created_by: userId
+        created_by: userId,
+        business_id: business_id
       });
     }
 
@@ -248,10 +255,11 @@ function removeTempFile(filePath) {
 exports.getAllPrintableProducts = async (req, res) => {
   try {
     const userId = req.session.user.id;
+    const business_id = req.session.user.business_id;
     
     const products = await Product.findAll({
       where: { 
-        created_by: userId,
+        business_id: business_id,
         barcode: { 
           [Op.ne]: null 
         } 

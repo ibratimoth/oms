@@ -20,9 +20,12 @@ module.exports = (sequelize) => {
         type: DataTypes.INTEGER,
         allowNull: false
       },
-
       reference: {
         type: DataTypes.STRING
+      },
+      business_id: {
+        type: DataTypes.UUID,
+        allowNull: true
       },
       created_by: {
         type: DataTypes.INTEGER,

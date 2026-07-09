@@ -1,0 +1,173 @@
+<%- include('../layouts/header') %>
+
+<div class="max-w-[1600px] mx-auto space-y-6">
+  
+  <!-- Header Banner -->
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-black tracking-tight text-slate-800">User Identity Directory</h1>
+      <p class="text-xs text-slate-500 mt-1">
+        <% if (userRole === 'superadmin') { %>
+          Global infrastructure workspace: reviewing all active enterprise branch operators.
+        <% } else { %>
+          Managing operators and operational field handlers for your shop workspace.
+        <% } %>
+      </p>
+    </div>
+    <div>
+      <% if (userRole === 'superadmin') { %>
+        <a href="/superadmin/register" class="inline-flex items-center gap-2 px-4 py-2.5 bg-brand-teal text-white hover:bg-brand-tealDark font-bold text-xs uppercase tracking-wider rounded-xl shadow-sm transition">
+          <i class="fas fa-plus"></i> Add New Branch Admin
+        </a>
+      <% } else { %>
+        <a href="/admin/register-staff" class="inline-flex items-center gap-2 px-4 py-2.5 bg-brand-gold text-white hover:bg-brand-goldHover font-bold text-xs uppercase tracking-wider rounded-xl shadow-sm transition">
+          <i class="fas fa-plus"></i> Register Branch Staff
+        </a>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Status Notification Alerts -->
+  <% if (error) { %>
+    <div class="p-4 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-xl flex items-center gap-3">
+      <i class="fas fa-exclamation-circle text-base"></i> <p class="font-medium"><%= error %></p>
+    </div>
+  <% } %>
+  <% if (success) { %>
+    <div class="p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded-xl flex items-center gap-3">
+      <i class="fas fa-check-circle text-base"></i> <p class="font-medium"><%= success %></p>
+    </div>
+  <% } %>
+
+  <!-- Users Directory Table Layout -->
+  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse">
+        <thead>
+          <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+            <th class="py-3 px-6">System Operator</th>
+            <th class="py-3 px-6">Access Username</th>
+            <th class="py-3 px-6">System Role</th>
+            <th class="py-3 px-6">Bound Shop Branch</th>
+            <th class="py-3 px-6 text-right">Administrative Execution</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 text-sm text-slate-700">
+          <% if(users.length === 0) { %>
+            <tr>
+              <td colspan="5" class="py-8 text-center text-xs text-slate-400 font-medium uppercase tracking-wider">No active personnel entities tracked within this operational zone.</td>
+            </tr>
+          <% } %>
+          <% users.forEach(function(u) { %>
+            <tr class="hover:bg-slate-50/80 transition duration-150">
+              <td class="py-4 px-6 font-semibold text-slate-800"><%= u.full_name %></td>
+              <td class="py-4 px-6 text-slate-500 font-mono text-xs"><%= u.username %></td>
+              <td class="py-4 px-6">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold tracking-wide capitalize
+                  <%= u.role === 'superadmin' ? 'bg-purple-100 text-purple-700 border border-purple-200' : '' %>
+                  <%= u.role === 'admin' ? 'bg-brand-teal/10 text-brand-teal border border-brand-teal/20' : '' %>
+                  <%= u.role === 'sales_officer' ? 'bg-amber-100 text-amber-700 border border-amber-200' : '' %>
+                  <%= u.role === 'store_officer' ? 'bg-blue-100 text-blue-700 border border-blue-200' : '' %>">
+                  <%= u.role.replace('_', ' ') %>
+                </span>
+              </td>
+              <td class="py-4 px-6 text-xs font-bold text-slate-600">
+                <%= u.Business ? u.Business.name : 'Global Scope / Root' %>
+              </td>
+              <td class="py-4 px-6 text-right space-x-2">
+                <!-- Inline JavaScript triggers values parsing into simple document editor layout arrays directly -->
+                <button onclick='openEditModal(<%= JSON.stringify(u) %>)' class="text-slate-500 hover:text-brand-teal text-xs font-bold uppercase tracking-wider border border-slate-200 hover:border-brand-teal px-3 py-1.5 rounded-lg transition">
+                  Modify
+                </button>
+                <form action="/users/delete/<%= u.id %>" method="POST" class="inline" onsubmit="return confirm('Are you strictly sure you want to completely purge this user account identity? All records will become locked.');">
+                  <button type="submit" class="text-slate-400 hover:text-rose-600 text-xs font-bold uppercase tracking-wider border border-transparent hover:border-rose-100 px-3 py-1.5 rounded-lg transition">
+                    Remove
+                  </button>
+                </form>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Dynamic Management Overlay Sheet Modal Structure -->
+<div id="editUserModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+  <div class="bg-white rounded-2xl max-w-xl w-full border border-slate-200 shadow-2xl overflow-hidden transform transition-all scale-95 duration-200">
+    <div class="p-6 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 bg-brand-teal/10 text-brand-teal flex items-center justify-center rounded-lg text-base"><i class="fas fa-user-edit"></i></div>
+        <h3 class="text-sm font-bold uppercase tracking-wide text-slate-800">Alter Account Parameters</h3>
+      </div>
+      <button onclick="closeEditModal()" class="text-slate-400 hover:text-slate-600 focus:outline-none text-base"><i class="fas fa-times"></i></button>
+    </div>
+
+    <form id="editUserForm" method="POST" class="p-6 space-y-4">
+      <div>
+        <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Official Full Name</label>
+        <input type="text" id="modal_full_name" name="full_name" required class="w-full px-4 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-teal focus:bg-white transition">
+      </div>
+      <div>
+        <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">System Username</label>
+        <input type="text" id="modal_username" name="username" required class="w-full px-4 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-teal focus:bg-white transition">
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Designated Authority Tier</label>
+          <select id="modal_role" name="role" required class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-teal focus:bg-white transition">
+            <% if (userRole === 'superadmin') { %>
+              <option value="superadmin">Superadmin (Global Root)</option>
+              <option value="admin">Admin (Branch Manager)</option>
+            <% } %>
+            <option value="sales_officer">Sales Officer (POS Counter)</option>
+            <option value="store_officer">Store Officer (Inventory Control)</option>
+          </select>
+        </div>
+
+        <% if (userRole === 'superadmin') { %>
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Venture Branch Bound Mapping</label>
+            <select id="modal_business_id" name="business_id" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-teal focus:bg-white transition">
+              <option value="none">Global Scope (Main Head Office)</option>
+              <% businesses.forEach(function(biz) { %>
+                <option value="<%= biz.id %>"><%= biz.name %></option>
+              <% }); %>
+            </select>
+          </div>
+        <% } %>
+      </div>
+
+      <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
+        <button type="button" onclick="closeEditModal()" class="px-4 py-2 text-xs font-bold uppercase tracking-wider bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition">Cancel</button>
+        <button type="submit" class="px-5 py-2.5 text-xs font-bold uppercase tracking-wider bg-brand-teal hover:bg-brand-tealDark text-white rounded-xl shadow-sm transition">Commit Schema Updates</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openEditModal(user) {
+    document.getElementById('editUserForm').action = '/users/update/' + user.id;
+    document.getElementById('modal_full_name').value = user.full_name;
+    document.getElementById('modal_username').value = user.username;
+    document.getElementById('modal_role').value = user.role;
+    
+    const bizSelect = document.getElementById('modal_business_id');
+    if (bizSelect) {
+      bizSelect.value = user.business_id ? user.business_id : 'none';
+    }
+
+    document.getElementById('editUserModal').classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+  }
+
+  function closeEditModal() {
+    document.getElementById('editUserModal').classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
+  }
+</script>
+
+<%- include('../layouts/footer') %>

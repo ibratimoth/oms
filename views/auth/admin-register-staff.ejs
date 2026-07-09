@@ -1,0 +1,120 @@
+<%- include('../layouts/header') %>
+
+<div class="max-w-4xl mx-auto my-6 px-4">
+  <!-- Top Navigation Context -->
+  <div class="mb-6 flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-black tracking-tight text-slate-800">Franchise Personnel Registry</h1>
+      <p class="text-xs text-slate-500 mt-1">Add active operational personnel directly into your registered branch system layer.</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <span class="text-xs font-bold uppercase tracking-wider text-brand-teal bg-brand-teal/5 px-3 py-1.5 border border-brand-teal/10 rounded-lg">
+        Active Shop: <%= businessName %>
+      </span>
+    </div>
+  </div>
+
+  <!-- Session Alerts -->
+  <% if (error) { %>
+    <div class="mb-6 p-4 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-xl flex items-center gap-3 shadow-sm animate-fade-in">
+      <i class="fas fa-exclamation-circle text-base"></i>
+      <p class="font-medium"><%= error %></p>
+    </div>
+  <% } %>
+
+  <% if (success) { %>
+    <div class="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded-xl flex items-center gap-3 shadow-sm animate-fade-in">
+      <i class="fas fa-check-circle text-base"></i>
+      <p class="font-medium"><%= success %></p>
+    </div>
+  <% } %>
+
+  <!-- Operator Creation Workspace -->
+  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+    <div class="p-6 bg-slate-50 border-b border-slate-200 flex items-center gap-4">
+      <div class="w-11 h-11 bg-brand-teal/10 rounded-xl flex items-center justify-center text-brand-teal text-xl">
+        <i class="fas fa-user-plus"></i>
+      </div>
+      <div>
+        <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wide">Provision Branch Counter Staff</h2>
+        <p class="text-xs text-slate-400">Newly provisioned personnel accounts are bounded explicitly to operations inside <%= businessName %>.</p>
+      </div>
+    </div>
+
+    <form action="/admin/register-staff" method="POST" class="p-6 space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        <!-- Full Name input -->
+        <div class="space-y-2">
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-600">Employee Full Name</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 text-xs">
+              <i class="fas fa-user"></i>
+            </span>
+            <input type="text" name="full_name" placeholder="e.g., Jane Sayi" required
+                   class="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50/50 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-teal focus:bg-white transition duration-150">
+          </div>
+        </div>
+
+        <!-- Username Input -->
+        <div class="space-y-2">
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-600">Counter Login Username</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 text-xs">
+              <i class="fas fa-user-tag"></i>
+            </span>
+            <input type="text" name="username" placeholder="e.g., jane.delle" required
+                   class="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50/50 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-teal focus:bg-white transition duration-150">
+          </div>
+        </div>
+
+        <!-- Password Input -->
+        <div class="space-y-2">
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-600">Access Password</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 text-xs">
+              <i class="fas fa-key"></i>
+            </span>
+            <input type="password" name="password" placeholder="••••••••" required
+                   class="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50/50 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-teal focus:bg-white transition duration-150">
+          </div>
+        </div>
+
+        <!-- Role Select Menu -->
+        <div class="space-y-2">
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-600">Assigned Operational Role</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 text-xs">
+              <i class="fas fa-id-badge"></i>
+            </span>
+            <select name="role" required class="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50/50 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-teal focus:bg-white transition duration-150 appearance-none">
+              <option value="sales_officer" selected>Sales Officer (POS Counter Sales / Orders)</option>
+              <option value="store_officer">Store Officer (Inventory Flows / Warehouse)</option>
+            </select>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Explicit Lock Notice Box -->
+      <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-start gap-3">
+        <i class="fas fa-lock text-brand-gold mt-0.5 text-sm"></i>
+        <p class="text-xs text-slate-500 leading-relaxed">
+          <strong>Security Notice:</strong> Because you are logged in as the Administrator for <span class="text-slate-700 font-semibold"><%= businessName %></span>, this system user will automatically be bound to your business footprint. They cannot switch branches or review invoices from alternate entities.
+        </p>
+      </div>
+
+      <!-- Submission Control Actions -->
+      <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+        <button type="reset" class="px-5 py-2.5 text-xs font-bold uppercase tracking-wider bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition duration-150">
+          Reset Form
+        </button>
+        <button type="submit" class="px-6 py-2.5 text-xs font-bold uppercase tracking-wider bg-brand-gold hover:bg-brand-goldHover text-white rounded-xl shadow-sm transition duration-150">
+          Activate Employee Profile
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<%- include('../layouts/footer') %>

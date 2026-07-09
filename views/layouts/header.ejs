@@ -5,8 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Delle Ventures</title>
 
-  <!-- <script src="https://cdn.tailwindcss.com"></script> -->
-   <script src="/js/tailwindcss.js"></script>
+  <script src="/js/tailwindcss.js"></script>
 
   <script>
     tailwind.config = {
@@ -25,11 +24,8 @@
     }
   </script>
 
-  <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">  
-  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" /> -->
   <link rel="stylesheet" href="/css/all.min.css">  
-<link rel="stylesheet" href="/css/select2.min.css">
-
+  <link rel="stylesheet" href="/css/select2.min.css">
 </head>
 
 <body class="h-full font-sans antialiased text-slate-900 selection:bg-brand-teal/10 selection:text-brand-teal">
@@ -62,7 +58,7 @@
           </div>
           <div class="min-w-0">
             <p class="text-xs font-bold tracking-wide text-white truncate"><%= username || 'Operator' %></p>
-            <p class="text-[10px] text-teal-300 font-medium tracking-wider uppercase">System Operator</p>
+            <p class="text-[10px] text-teal-300 font-medium tracking-wider uppercase"><%= typeof userRole !== 'undefined' ? userRole.replace('_', ' ') : 'System Operator' %></p>
           </div>
         </div>
 
@@ -118,6 +114,27 @@
 
           </nav>
         </div>
+
+        <% if (typeof userRole !== 'undefined' && (userRole === 'admin' || userRole === 'superadmin')) { %>
+        <div>
+          <p class="px-4 text-[10px] font-bold text-teal-300 uppercase tracking-widest mb-2">System Infrastructure</p>
+          <nav class="space-y-1">
+            
+            <% if (typeof userRole !== 'undefined' && (userRole === 'superadmin')) { %>
+            <a href="/business" class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg transition duration-150 group <%= currentPath.startsWith('/business') ? 'bg-brand-gold text-white shadow-md shadow-black/10' : 'text-teal-100 hover:bg-white/10 hover:text-white' %>">
+              <i class="fas fa-briefcase text-base w-5 text-center <%= currentPath.startsWith('/business') ? 'text-white' : 'text-teal-300 group-hover:text-white' %>"></i>
+              <span>Manage Businesses</span>
+            </a>
+             <% } %>
+
+            <a href="/users" class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg transition duration-150 group <%= currentPath === '/users' ? 'bg-brand-gold text-white shadow-md shadow-black/10' : 'text-teal-100 hover:bg-white/10 hover:text-white' %>">
+              <i class="fas fa-users text-base w-5 text-center <%= currentPath === '/users' ? 'text-white' : 'text-teal-300 group-hover:text-white' %>"></i>
+              <span>System Operators</span>
+            </a>
+
+          </nav>
+        </div>
+        <% } %>
 
         <div>
           <p class="px-4 text-[10px] font-bold text-teal-300 uppercase tracking-widest mb-2">Business Insights</p>
