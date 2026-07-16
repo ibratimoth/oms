@@ -6,6 +6,12 @@ module.exports = (sequelize) => {
     'StockMovement',
     {
 
+      id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        primaryKey: true,
+        allowNull: false
+      },
       product_id: {
         type: DataTypes.INTEGER,
         allowNull: false
@@ -28,7 +34,7 @@ module.exports = (sequelize) => {
         allowNull: true
       },
       created_by: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.UUID,
         allowNull: true
       }
     },

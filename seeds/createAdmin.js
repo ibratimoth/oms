@@ -3,7 +3,7 @@ const { User } = require('../models');
 
 (async () => {
   try {
-    const existing = await User.findOne({ where: { username: 'user' } });
+    const existing = await User.findOne({ where: { username: 'admin@delle' } });
 
     if (existing) {
       console.log('User already exists');
@@ -11,10 +11,10 @@ const { User } = require('../models');
     }
 
     await User.create({
-      full_name: 'Zainab Mhajiru',
-      username: 'zai@delle',
-      password: await bcrypt.hash('zai@123', 10),
-      role: 'user'
+      full_name: 'ibrahimu',
+      username: 'admin@delle',
+      password: await bcrypt.hash('admin@123', 10),
+      role: 'admin'
     });
 
     console.log('User created successfully');

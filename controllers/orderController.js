@@ -132,6 +132,7 @@ exports.create = async (req, res) => {
     const username = req.session.user.full_name;
     const business_id = req.session.user.business_id;
 
+    console.log('username:', username);
     let total = 0;
     let totalProfit = 0;
 
@@ -190,6 +191,7 @@ exports.create = async (req, res) => {
 
   } catch (err) {
     await t.rollback();
+    console.error('Error creating order:', err);
     return res.status(500).render('error', { 
       message: 'Failed to create order.', 
       username ,
@@ -238,6 +240,7 @@ exports.completeOrder = async (req, res) => {
 
   } catch (err) {
     await t.rollback();
+    console.log('Error completing order:', err);
     return res.status(500).render('error', { 
       message: 'Failed to complete order.', 
       username ,
