@@ -216,18 +216,18 @@ exports.updateUser = async (req, res) => {
   try {
     const targetUser = await User.findByPk(id);
     if (!targetUser) {
-      return res.redirect('/auth/users?error=User+not+found.');
+      return res.redirect('/users?error=User+not+found.');
     }
 
     // Role Enforcement Guards
     if (currentAdmin.role !== 'superadmin') {
       // Branch admins cannot touch users outside their business, or change their business lines
       if (targetUser.business_id !== currentAdmin.business_id) {
-        return res.redirect('/auth/users?error=Unauthorized+access+boundary.');
+        return res.redirect('/users?error=Unauthorized+access+boundary.');
       }
       // Branch admins cannot elevate staff to superadmin/admin roles
       if (role === 'superadmin' || role === 'admin') {
-        return res.redirect('/auth/users?error=Action+denied:+Cannot+assign+administrative+roles.');
+        return res.redirect('/users?error=Action+denied:+Cannot+assign+administrative+roles.');
       }
     }
 
@@ -244,10 +244,10 @@ exports.updateUser = async (req, res) => {
 
     await targetUser.save();
     logger.info(`User record ID ${id} modified by ${currentAdmin.username}`);
-    return res.redirect('/auth/users?success=User+profile+updated+successfully.');
+    return res.redirect('/users?success=User+profile+updated+successfully.');
   } catch (error) {
     logger.error(error, `Failed executing modification for user profile ID ${id}`);
-    return res.redirect('/auth/users?error=Failed+to+update+user+record.');
+    return res.redirect('/users?error=Failed+to+update+user+record.');
   }
 };
 
