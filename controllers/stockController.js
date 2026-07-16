@@ -41,7 +41,7 @@ exports.history = async (req, res) => {
     let productWhereClause = {};
     if (search) {
       productWhereClause.name = {
-        [Op.iLike]: `%${search}%` 
+        [Op.iLike]: `%${search}%`
       };
     }
 
@@ -53,7 +53,7 @@ exports.history = async (req, res) => {
       include: [{
         model: Product,
         where: productWhereClause,
-        required: search ? true : false 
+        required: search ? true : false
       }],
       order: [['createdAt', 'DESC']],
       limit,
@@ -73,7 +73,7 @@ exports.history = async (req, res) => {
       include: [{
         model: Product,
         where: productWhereClause,
-        attributes: [], 
+        attributes: [],
         required: search ? true : false
       }],
       group: [
@@ -112,11 +112,16 @@ exports.history = async (req, res) => {
       to,
       date,
       search: search || '',
-      username
+      username,
+      userRole: req.session.user?.role
     });
 
   } catch (err) {
     console.error(err);
-    res.status(500).send('Stock history matrix compilation error');
+    return res.status(500).render('error', {
+      message: 'Stock history matrix compilation error',
+      username,
+      userRole: req.session.user?.role
+    });
   }
 };

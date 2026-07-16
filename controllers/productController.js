@@ -66,18 +66,23 @@ exports.list = async (req, res) => {
       currentPage,
       totalPages,
       totalCount: count,
-      username
+      username,
+      userRole: req.session.user?.role
     });
 
   } catch (error) {
     console.error('Pagination query processing failed:', error);
-    res.status(500).send('Internal Server Error');
+    return res.status(500).render('error', {
+      message: 'Internal Server Error',
+      username,
+      userRole: req.session.user?.role
+    });
   }
 };
 
 exports.createPage = (req, res) => {
   const username = req.session.user.full_name;
-  res.render('products/create', { username });
+  res.render('products/create', { username, userRole: req.session.user?.role });
 };
 
 exports.create = async (req, res) => {
@@ -116,7 +121,7 @@ exports.create = async (req, res) => {
 exports.editPage = async (req, res) => {
   const username = req.session.user.full_name;
   const product = await Product.findByPk(req.params.id);
-  res.render('products/edit', { product, username });
+  res.render('products/edit', { product, username, userRole: req.session.user?.role });
 };
 
 exports.update = async (req, res) => {
