@@ -1,22 +1,23 @@
 const express = require('express');
 const router = express.Router();
 const debtController = require('../controllers/debtController');
+const auth = require('../middleware/auth');
 
 // List All
-router.get('/', debtController.getAllDebts);
+router.get('/', auth, debtController.getAllDebts);
 
 // Create Operations
-router.get('/create', debtController.showCreateDebt);
-router.post('/create', debtController.createDebt);
+router.get('/create', auth, debtController.showCreateDebt);
+router.post('/create', auth, debtController.createDebt);
 
 // Quick Status Toggle (Clear Debt / Reopen Debt)
-router.post('/toggle-status/:id', debtController.toggleDebtStatus);
+router.post('/toggle-status/:id', auth, debtController.toggleDebtStatus);
 
 // Edit Operations
-router.get('/edit/:id', debtController.showEditDebt);
-router.post('/edit/:id', debtController.updateDebt);
+router.get('/edit/:id', auth, debtController.showEditDebt);
+router.post('/edit/:id', auth, debtController.updateDebt);
 
 // Delete Operation
-router.post('/delete/:id', debtController.deleteDebt);
+router.post('/delete/:id', auth, debtController.deleteDebt);
 
 module.exports = router;
