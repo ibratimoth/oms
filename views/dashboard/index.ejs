@@ -3,10 +3,10 @@
 <!-- Dashboard Title -->
 <div class="mb-6">
   <h1 class="text-2xl font-bold tracking-tight text-slate-800">Dashboard Overview</h1>
-  <p class="text-sm text-slate-500 mt-1">Real-time metrics and order management statistics.</p>
+  <p class="text-sm text-slate-500 mt-1">Real-time metrics, financial standing, and order statistics.</p>
 </div>
 
-<!-- TOP METRICS GRID -->
+<!-- TOP METRICS GRID (OPERATIONAL) -->
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
 
   <!-- PRODUCTS -->
@@ -55,17 +55,105 @@
 
 </div>
 
-<!-- FINANCIAL PERFORMANCE CARD -->
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-  <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm flex items-center justify-between relative overflow-hidden ring-1 ring-brand-teal/5">
-    <div class="absolute -right-4 -bottom-4 w-16 h-16 bg-brand-teal/5 rounded-full"></div>
-    <div>
-      <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Profit</p>
-      <h3 class="text-2xl font-bold text-brand-teal mt-1"><%= totalProfit %></h3>
+<!-- FINANCIAL BREAKDOWN SECTION -->
+<div class="mb-8">
+  <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 px-1">Financial Health & Balances</h2>
+  
+  <!-- ROW 1: CORE INCOME, EXPENSES & DEBTS -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+
+    <!-- TOTAL SALES -->
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Sales</p>
+        <h3 class="text-xl font-bold text-slate-800 mt-0.5">TSh <%= Number(totalSales || 0).toLocaleString() %></h3>
+      </div>
+      <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
+        <i class="fas fa-chart-bar text-lg"></i>
+      </div>
     </div>
-    <div class="w-12 h-12 rounded-lg bg-brand-teal/10 flex items-center justify-center text-brand-teal relative z-10">
-      <i class="fas fa-wallet text-xl"></i>
+
+    <!-- TOTAL EXPENSES -->
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Expenses</p>
+        <h3 class="text-xl font-bold text-rose-600 mt-0.5">TSh <%= Number(totalExpenses || 0).toLocaleString() %></h3>
+      </div>
+      <div class="w-10 h-10 rounded-lg bg-rose-50 flex items-center justify-center text-rose-600">
+        <i class="fas fa-receipt text-lg"></i>
+      </div>
     </div>
+
+    <!-- DEBTS OWED TO YOU (RECEIVABLES) -->
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Debts Owed To You</p>
+        <h3 class="text-xl font-bold text-indigo-600 mt-0.5">TSh <%= Number(debtsOwedToYou || 0).toLocaleString() %></h3>
+      </div>
+      <div class="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
+        <i class="fas fa-hand-holding-usd text-lg"></i>
+      </div>
+    </div>
+
+    <!-- DEBTS YOU OWE (PAYABLES) -->
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Debts You Owe</p>
+        <h3 class="text-xl font-bold text-amber-600 mt-0.5">TSh <%= Number(debtsYouOwe || 0).toLocaleString() %></h3>
+      </div>
+      <div class="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600">
+        <i class="fas fa-file-invoice-dollar text-lg"></i>
+      </div>
+    </div>
+
+    <!-- TOTAL PROFIT -->
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Gross Profit</p>
+        <h3 class="text-xl font-bold text-emerald-600 mt-0.5">TSh <%= Number(totalProfit || 0).toLocaleString() %></h3>
+      </div>
+      <div class="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
+        <i class="fas fa-wallet text-lg"></i>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ROW 2: LIQUID CASH VS NET POSITION -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+    
+    <!-- CASH IN HAND (LIQUID) -->
+    <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm flex items-center justify-between relative overflow-hidden ring-1 ring-emerald-500/10">
+      <div class="absolute -right-4 -bottom-4 w-20 h-20 bg-emerald-500/5 rounded-full"></div>
+      <div>
+        <div class="flex items-center gap-2">
+          <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Cash in Hand (Liquid)</p>
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700">Actual Money</span>
+        </div>
+        <h3 class="text-2xl font-black text-emerald-700 mt-1">TSh <%= Number(cashInHand || 0).toLocaleString() %></h3>
+        <p class="text-xs text-slate-400 mt-1">Calculated as: (Collected Sales - Paid Expenses)</p>
+      </div>
+      <div class="w-12 h-12 rounded-xl bg-emerald-100/70 flex items-center justify-center text-emerald-700 relative z-10">
+        <i class="fas fa-money-bill-wave text-xl"></i>
+      </div>
+    </div>
+
+    <!-- NET FINANCIAL POSITION -->
+    <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm flex items-center justify-between relative overflow-hidden ring-1 ring-brand-teal/10">
+      <div class="absolute -right-4 -bottom-4 w-20 h-20 bg-brand-teal/5 rounded-full"></div>
+      <div>
+        <div class="flex items-center gap-2">
+          <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Net Financial Position</p>
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-teal-50 text-teal-700">Overall Worth</span>
+        </div>
+        <h3 class="text-2xl font-black text-brand-teal mt-1">TSh <%= Number(netFinancialPosition || 0).toLocaleString() %></h3>
+        <p class="text-xs text-slate-400 mt-1">Calculated as: (Cash in Hand + Receivables) - Liabilities</p>
+      </div>
+      <div class="w-12 h-12 rounded-xl bg-teal-100/70 flex items-center justify-center text-brand-teal relative z-10">
+        <i class="fas fa-scale-balanced text-xl"></i>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -127,23 +215,31 @@
             </tr>
           </thead>
           <tbody class="text-sm divide-y divide-slate-100">
-            <% recentOrders.forEach(o => { %>
-              <tr class="hover:bg-slate-50/50 transition duration-150">
-                <td class="py-3.5 px-5 font-semibold text-slate-700">#<%= o.order_number %></td>
-                <td class="py-3.5 px-5">
-                  <% if (o.status === 'completed') { %>
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">
-                      <span class="w-1 h-1 rounded-full bg-emerald-500 mr-1.5"></span> <%= o.status %>
-                    </span>
-                  <% } else { %>
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-100">
-                      <span class="w-1 h-1 rounded-full bg-amber-500 mr-1.5"></span> <%= o.status %>
-                    </span>
-                  <% } %>
-                </td>
-                <td class="py-3.5 px-5 text-right font-medium text-slate-800"><%= o.total_amount %></td>
+            <% if (recentOrders && recentOrders.length > 0) { %>
+              <% recentOrders.forEach(o => { %>
+                <tr class="hover:bg-slate-50/50 transition duration-150">
+                  <td class="py-3.5 px-5 font-semibold text-slate-700">#<%= o.order_number %></td>
+                  <td class="py-3.5 px-5">
+                    <% if (o.status === 'completed') { %>
+                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">
+                        <span class="w-1 h-1 rounded-full bg-emerald-500 mr-1.5"></span> <%= o.status %>
+                      </span>
+                    <% } else { %>
+                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-100">
+                        <span class="w-1 h-1 rounded-full bg-amber-500 mr-1.5"></span> <%= o.status %>
+                      </span>
+                    <% } %>
+                  </td>
+                  <td class="py-3.5 px-5 text-right font-medium text-slate-800">
+                    TSh <%= Number(o.total_amount || 0).toLocaleString() %>
+                  </td>
+                </tr>
+              <% }) %>
+            <% } else { %>
+              <tr>
+                <td colspan="3" class="py-6 text-center text-sm text-slate-400 italic">No recent orders recorded.</td>
               </tr>
-            <% }) %>
+            <% } %>
           </tbody>
         </table>
       </div>
@@ -167,14 +263,20 @@
         </tr>
       </thead>
       <tbody class="text-sm divide-y divide-slate-100">
-        <% dailySales.forEach(d => { %>
-          <tr class="hover:bg-slate-50/50 transition duration-150">
-            <td class="py-3 px-6 text-slate-600 font-medium"><%= d.dataValues.date %></td>
-            <td class="py-3 px-6 text-right font-bold text-slate-800">
-              TSh <%= Number(d.dataValues.sales).toLocaleString() %>
-            </td>
+        <% if (dailySales && dailySales.length > 0) { %>
+          <% dailySales.forEach(d => { %>
+            <tr class="hover:bg-slate-50/50 transition duration-150">
+              <td class="py-3 px-6 text-slate-600 font-medium"><%= d.dataValues.date %></td>
+              <td class="py-3 px-6 text-right font-bold text-slate-800">
+                TSh <%= Number(d.dataValues.sales || 0).toLocaleString() %>
+              </td>
+            </tr>
+          <% }) %>
+        <% } else { %>
+          <tr>
+            <td colspan="2" class="py-6 text-center text-sm text-slate-400 italic">No daily sales trends available yet.</td>
           </tr>
-        <% }) %>
+        <% } %>
       </tbody>
     </table>
   </div>

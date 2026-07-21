@@ -5,6 +5,7 @@
   <p class="text-sm text-slate-500 mt-1">Audit ledger, financial margins, velocity aggregations, and combined stock performance records.</p>
 </div>
 
+<!-- FILTER FORM -->
 <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-6">
   <form method="GET" action="/stock" class="flex flex-col lg:flex-row items-end gap-4">
     
@@ -73,60 +74,142 @@
   </form>
 </div>
 
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
+<!-- FINANCIAL & METRIC SUMMARY CARDS -->
+<div class="mb-6 space-y-4">
   
-  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
-    <div>
-      <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Sales Revenue</p>
-      <h2 class="text-xl font-mono font-black text-slate-800 mt-1">
-        TSh <%= Number(totalSales || 0).toLocaleString() %>
-      </h2>
+  <!-- ROW 1: REVENUE, PROFIT, EXPENSES, DEBTS OWED TO YOU, DEBTS YOU OWE -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+    
+    <!-- TOTAL SALES REVENUE -->
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
+      <div>
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Sales</p>
+        <h2 class="text-lg font-mono font-black text-slate-800 mt-1">
+          TSh <%= Number(totalSales || 0).toLocaleString() %>
+        </h2>
+      </div>
+      <div class="text-brand-teal bg-teal-50/60 w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
+        <i class="fas fa-cash-register text-sm"></i>
+      </div>
     </div>
-    <div class="text-brand-teal bg-teal-50/60 w-10 h-10 rounded-lg flex items-center justify-center shrink-0">
-      <i class="fas fa-cash-register text-base"></i>
+
+    <!-- CALCULATED PROFIT -->
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
+      <div>
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Calculated Profit</p>
+        <h2 class="text-lg font-mono font-black text-emerald-600 mt-1">
+          TSh <%= Number(totalProfit || 0).toLocaleString() %>
+        </h2>
+      </div>
+      <div class="text-emerald-500 bg-emerald-50 w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
+        <i class="fas fa-wallet text-sm"></i>
+      </div>
     </div>
+
+    <!-- TOTAL EXPENSES -->
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
+      <div>
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Expenses</p>
+        <h2 class="text-lg font-mono font-black text-rose-600 mt-1">
+          TSh <%= Number(totalExpenses || 0).toLocaleString() %>
+        </h2>
+      </div>
+      <div class="text-rose-500 bg-rose-50 w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
+        <i class="fas fa-receipt text-sm"></i>
+      </div>
+    </div>
+
+    <!-- DEBTS OWED TO YOU -->
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
+      <div>
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Debts Owed To You</p>
+        <h2 class="text-lg font-mono font-black text-indigo-600 mt-1">
+          TSh <%= Number(debtsOwedToYou || 0).toLocaleString() %>
+        </h2>
+      </div>
+      <div class="text-indigo-500 bg-indigo-50 w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
+        <i class="fas fa-hand-holding-usd text-sm"></i>
+      </div>
+    </div>
+
+    <!-- DEBTS YOU OWE -->
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
+      <div>
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Debts You Owe</p>
+        <h2 class="text-lg font-mono font-black text-amber-600 mt-1">
+          TSh <%= Number(debtsYouOwe || 0).toLocaleString() %>
+        </h2>
+      </div>
+      <div class="text-amber-500 bg-amber-50 w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
+        <i class="fas fa-file-invoice-dollar text-sm"></i>
+      </div>
+    </div>
+
   </div>
 
-  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
-    <div>
-      <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Calculated Profit</p>
-      <h2 class="text-xl font-mono font-black text-emerald-600 mt-1">
-        TSh <%= Number(totalProfit || 0).toLocaleString() %>
-      </h2>
+  <!-- ROW 2: LIQUID CASH, NET FINANCIAL POSITION & LEDGER META -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    
+    <!-- CASH IN HAND -->
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between ring-1 ring-emerald-500/10">
+      <div>
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Cash In Hand (Liquid)</p>
+        <h2 class="text-lg font-mono font-black text-emerald-700 mt-1">
+          TSh <%= Number(cashInHand || 0).toLocaleString() %>
+        </h2>
+      </div>
+      <div class="text-emerald-600 bg-emerald-100/70 w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
+        <i class="fas fa-money-bill-wave text-sm"></i>
+      </div>
     </div>
-    <div class="text-emerald-500 bg-emerald-50 w-10 h-10 rounded-lg flex items-center justify-center shrink-0">
-      <i class="fas fa-wallet text-base"></i>
-    </div>
-  </div>
 
-  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
-    <div>
-      <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Filtered Ledger Rows</p>
-      <h2 class="text-xl font-mono font-black text-slate-800 mt-1">
-        <%= movements ? movements.length : 0 %>
-      </h2>
+    <!-- NET FINANCIAL POSITION -->
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between ring-1 ring-brand-teal/10">
+      <div>
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Net Financial Position</p>
+        <h2 class="text-lg font-mono font-black text-brand-teal mt-1">
+          TSh <%= Number(netFinancialPosition || 0).toLocaleString() %>
+        </h2>
+      </div>
+      <div class="text-brand-teal bg-teal-100/70 w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
+        <i class="fas fa-scale-balanced text-sm"></i>
+      </div>
     </div>
-    <div class="text-slate-500 bg-slate-50 w-10 h-10 rounded-lg flex items-center justify-center shrink-0">
-      <i class="fas fa-stream text-base"></i>
-    </div>
-  </div>
 
-  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
-    <div>
-      <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Available Pages</p>
-      <h2 class="text-xl font-mono font-black text-slate-800 mt-1">
-        <%= totalPages || 1 %> <span class="text-xs font-sans font-normal text-slate-400">blocks</span>
-      </h2>
+    <!-- FILTERED LEDGER ROWS -->
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
+      <div>
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Filtered Ledger Rows</p>
+        <h2 class="text-lg font-mono font-black text-slate-800 mt-1">
+          <%= movements ? movements.length : 0 %>
+        </h2>
+      </div>
+      <div class="text-slate-500 bg-slate-50 w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
+        <i class="fas fa-stream text-sm"></i>
+      </div>
     </div>
-    <div class="text-amber-500 bg-amber-50/50 w-10 h-10 rounded-lg flex items-center justify-center shrink-0">
-      <i class="fas fa-layer-group text-base"></i>
+
+    <!-- AVAILABLE PAGES -->
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
+      <div>
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Available Pages</p>
+        <h2 class="text-lg font-mono font-black text-slate-800 mt-1">
+          <%= totalPages || 1 %> <span class="text-xs font-sans font-normal text-slate-400">blocks</span>
+        </h2>
+      </div>
+      <div class="text-amber-500 bg-amber-50/50 w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
+        <i class="fas fa-layer-group text-sm"></i>
+      </div>
     </div>
+
   </div>
 
 </div>
 
+<!-- DAILY VELOCITY & OPERATIONAL LEDGER -->
 <div class="flex flex-col xl:flex-row gap-6 items-start mb-6">
   
+  <!-- DAILY VOLUME VELOCITY TABLE -->
   <div class="w-full xl:w-80 shrink-0 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
     <div class="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
       <div class="w-1.5 h-1.5 rounded-full bg-brand-gold"></div>
@@ -167,11 +250,12 @@
     </div>
   </div>
 
+  <!-- MAIN OPERATIONAL LEDGER -->
   <div class="flex-1 w-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
     <div class="px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
       <h3 class="font-bold text-slate-800 text-xs tracking-wide uppercase">Unified Operational & Margin Ledger</h3>
       <span class="text-[11px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200/50 font-semibold">
-        Active Viewport: <%= movements.length %> Records
+        Active Viewport: <%= movements ? movements.length : 0 %> Records
       </span>
     </div>
 
@@ -196,7 +280,7 @@
               <tr class="hover:bg-slate-50/50 transition duration-150">
                 
                 <td class="py-3.5 px-4 text-slate-500 font-medium">
-                  <%= new Date(m.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute:'2-digit' }) %>
+                  <%= new Date(m.createdAt || m.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute:'2-digit' }) %>
                 </td>
                 
                 <td class="py-3.5 px-4 font-semibold text-slate-800">
@@ -262,6 +346,7 @@
 
 </div>
 
+<!-- PAGINATION -->
 <% if (totalPages > 1) { %>
   <div class="flex justify-center items-center gap-1.5 mt-4 mb-8">
     

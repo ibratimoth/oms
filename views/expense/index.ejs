@@ -1,0 +1,92 @@
+<%- include('../layouts/header') %>
+
+<div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+  <div>
+    <h1 class="text-2xl font-bold tracking-tight text-slate-800">Expenses Log</h1>
+    <p class="text-sm text-slate-500 mt-0.5">Track and analyze operational spending across your business.</p>
+  </div>
+  <a href="/expenses/create" class="inline-flex items-center gap-2 px-4 py-2.5 bg-brand-teal hover:bg-brand-tealDark text-white text-sm font-semibold rounded-lg shadow-sm transition">
+    <i class="fas fa-plus text-xs"></i> Record Expense
+  </a>
+</div>
+
+<!-- Filter Bar -->
+<div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 mb-6">
+  <form method="GET" action="/expenses" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+    <div>
+      <label class="block text-xs font-semibold text-slate-600 mb-1">Single Date</label>
+      <input type="date" name="single_date" value="<%= filters.single_date %>" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-1.5 px-3 text-xs text-slate-800 focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white outline-none">
+    </div>
+    <div>
+      <label class="block text-xs font-semibold text-slate-600 mb-1">Start Date</label>
+      <input type="date" name="start_date" value="<%= filters.start_date %>" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-1.5 px-3 text-xs text-slate-800 focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white outline-none">
+    </div>
+    <div>
+      <label class="block text-xs font-semibold text-slate-600 mb-1">End Date</label>
+      <input type="date" name="end_date" value="<%= filters.end_date %>" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-1.5 px-3 text-xs text-slate-800 focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white outline-none">
+    </div>
+    <div>
+      <label class="block text-xs font-semibold text-slate-600 mb-1">Category</label>
+      <input type="text" name="category" value="<%= filters.category %>" placeholder="e.g. Rent, Supplies" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-1.5 px-3 text-xs text-slate-800 focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white outline-none">
+    </div>
+    <div class="flex items-end gap-2">
+      <button type="submit" class="flex-1 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-lg transition">Filter</button>
+      <a href="/expenses" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-lg transition">Reset</a>
+    </div>
+  </form>
+</div>
+
+<!-- Table -->
+<div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full text-left text-sm text-slate-600">
+      <thead class="bg-slate-50 border-b border-slate-200 text-xs uppercase font-bold text-slate-500">
+        <tr>
+          <th class="px-4 py-3">Date</th>
+          <th class="px-4 py-3">Category</th>
+          <th class="px-4 py-3">Amount</th>
+          <th class="px-4 py-3">Description</th>
+          <th class="px-4 py-3">Shop</th>
+          <th class="px-4 py-3 text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        <% if (expenses.length === 0) { %>
+          <tr>
+            <td colspan="6" class="px-4 py-8 text-center text-xs text-slate-400">No expense records found.</td>
+          </tr>
+        <% } %>
+        <% expenses.forEach(expense => { %>
+          <tr class="hover:bg-slate-50/50 transition">
+            <td class="px-4 py-3 font-medium text-slate-800 whitespace-nowrap"><%= expense.expense_date %></td>
+            <td class="px-4 py-3 font-semibold text-slate-700"><%= expense.category %></td>
+            <td class="px-4 py-3 font-bold text-rose-600 whitespace-nowrap">TSh <%= Number(expense.amount).toLocaleString() %></td>
+            <td class="px-4 py-3 text-xs text-slate-500 max-w-xs truncate"><%= expense.description || '-' %></td>
+            <td class="px-4 py-3 text-xs text-slate-600"><%= expense.Business ? expense.Business.name : '-' %></td>
+            <td class="px-4 py-3 text-right space-x-2 whitespace-nowrap">
+              <a href="/expenses/edit/<%= expense.id %>" class="text-slate-400 hover:text-brand-teal transition"><i class="fas fa-edit"></i></a>
+              <button onclick="confirmDelete('/expenses/delete/<%= expense.id %>')" class="text-slate-400 hover:text-rose-600 transition"><i class="fas fa-trash"></i></button>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <% if (pagination.totalPages > 1) { %>
+    <div class="p-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+      <span>Showing Page <strong><%= pagination.currentPage %></strong> of <strong><%= pagination.totalPages %></strong></span>
+      <div class="flex gap-1">
+        <% for(let i = 1; i <= pagination.totalPages; i++) { %>
+          <a href="/expenses?page=<%= i %>&single_date=<%= filters.single_date %>&start_date=<%= filters.start_date %>&end_date=<%= filters.end_date %>&category=<%= filters.category %>" 
+             class="px-2.5 py-1 rounded-md border <%= pagination.currentPage === i ? 'bg-brand-teal text-white border-brand-teal' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50' %>">
+            <%= i %>
+          </a>
+        <% } %>
+      </div>
+    </div>
+  <% } %>
+</div>
+
+<%- include('../layouts/footer') %>

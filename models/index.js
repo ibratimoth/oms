@@ -7,6 +7,8 @@ const Order = require('./order')(sequelize);
 const OrderItem = require('./orderItem')(sequelize);
 const StockMovement = require('./stockMovement')(sequelize);
 const Business = require('./business')(sequelize);
+const Expense = require('./expense')(sequelize);
+const Debt = require('./debt')(sequelize);
 
 /* =========================
    RELATIONSHIPS
@@ -51,6 +53,24 @@ User.hasMany(Product, {
   foreignKey: 'created_by'
 });
 
+// ==========================================
+// EXPENSE RELATIONSHIPS
+// ==========================================
+Business.hasMany(Expense, { foreignKey: 'business_id', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+Expense.belongsTo(Business, { foreignKey: 'business_id' });
+
+User.hasMany(Expense, { foreignKey: 'created_by', onDelete: 'SET NULL', onUpdate: 'CASCADE' });
+Expense.belongsTo(User, { foreignKey: 'created_by' });
+
+// ==========================================
+// DEBT RELATIONSHIPS
+// ==========================================
+Business.hasMany(Debt, { foreignKey: 'business_id', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+Debt.belongsTo(Business, { foreignKey: 'business_id' });
+
+Order.hasMany(Debt, { foreignKey: 'order_id', onDelete: 'SET NULL', onUpdate: 'CASCADE' });
+Debt.belongsTo(Order, { foreignKey: 'order_id' });
+
 module.exports = {
   sequelize,
   User,
@@ -58,5 +78,7 @@ module.exports = {
   Order,
   OrderItem,
   StockMovement,
-  Business
+  Business,
+  Expense,
+  Debt
 };

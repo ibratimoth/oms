@@ -1,0 +1,58 @@
+<%- include('../layouts/header') %>
+
+<div class="mb-4">
+  <a href="/expenses" class="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-brand-teal transition duration-150 group">
+    <i class="fas fa-arrow-left text-xs group-hover:-translate-x-0.5 transition-transform"></i>
+    <span>Go Back</span>
+  </a>
+</div>
+
+<div class="mb-6">
+  <h1 class="text-2xl font-bold tracking-tight text-slate-800">Record Expense</h1>
+  <p class="text-sm text-slate-500 mt-1">Log operational spending to track store outlay.</p>
+</div>
+
+<div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden max-w-xl">
+  <div class="h-1.5 bg-brand-teal w-full"></div>
+  
+  <form method="POST" action="/expenses/create" class="p-6 space-y-4">
+    <div>
+      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Category</label>
+      <input type="text" name="category" required class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white outline-none" placeholder="e.g. Rent, Electricity, Stationeries">
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Amount (TSh)</label>
+        <input type="number" step="0.01" name="amount" required class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white outline-none" placeholder="0.00">
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Expense Date</label>
+        <input type="date" name="expense_date" value="<%= new Date().toISOString().split('T')[0] %>" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white outline-none">
+      </div>
+    </div>
+
+    <div>
+      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Description / Note</label>
+      <textarea name="description" rows="2" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white outline-none" placeholder="Optional details..."></textarea>
+    </div>
+
+    <div>
+      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Assign Shop</label>
+      <select name="business_id" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white outline-none">
+        <% businesses.forEach(b => { %>
+          <option value="<%= b.id %>"><%= b.name %></option>
+        <% }) %>
+      </select>
+    </div>
+
+    <div class="pt-2 border-t border-slate-100 flex items-center justify-end gap-3">
+      <a href="/expenses" class="px-4 py-2.5 text-sm font-semibold text-slate-500 hover:bg-slate-100 rounded-lg border border-slate-200 transition">Cancel</a>
+      <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 bg-brand-teal hover:bg-brand-tealDark text-white text-sm font-semibold rounded-lg shadow-md shadow-brand-teal/10 transition">
+        <i class="fas fa-check text-xs"></i> Save Expense
+      </button>
+    </div>
+  </form>
+</div>
+
+<%- include('../layouts/footer') %>
