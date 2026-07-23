@@ -114,6 +114,12 @@
               </div>
             </div>
 
+            <!-- Merchants Navigation Link -->
+            <a href="/merchants" class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg transition duration-150 group <%= currentPath.startsWith('/merchants') ? 'bg-brand-gold text-white shadow-md shadow-black/10' : 'text-teal-100 hover:bg-white/10 hover:text-white' %>">
+              <i class="fas fa-credit-card text-base w-5 text-center <%= currentPath.startsWith('/merchants') ? 'text-white' : 'text-teal-300 group-hover:text-white' %>"></i>
+              <span>Merchants & Tills</span>
+            </a>
+
             <!-- Debts & Ledger -->
             <a href="/debts" class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg transition duration-150 group <%= currentPath.startsWith('/debts') ? 'bg-brand-gold text-white shadow-md shadow-black/10' : 'text-teal-100 hover:bg-white/10 hover:text-white' %>">
               <i class="fas fa-file-invoice-dollar text-base w-5 text-center <%= currentPath.startsWith('/debts') ? 'text-white' : 'text-teal-300 group-hover:text-white' %>"></i>
@@ -175,7 +181,7 @@
                 <a href="/stock" class="block py-2 px-3 text-xs font-medium rounded-md hover:text-white transition duration-150 <%= currentPath === '/stock' ? 'text-brand-gold font-bold' : 'text-teal-200 hover:bg-white/5' %>">
                   <i class="fas fa-warehouse mr-1.5 opacity-70"></i> Sales & Inventory Balance
                 </a>
-                </div>
+              </div>
             </div>
 
           </nav>

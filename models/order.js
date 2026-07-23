@@ -39,6 +39,19 @@ module.exports = (sequelize) => {
     created_by: {
       type: DataTypes.UUID,
       allowNull: true
+    },
+    payment_method: {
+      type: DataTypes.ENUM('CASH', 'LIPA_NUMBER', 'CREDIT'),
+      defaultValue: 'CASH',
+      allowNull: false
+    },
+    merchant_id: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: 'merchants',
+        key: 'id'
+      }
     }
   }, {
     tableName: 'orders',

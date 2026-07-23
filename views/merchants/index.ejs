@@ -1,0 +1,207 @@
+<%- include('../layouts/header') %>
+
+    <% if (typeof error !=='undefined' && error) { %>
+        <div
+            class="mb-6 max-w-5xl bg-rose-50 border border-rose-200 rounded-xl p-4 flex items-start gap-3 shadow-sm animate-fade-in">
+            <div class="bg-rose-100 text-rose-600 p-1.5 rounded-lg shrink-0">
+                <i class="fas fa-exclamation-circle text-lg"></i>
+            </div>
+            <div class="flex-1">
+                <h4 class="text-sm font-bold text-rose-800">Processing Error Encountered</h4>
+                <p class="text-xs text-rose-600 mt-0.5">
+                    <%= error %>
+                </p>
+            </div>
+        </div>
+        <% } %>
+
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                <div>
+                    <h1 class="text-2xl font-bold tracking-tight text-slate-800">Merchant Payment Channels</h1>
+                    <p class="text-sm text-slate-500 mt-1">Manage Lipa numbers, till accounts, and electronic payment
+                        options for sales processing.</p>
+                </div>
+                <div>
+                    <a href="/merchants/create"
+                        class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-teal hover:bg-brand-tealDark text-white text-sm font-semibold rounded-lg shadow-sm shadow-brand-teal/10 transition duration-150 whitespace-nowrap">
+                        <i class="fas fa-plus text-xs"></i> Register Merchant
+                    </a>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden max-w-5xl">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse whitespace-nowrap">
+                        <thead>
+                            <tr
+                                class="bg-slate-50 border-b border-slate-200 text-slate-400 text-xs font-bold uppercase tracking-wider">
+                                <th class="py-3.5 px-6">Merchant Name</th>
+                                <th class="py-3.5 px-6">Provider / Network</th>
+                                <th class="py-3.5 px-6">Account / Till Number</th>
+                                <th class="py-3.5 px-6">Status</th>
+                                <th class="py-3.5 px-6 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-sm divide-y divide-slate-100">
+                            <% if (typeof merchants !=='undefined' && merchants.length> 0) { %>
+                                <% merchants.forEach(m=> { %>
+                                    <tr class="hover:bg-slate-50/70 transition duration-150 group">
+                                        <td class="py-4 px-6 font-semibold text-slate-800">
+                                            <div class="flex items-center gap-2.5">
+                                                <div
+                                                    class="w-8 h-8 rounded-lg bg-teal-50 border border-teal-100 flex items-center justify-center text-brand-teal text-xs font-bold">
+                                                    <i class="fas fa-credit-card"></i>
+                                                </div>
+                                                <span>
+                                                    <%= m.name %>
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td class="py-4 px-6 text-slate-600 text-xs font-medium">
+                                            <%= m.provider || 'N/A' %>
+                                        </td>
+                                        <td class="py-4 px-6 font-mono text-xs text-slate-700">
+                                            <%= m.account_number || '—' %>
+                                        </td>
+                                        <td class="py-4 px-6">
+                                            <% if (m.is_active) { %>
+                                                <span
+                                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Active
+                                                </span>
+                                                <% } else { %>
+                                                    <span
+                                                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-500 border border-slate-200">
+                                                        <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                                                        Inactive
+                                                    </span>
+                                                    <% } %>
+                                        </td>
+                                        <td class="py-4 px-6 text-right">
+                                            <div class="inline-flex items-center gap-2">
+                                                <button onclick="toggleMerchant('<%= m.id %>')"
+                                                    class="inline-flex items-center gap-1.5 bg-white hover:bg-slate-50 text-slate-600 py-1.5 px-3 text-xs font-semibold border border-slate-200 rounded-md shadow-sm transition duration-150">
+                                                    <i class="fas fa-power-off text-[10px]"></i> Toggle
+                                                </button>
+                                                <a href="/merchants/edit/<%= m.id %>"
+                                                    class="inline-flex items-center gap-1.5 bg-white hover:bg-brand-gold/10 text-slate-600 hover:text-brand-goldHover py-1.5 px-3 text-xs font-semibold border border-slate-200 hover:border-brand-gold/30 rounded-md shadow-sm transition duration-150">
+                                                    <i class="fas fa-edit text-[10px]"></i> Edit
+                                                </a>
+                                                <button onclick="deleteMerchant('<%= m.id %>', '<%= m.name %>')"
+                                                    class="inline-flex items-center gap-1.5 bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 py-1.5 px-3 text-xs font-semibold border border-slate-200 hover:border-rose-200 rounded-md shadow-sm transition duration-150">
+                                                    <i class="fas fa-trash-alt text-[10px]"></i> Remove
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <% }) %>
+                                        <% } else { %>
+                                            <tr>
+                                                <td colspan="5" class="py-12 text-center">
+                                                    <div class="text-slate-300 mb-2"><i
+                                                            class="fas fa-cash-register text-4xl"></i></div>
+                                                    <p class="text-sm text-slate-400 italic">No payment merchants
+                                                        registered yet.</p>
+                                                </td>
+                                            </tr>
+                                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- SweetAlert2 Library -->
+            <script src="/js/sweetalert2.all.min.js"></script>
+
+            <script>
+                // Toast configuration
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 1500,
+                    timerProgressBar: true,
+                    heightAuto: false
+                });
+
+                async function toggleMerchant(id) {
+                    try {
+                        const res = await fetch(`/merchants/${id}/toggle`, { method: 'PATCH' });
+                        const data = await res.json();
+
+                        if (data.success) {
+                            await Toast.fire({
+                                icon: 'success',
+                                title: data.message || 'Status updated successfully'
+                            });
+                            window.location.reload();
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Action Failed',
+                                text: data.message || 'Failed to update merchant status',
+                                confirmButtonColor: '#1A6B78',
+                                heightAuto: false
+                            });
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Network Error',
+                            text: 'Unable to communicate with the server.',
+                            confirmButtonColor: '#1A6B78',
+                            heightAuto: false
+                        });
+                    }
+                }
+
+                async function deleteMerchant(id, merchantName) {
+                    const confirmResult = await Swal.fire({
+                        title: 'Remove Merchant Account?',
+                        text: `Are you sure you want to delete "${merchantName}"? This action cannot be undone.`,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#e11d48',
+                        cancelButtonColor: '#64748b',
+                        confirmButtonText: 'Yes, remove it',
+                        cancelButtonText: 'Cancel',
+                        reverseButtons: true,
+                        heightAuto: false // <--- Keeps your flexbox layout intact
+                    });
+
+                    if (!confirmResult.isConfirmed) return;
+
+                    try {
+                        const res = await fetch(`/merchants/${id}`, { method: 'DELETE' });
+                        const data = await res.json();
+
+                        if (data.success) {
+                            await Toast.fire({
+                                icon: 'success',
+                                title: 'Merchant deleted'
+                            });
+                            window.location.reload();
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Delete Failed',
+                                text: data.message || 'Failed to delete merchant channel',
+                                confirmButtonColor: '#1A6B78',
+                                heightAuto: false
+                            });
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Network Error',
+                            text: 'Unable to process request.',
+                            confirmButtonColor: '#1A6B78',
+                            heightAuto: false
+                        });
+                    }
+                }
+            </script>
+
+            <%- include('../layouts/footer') %>

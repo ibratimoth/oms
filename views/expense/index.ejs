@@ -89,4 +89,23 @@
   <% } %>
 </div>
 
+<script>
+  function confirmDelete(url) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Delete Debt Record?',
+      text: 'This action cannot be undone. Are you sure?',
+      showCancelButton: true,
+      confirmButtonColor: '#e11d48',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'Yes, delete it',
+      cancelButtonText: 'Cancel',
+      heightAuto: false // Prevents body padding manipulation & layout shifts
+    }).then((result) => {
+      if (result.isConfirmed) {
+        window.location.href = url;
+      }
+    });
+  }
+</script>
 <%- include('../layouts/footer') %>

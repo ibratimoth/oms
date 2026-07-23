@@ -11,7 +11,7 @@ router.get('/create', auth, orderController.createPage);
 
 router.post('/create', auth, orderController.create);
 
-router.get('/complete/:id', auth, orderController.completeOrder);
+router.post('/complete/:id', auth, orderController.completeOrder);
 
 router.get('/invoice/:id', auth, orderController.invoice);
 

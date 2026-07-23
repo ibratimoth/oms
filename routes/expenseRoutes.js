@@ -14,6 +14,6 @@ router.get('/edit/:id', auth, expenseController.showEditExpense);
 router.post('/edit/:id', auth, expenseController.updateExpense);
 
 // Delete Operation
-router.post('/delete/:id', auth, expenseController.deleteExpense);
+router.get('/delete/:id', auth, expenseController.deleteExpense);
 
 module.exports = router;

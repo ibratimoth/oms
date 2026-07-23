@@ -75,16 +75,17 @@
 </div>
 
 <!-- FINANCIAL & METRIC SUMMARY CARDS -->
+<!-- FINANCIAL & METRIC SUMMARY CARDS -->
 <div class="mb-6 space-y-4">
   
-  <!-- ROW 1: REVENUE, PROFIT, EXPENSES, DEBTS OWED TO YOU, DEBTS YOU OWE -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+  <!-- ROW 1: PRIMARY SALES & PROFIT METRICS -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
     
     <!-- TOTAL SALES REVENUE -->
-    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
-      <div>
-        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Sales</p>
-        <h2 class="text-lg font-mono font-black text-slate-800 mt-1">
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between min-h-[92px]">
+      <div class="min-w-0 pr-2">
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">Total Sales</p>
+        <h2 class="text-lg font-mono font-black text-slate-800 mt-1 truncate">
           TSh <%= Number(totalSales || 0).toLocaleString() %>
         </h2>
       </div>
@@ -93,11 +94,37 @@
       </div>
     </div>
 
+    <!-- CASH SALES -->
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between min-h-[92px]">
+      <div class="min-w-0 pr-2">
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">Cash Sales</p>
+        <h2 class="text-lg font-mono font-black text-emerald-600 mt-1 truncate">
+          TSh <%= Number(cashSales || 0).toLocaleString() %>
+        </h2>
+      </div>
+      <div class="text-emerald-500 bg-emerald-50 w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
+        <i class="fas fa-money-bill-wave text-sm"></i>
+      </div>
+    </div>
+
+    <!-- NON-CASH SALES -->
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between min-h-[92px]">
+      <div class="min-w-0 pr-2">
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">Non-Cash Sales</p>
+        <h2 class="text-lg font-mono font-black text-sky-600 mt-1 truncate">
+          TSh <%= Number(nonCashSales || 0).toLocaleString() %>
+        </h2>
+      </div>
+      <div class="text-sky-500 bg-sky-50 w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
+        <i class="fas fa-credit-card text-sm"></i>
+      </div>
+    </div>
+
     <!-- CALCULATED PROFIT -->
-    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
-      <div>
-        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Calculated Profit</p>
-        <h2 class="text-lg font-mono font-black text-emerald-600 mt-1">
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between min-h-[92px]">
+      <div class="min-w-0 pr-2">
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">Calculated Profit</p>
+        <h2 class="text-lg font-mono font-black text-emerald-600 mt-1 truncate">
           TSh <%= Number(totalProfit || 0).toLocaleString() %>
         </h2>
       </div>
@@ -106,11 +133,16 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- ROW 2: EXPENSES, DEBTS & BALANCES -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    
     <!-- TOTAL EXPENSES -->
-    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
-      <div>
-        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Expenses</p>
-        <h2 class="text-lg font-mono font-black text-rose-600 mt-1">
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between min-h-[92px]">
+      <div class="min-w-0 pr-2">
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">Total Expenses</p>
+        <h2 class="text-lg font-mono font-black text-rose-600 mt-1 truncate">
           TSh <%= Number(totalExpenses || 0).toLocaleString() %>
         </h2>
       </div>
@@ -120,10 +152,10 @@
     </div>
 
     <!-- DEBTS OWED TO YOU -->
-    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
-      <div>
-        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Debts Owed To You</p>
-        <h2 class="text-lg font-mono font-black text-indigo-600 mt-1">
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between min-h-[92px]">
+      <div class="min-w-0 pr-2">
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">Debts Owed To You</p>
+        <h2 class="text-lg font-mono font-black text-indigo-600 mt-1 truncate">
           TSh <%= Number(debtsOwedToYou || 0).toLocaleString() %>
         </h2>
       </div>
@@ -133,10 +165,10 @@
     </div>
 
     <!-- DEBTS YOU OWE -->
-    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
-      <div>
-        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Debts You Owe</p>
-        <h2 class="text-lg font-mono font-black text-amber-600 mt-1">
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between min-h-[92px]">
+      <div class="min-w-0 pr-2">
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">Debts You Owe</p>
+        <h2 class="text-lg font-mono font-black text-amber-600 mt-1 truncate">
           TSh <%= Number(debtsYouOwe || 0).toLocaleString() %>
         </h2>
       </div>
@@ -145,29 +177,29 @@
       </div>
     </div>
 
-  </div>
-
-  <!-- ROW 2: LIQUID CASH, NET FINANCIAL POSITION & LEDGER META -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-    
     <!-- CASH IN HAND -->
-    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between ring-1 ring-emerald-500/10">
-      <div>
-        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Cash In Hand (Liquid)</p>
-        <h2 class="text-lg font-mono font-black text-emerald-700 mt-1">
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between ring-1 ring-emerald-500/10 min-h-[92px]">
+      <div class="min-w-0 pr-2">
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">Cash In Hand (Liquid)</p>
+        <h2 class="text-lg font-mono font-black text-emerald-700 mt-1 truncate">
           TSh <%= Number(cashInHand || 0).toLocaleString() %>
         </h2>
       </div>
       <div class="text-emerald-600 bg-emerald-100/70 w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
-        <i class="fas fa-money-bill-wave text-sm"></i>
+        <i class="fas fa-coins text-sm"></i>
       </div>
     </div>
 
+  </div>
+
+  <!-- ROW 3: NET POSITION & LEDGER META -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    
     <!-- NET FINANCIAL POSITION -->
-    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between ring-1 ring-brand-teal/10">
-      <div>
-        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Net Financial Position</p>
-        <h2 class="text-lg font-mono font-black text-brand-teal mt-1">
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between ring-1 ring-brand-teal/10 min-h-[92px]">
+      <div class="min-w-0 pr-2">
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">Net Financial Position</p>
+        <h2 class="text-lg font-mono font-black text-brand-teal mt-1 truncate">
           TSh <%= Number(netFinancialPosition || 0).toLocaleString() %>
         </h2>
       </div>
@@ -177,10 +209,10 @@
     </div>
 
     <!-- FILTERED LEDGER ROWS -->
-    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
-      <div>
-        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Filtered Ledger Rows</p>
-        <h2 class="text-lg font-mono font-black text-slate-800 mt-1">
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between min-h-[92px]">
+      <div class="min-w-0 pr-2">
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">Filtered Ledger Rows</p>
+        <h2 class="text-lg font-mono font-black text-slate-800 mt-1 truncate">
           <%= movements ? movements.length : 0 %>
         </h2>
       </div>
@@ -190,10 +222,10 @@
     </div>
 
     <!-- AVAILABLE PAGES -->
-    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
-      <div>
-        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Available Pages</p>
-        <h2 class="text-lg font-mono font-black text-slate-800 mt-1">
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between min-h-[92px]">
+      <div class="min-w-0 pr-2">
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">Available Pages</p>
+        <h2 class="text-lg font-mono font-black text-slate-800 mt-1 truncate">
           <%= totalPages || 1 %> <span class="text-xs font-sans font-normal text-slate-400">blocks</span>
         </h2>
       </div>

@@ -1,4 +1,5 @@
-const { Order, OrderItem, Product, sequelize, StockMovement } = require('../models');
+const { Order, OrderItem, Product, sequelize, StockMovement, Merchant } = require('../models');
+const { generateOrderNumber } = require('../utils/orderHelper');
 const { v4: uuidv4 } = require('uuid');
 const { Op } = require('sequelize');
 const logger = require('./../utils/logger');
@@ -10,20 +11,16 @@ exports.list = async (req, res) => {
     const userId = req.session.user.id;
     const username = req.session.user.full_name;
     const business_id = req.session.user.business_id;
-    
+
     const { orderNo, customer, maxAmount, status } = req.query;
     const currentPage = parseInt(req.query.page) || 1;
     const itemsPerPage = 10;
     const offset = (currentPage - 1) * itemsPerPage;
 
-    let whereCondition = {
-      business_id: business_id
-    };
+    let whereCondition = { business_id: business_id };
 
     if (orderNo && orderNo.trim() !== '') {
-      whereCondition.order_number = {
-        [Op.like]: `%${orderNo.trim()}%`
-      };
+      whereCondition.order_number = { [Op.like]: `%${orderNo.trim()}%` };
     }
 
     if (customer && customer.trim() !== '') {
@@ -41,9 +38,7 @@ exports.list = async (req, res) => {
     }
 
     if (maxAmount && maxAmount.trim() !== '') {
-      whereCondition.total_amount = {
-        [Op.lte]: Number(maxAmount)
-      };
+      whereCondition.total_amount = { [Op.lte]: Number(maxAmount) };
     }
 
     if (status && status.trim() !== '') {
@@ -58,15 +53,25 @@ exports.list = async (req, res) => {
         {
           model: OrderItem,
           include: [Product]
-        }
+        },
+        { model: Merchant } // Include Merchant info if associated
       ],
       order: [['createdAt', 'DESC']]
+    });
+
+    // Fetch active merchants list for completion modal
+    const merchants = await Merchant.findAll({
+      where: {
+        business_id: business_id,
+        is_active: true
+      }
     });
 
     const totalPages = Math.ceil(count / itemsPerPage);
 
     res.render('orders/index', {
       orders,
+      merchants, // Pass merchants to layout view
       query: req.query,
       currentPage,
       totalPages,
@@ -77,9 +82,9 @@ exports.list = async (req, res) => {
 
   } catch (error) {
     console.error('Error generating consolidated orders profile collection:', error);
-      return res.status(500).render('error', { 
-      message: 'Failed to open user order panel.', 
-      username ,
+    return res.status(500).render('error', {
+      message: 'Failed to open user order panel.',
+      username,
       userRole: req.session.user?.role
     });
   }
@@ -95,29 +100,29 @@ exports.createPage = async (req, res) => {
         business_id: business_id
       }
     });
-    
+
     let errorMessage = '';
     if (typeof req.flash === 'function') {
       const flashError = req.flash('error');
       errorMessage = flashError.length > 0 ? flashError[0] : '';
     } else if (req.session.error) {
       errorMessage = req.session.error;
-      delete req.session.error; 
+      delete req.session.error;
     }
 
-    res.render('orders/create', { 
-      products, 
+    res.render('orders/create', {
+      products,
       username,
-      error: errorMessage,             
+      error: errorMessage,
       messages: { error: errorMessage },
-       userRole: req.session.user?.role
+      userRole: req.session.user?.role
     });
 
   } catch (err) {
     console.error('Error rendering order creation view layer:', err);
-     return res.status(500).render('error', { 
-      message: 'Failed to open user order panel.', 
-      username ,
+    return res.status(500).render('error', {
+      message: 'Failed to open user order panel.',
+      username,
       userRole: req.session.user?.role
     });
   }
@@ -136,8 +141,9 @@ exports.create = async (req, res) => {
     let total = 0;
     let totalProfit = 0;
 
+    const orderNumber = await generateOrderNumber(Order);
     const order = await Order.create({
-      order_number: 'ORD-' + Date.now(),
+      order_number: orderNumber,
       status: 'pending',
       total_amount: 0,
       profit_amount: 0,
@@ -192,9 +198,9 @@ exports.create = async (req, res) => {
   } catch (err) {
     await t.rollback();
     console.error('Error creating order:', err);
-    return res.status(500).render('error', { 
-      message: 'Failed to create order.', 
-      username ,
+    return res.status(500).render('error', {
+      message: 'Failed to create order.',
+      username,
       userRole: req.session.user?.role
     });
   }
@@ -203,47 +209,67 @@ exports.create = async (req, res) => {
 exports.completeOrder = async (req, res) => {
   const t = await sequelize.transaction();
   const userId = req.session.user.id;
-  const username = req.session.user.full_name;
   const business_id = req.session.user.business_id;
 
+  let { merchant_id, payment_method } = req.body;
+
+  // If cash is selected, force merchant_id to null
+  if (payment_method === 'CASH' || !merchant_id) {
+    merchant_id = null;
+  }
 
   try {
     const order = await Order.findByPk(req.params.id, {
       include: OrderItem
     });
 
-    for (let item of order.OrderItems) {
-
-      const product = await Product.findByPk(item.product_id);
-
-      product.quantity_in_stock -= item.quantity;
-
-      await product.save({ transaction: t });
-
-      await StockMovement.create({
-        product_id: product.id,
-        type: 'OUT',
-        quantity: item.quantity,
-        reference: order.order_number,
-        created_by: userId,
-        business_id: business_id
-      }, { transaction: t });
+    if (!order) {
+      await t.rollback();
+      return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
+    // Deduct inventory stock
+    for (let item of order.OrderItems) {
+      const product = await Product.findByPk(item.product_id);
+      if (product) {
+        product.quantity_in_stock -= item.quantity;
+        await product.save({ transaction: t });
+
+        await StockMovement.create({
+          product_id: product.id,
+          type: 'OUT',
+          quantity: item.quantity,
+          reference: order.order_number,
+          created_by: userId,
+          business_id: business_id
+        }, { transaction: t });
+      }
+    }
+
+    // Update order status & payment details
     await order.update({
-      status: 'completed'
+      status: 'completed',
+      merchant_id: merchant_id,
+      payment_method: payment_method || 'CASH'
     }, { transaction: t });
 
     await t.commit();
+
+    if (req.xhr || (req.headers.accept && req.headers.accept.indexOf('json') > -1)) {
+      return res.json({ success: true, message: 'Order completed successfully!' });
+    }
 
     res.redirect('/orders');
 
   } catch (err) {
     await t.rollback();
-    console.log('Error completing order:', err);
-    return res.status(500).render('error', { 
-      message: 'Failed to complete order.', 
-      username ,
+    console.error('Error completing order:', err);
+    if (req.xhr || (req.headers.accept && req.headers.accept.indexOf('json') > -1)) {
+      return res.status(500).json({ success: false, message: 'Failed to complete order.' });
+    }
+    return res.status(500).render('error', {
+      message: 'Failed to complete order.',
+      username: req.session.user?.full_name,
       userRole: req.session.user?.role
     });
   }
@@ -255,34 +281,55 @@ exports.invoice = async (req, res) => {
     include: OrderItem
   });
 
-  res.render('orders/invoice', { order , username, userRole: req.session.user?.role });
+  res.render('orders/invoice', { order, username, userRole: req.session.user?.role });
 };
 
 exports.view = async (req, res) => {
+  try {
+    const username = req.session.user.full_name;
+    const business_id = req.session.user.business_id;
 
-  const userId = req.session.user.id;
-  const username = req.session.user.full_name;
-  const business_id = req.session.user.business_id;
+    const order = await Order.findOne({
+      where: {
+        id: req.params.id,
+        business_id: business_id
+      },
+      include: [
+        {
+          model: OrderItem,
+          include: [Product]
+        },
+        { model: Merchant }
+      ]
+    });
 
-  const order = await Order.findOne({
-    where: {
-      id: req.params.id,
-      business_id: business_id
-    },
-    include: [
-      {
-        model: OrderItem,
-        include: [Product]
+    if (!order) {
+      return res.status(404).send('Order not found');
+    }
+
+    // Fetch active merchants list for modal completion
+    const merchants = await Merchant.findAll({
+      where: {
+        business_id: business_id,
+        is_active: true
       }
-    ]
-  });
+    });
 
-  if (!order) {
-    return res.status(404).send('Order not found');
+    res.render('orders/view', {
+      order,
+      merchants,
+      username,
+      userRole: req.session.user?.role
+    });
+
+  } catch (error) {
+    console.error('Error opening order details:', error);
+    return res.status(500).render('error', {
+      message: 'Failed to retrieve order details.',
+      username: req.session.user?.full_name,
+      userRole: req.session.user?.role
+    });
   }
-
-  logger.info(order.toJSON());
-  res.render('orders/view', { order, username, userRole: req.session.user?.role });
 };
 
 exports.editForm = async (req, res) => {
@@ -434,7 +481,7 @@ exports.bulkUploadExcel = async (req, res) => {
   const filePath = req.file.path;
 
   try {
-    const workbook = XLSX.readFile(filePath); 
+    const workbook = XLSX.readFile(filePath);
     const sheetName = workbook.SheetNames[0];
     const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
 
@@ -447,7 +494,7 @@ exports.bulkUploadExcel = async (req, res) => {
     const userId = req.session.user.id;
 
     const orderGroups = {};
-    let currentOriginalRowIdx = 2; 
+    let currentOriginalRowIdx = 2;
 
     for (let row of sheetData) {
       const cName = (row.customer_name || 'Excel Bulk Customer').trim();
@@ -484,12 +531,14 @@ exports.bulkUploadExcel = async (req, res) => {
       currentOriginalRowIdx++;
     }
 
+        const orderNumber = await generateOrderNumber(Order);
+
     // --- STEP 2: PROCESS EACH DISTINCT ORDER GROUP ---
     for (const key of Object.keys(orderGroups)) {
       const group = orderGroups[key];
 
       const order = await Order.create({
-        order_number: 'ORD-XL-' + Math.floor(100000 + Math.random() * 900000) + '-' + Date.now(),
+        order_number: orderNumber,
         status: 'pending',
         total_amount: 0,
         profit_amount: 0,
@@ -510,18 +559,18 @@ exports.bulkUploadExcel = async (req, res) => {
         if (!barcodeStr) {
           await t.rollback();
           removeTempFile(filePath);
-          return res.status(400).json({ 
-            success: false, 
-            message: `Row ${rowNo}: Barcode field entry is missing for customer "${group.customer_name}".` 
+          return res.status(400).json({
+            success: false,
+            message: `Row ${rowNo}: Barcode field entry is missing for customer "${group.customer_name}".`
           });
         }
 
         if (!qty || qty <= 0) {
           await t.rollback();
           removeTempFile(filePath);
-          return res.status(400).json({ 
-            success: false, 
-            message: `Row ${rowNo} [Barcode: ${barcodeStr}]: Invalid quantity entry for customer "${group.customer_name}".` 
+          return res.status(400).json({
+            success: false,
+            message: `Row ${rowNo} [Barcode: ${barcodeStr}]: Invalid quantity entry for customer "${group.customer_name}".`
           });
         }
 
@@ -533,18 +582,18 @@ exports.bulkUploadExcel = async (req, res) => {
         if (!product) {
           await t.rollback();
           removeTempFile(filePath);
-          return res.status(400).json({ 
-            success: false, 
-            message: `Row ${rowNo}: Barcode "${barcodeStr}" is not registered in the system.` 
+          return res.status(400).json({
+            success: false,
+            message: `Row ${rowNo}: Barcode "${barcodeStr}" is not registered in the system.`
           });
         }
 
         if (product.quantity_in_stock < qty) {
           await t.rollback();
           removeTempFile(filePath);
-          return res.status(400).json({ 
-            success: false, 
-            message: `Row ${rowNo}: Insufficient inventory for item "${product.name}". Requested: ${qty}, Available: ${product.quantity_in_stock}` 
+          return res.status(400).json({
+            success: false,
+            message: `Row ${rowNo}: Insufficient inventory for item "${product.name}". Requested: ${qty}, Available: ${product.quantity_in_stock}`
           });
         }
 
@@ -585,10 +634,10 @@ exports.bulkUploadExcel = async (req, res) => {
     if (!t.finished) await t.rollback();
     removeTempFile(filePath);
     console.error('Excel Multer Import Exception Logged:', err);
-    
-    return res.status(500).json({ 
-      success: false, 
-      message: `Bulk Upload Failed Unexpectedly! Error: ${err.message}` 
+
+    return res.status(500).json({
+      success: false,
+      message: `Bulk Upload Failed Unexpectedly! Error: ${err.message}`
     });
   }
 };

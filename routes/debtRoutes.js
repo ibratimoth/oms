@@ -11,7 +11,7 @@ router.get('/create', auth, debtController.showCreateDebt);
 router.post('/create', auth, debtController.createDebt);
 
 // Quick Status Toggle (Clear Debt / Reopen Debt)
-router.post('/toggle-status/:id', auth, debtController.toggleDebtStatus);
+router.get('/toggle-status/:id', auth, debtController.toggleDebtStatus);
 
 // Edit Operations
 router.get('/edit/:id', auth, debtController.showEditDebt);

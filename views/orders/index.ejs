@@ -177,7 +177,7 @@
                     <i class="fas fa-eye text-[10px]"></i> View
                   </a>
 
-                  <!-- Conditional Logic Check: Hide Edit if Status is Completed -->
+                  <!-- Conditional Logic Check: Hide Edit & Complete if Status is Completed -->
                   <% if (o.status !== 'completed') { %>
                     <a 
                       href="/orders/edit/<%= o.id %>" 
@@ -186,14 +186,14 @@
                       <i class="fas fa-edit text-[10px]"></i> Edit
                     </a>
 
-                    <!-- State Shift Trigger Confirmation Action Anchor -->
-                    <a 
-                      href="/orders/complete/<%= o.id %>" 
-                      onclick="return confirm('Mark order #<%= o.order_number %> as completed? This will finalize transactions.')"
-                      class="inline-flex items-center gap-1.5 bg-white hover:bg-emerald-50 text-emerald-600 border border-slate-200 hover:border-emerald-200 py-1.5 px-3 text-xs font-semibold rounded-md shadow-sm transition duration-150"
+                    <!-- Trigger Complete Modal Pop-up -->
+                    <button 
+                      type="button" 
+                      onclick="openCompleteModal('<%= o.id %>', '<%= o.order_number %>')"
+                      class="inline-flex items-center gap-1.5 bg-white hover:bg-emerald-50 text-emerald-600 border border-slate-200 hover:border-emerald-200 py-1.5 px-3 text-xs font-semibold rounded-md shadow-sm transition duration-150 cursor-pointer"
                     >
                       <i class="fas fa-check text-[10px]"></i> Complete
-                    </a>
+                    </button>
                   <% } %>
 
                 </div>
@@ -275,5 +275,97 @@
     </div>
   <% } %>
 </div>
+
+<!-- COMPLETION MODAL POPUP -->
+<!-- COMPLETION MODAL POPUP -->
+<div id="completeOrderModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md p-6">
+    <div class="flex justify-between items-center pb-3 border-b border-slate-100">
+      <h3 class="text-base font-bold text-slate-800" id="modalTitle">Complete Order</h3>
+      <button type="button" onclick="closeCompleteModal()" class="text-slate-400 hover:text-slate-600 transition duration-150">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <form id="completeOrderForm" method="POST" class="mt-4 space-y-4">
+      
+      <!-- 1. PAYMENT METHOD FIRST (ENUM MATCHER) -->
+      <div>
+        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Payment Method</label>
+        <select 
+          id="paymentMethodSelect" 
+          name="payment_method" 
+          onchange="toggleMerchantField()" 
+          class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-teal transition duration-150" 
+          required
+        >
+          <option value="CASH" selected>Cash</option>
+          <option value="LIPA_NUMBER">Lipa Number (Mobile Money / Till / QR)</option>
+          <option value="CREDIT">Credit</option>
+        </select>
+      </div>
+
+      <!-- 2. MERCHANT DROPDOWN (HIDDEN FOR CASH) -->
+      <div id="merchantContainer" class="hidden">
+        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Merchant / Account</label>
+        <select 
+          id="merchantSelect" 
+          name="merchant_id" 
+          class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-teal transition duration-150"
+        >
+          <option value="">Select Merchant Account</option>
+          <% if (typeof merchants !== 'undefined' && merchants.length > 0) { %>
+            <% merchants.forEach(m => { %>
+              <option value="<%= m.id %>">
+                <%= m.name %> <%= m.provider ? `(${m.provider}` : '' %><%= m.account_number ? ` - ${m.account_number})` : ')' %>
+              </option>
+            <% }) %>
+          <% } %>
+        </select>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 mt-5">
+        <button type="button" onclick="closeCompleteModal()" class="px-4 py-2 bg-slate-100 text-slate-600 text-xs font-semibold rounded-lg hover:bg-slate-200 transition duration-150">
+          Cancel
+        </button>
+        <button type="submit" class="px-4 py-2 bg-emerald-600 text-white text-xs font-semibold rounded-lg hover:bg-emerald-700 shadow-sm transition duration-150">
+          Confirm & Complete
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openCompleteModal(orderId, orderNum) {
+    document.getElementById('modalTitle').innerText = 'Complete Order #' + orderNum;
+    document.getElementById('completeOrderForm').action = '/orders/complete/' + orderId;
+    
+    // Reset selections on open to default CASH
+    document.getElementById('paymentMethodSelect').value = 'CASH';
+    toggleMerchantField();
+    
+    document.getElementById('completeOrderModal').classList.remove('hidden');
+  }
+
+  function closeCompleteModal() {
+    document.getElementById('completeOrderModal').classList.add('hidden');
+  }
+
+  function toggleMerchantField() {
+    const paymentMethod = document.getElementById('paymentMethodSelect').value;
+    const merchantContainer = document.getElementById('merchantContainer');
+    const merchantSelect = document.getElementById('merchantSelect');
+
+    if (paymentMethod === 'CASH') {
+      merchantContainer.classList.add('hidden');
+      merchantSelect.removeAttribute('required');
+      merchantSelect.value = ''; // Clear merchant ID for Cash
+    } else {
+      merchantContainer.classList.remove('hidden');
+      merchantSelect.setAttribute('required', 'required');
+    }
+  }
+</script>
 
 <%- include('../layouts/footer') %>
