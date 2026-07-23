@@ -14,6 +14,11 @@ const logger = require('./utils/logger');
 const { RedisStore } = require('connect-redis');
 const redisClient = require('./config/redis');
 const flash = require('connect-flash');
+//require('./utils/backup');
+const { runBackup } = require('./utils/backup');
+
+// Run backup IMMEDIATELY on server start for testing
+runBackup();
 
 const pinoHttp = require('pino-http')({
   logger,
