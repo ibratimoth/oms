@@ -15,10 +15,13 @@ const { RedisStore } = require('connect-redis');
 const redisClient = require('./config/redis');
 const flash = require('connect-flash');
 //require('./utils/backup');
-const { runBackup } = require('./utils/backup');
+//const { runBackup } = require('./utils/backup');
 
 // Run backup IMMEDIATELY on server start for testing
-runBackup();
+//runBackup();
+
+// Start the daily PostgreSQL automated backup schedule (Runs at 19:00)
+require('./utils/backup');
 
 const pinoHttp = require('pino-http')({
   logger,

@@ -372,7 +372,64 @@
   });
 </script>
 
+<script>
+(function () {
+  const IDLE_TIME = 30 * 1000;      // 30 seconds inactivity
+  const COUNTDOWN_TIME = 20;        // 10 seconds SweetAlert countdown
+  let idleTimer;
 
+  function startIdleTimer() {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(showInactivityAlert, IDLE_TIME);
+  }
+
+  function showInactivityAlert() {
+    let timerInterval;
+
+    Swal.fire({
+      title: 'Inactivity Warning',
+      html: 'You will be logged out in <b>10</b> seconds.',
+      icon: 'warning',
+      timer: COUNTDOWN_TIME * 1000,
+      timerProgressBar: true,
+      showCancelButton: true,
+      confirmButtonText: 'Stay Logged In',
+      cancelButtonText: 'Logout Now',
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      didOpen: () => {
+        const b = Swal.getHtmlContainer().querySelector('b');
+        timerInterval = setInterval(() => {
+          // Calculate remaining seconds
+          const secondsLeft = Math.ceil(Swal.getTimerLeft() / 1000);
+          if (b) b.textContent = secondsLeft;
+        }, 1000);
+      },
+      willClose: () => {
+        clearInterval(timerInterval);
+      }
+    }).then((result) => {
+      if (result.isConfirmed) {
+        // User clicked "Stay Logged In"
+        startIdleTimer();
+      } else {
+        // User clicked "Logout Now" or timer ran out (result.dismiss === Swal.DismissReason.timer)
+        window.location.href = '/logout';
+      }
+    });
+  }
+
+  // Listen for user activity to reset the 30s timer
+  ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(event => {
+    window.addEventListener(event, startIdleTimer, { passive: true });
+  });
+
+  // Start tracking on page load
+  startIdleTimer();
+})();
+</script>
 </body>
 
 </html>
