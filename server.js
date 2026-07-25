@@ -13,12 +13,12 @@ const PORT = process.env.PORT || 3000;
     await sequelize.authenticate();
     logger.info('Database connected');
 
-    await sequelize.sync(); 
+    // await sequelize.sync(); 
 
     app.listen(PORT, () => {
       logger.info(`Server running on http://localhost:${PORT}`);
     });
   } catch (err) {
-    logger.fatal('Error:', err);
+    console.error('Error:', err);
   }
 })();
