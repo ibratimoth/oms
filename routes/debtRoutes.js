@@ -18,6 +18,6 @@ router.get('/edit/:id', auth, debtController.showEditDebt);
 router.post('/edit/:id', auth, debtController.updateDebt);
 
 // Delete Operation
-router.post('/delete/:id', auth, debtController.deleteDebt);
+router.get('/delete/:id', auth, debtController.deleteDebt);
 
 module.exports = router;
