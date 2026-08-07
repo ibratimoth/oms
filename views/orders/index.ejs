@@ -115,6 +115,8 @@
           <th class="py-3.5 px-6">Order No</th>
           <th class="py-3.5 px-6">Customer Details</th>
           <th class="py-3.5 px-6">Total Amount</th>
+          <th class="py-3.5 px-6">Discount</th>
+          <th class="py-3.5 px-6">Final Amount</th>
           <th class="py-3.5 px-6">Fulfillment Status</th>
           <th class="py-3.5 px-6 text-right">Actions</th>
         </tr>
@@ -144,7 +146,20 @@
               <td class="py-4 px-6 font-bold text-slate-900 font-mono text-xs">
                 TSh <%= Number(o.total_amount).toLocaleString() %>
               </td>
-              
+
+              <td class="py-4 px-6 font-mono text-xs">
+                <% if (Number(o.discount) > 0) { %>
+                  <span class="inline-flex items-center text-amber-600 font-semibold bg-amber-50 px-2 py-0.5 rounded border border-amber-100">
+                    -TSh <%= Number(o.discount).toLocaleString() %>
+                  </span>
+                <% } else { %>
+                  <span class="text-slate-400">—</span>
+                <% } %>
+              </td>
+
+              <td class="py-4 px-6 font-bold text-slate-900 font-mono text-xs">
+                TSh <%= Number(o.final_amount || o.total_amount).toLocaleString() %>
+              </td>
               <!-- Color Coordinated Context Status Badge Row -->
               <td class="py-4 px-6">
                 <% if (o.status === 'completed') { %>

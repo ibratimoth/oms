@@ -31,7 +31,7 @@ exports.index = async (req, res) => {
     // 2. Financial Metrics (Sales, Expenses & Debts)
     
     // Total Sales Revenue (from completed orders)
-    const totalSales = await Order.sum('total_amount', {
+    const totalSales = await Order.sum('final_amount', {
       where: { ...businessFilter, status: 'completed' }
     }) || 0;
 

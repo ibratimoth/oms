@@ -206,12 +206,82 @@ exports.create = async (req, res) => {
   }
 };
 
+// exports.completeOrder = async (req, res) => {
+//   const t = await sequelize.transaction();
+//   const userId = req.session.user.id;
+//   const business_id = req.session.user.business_id;
+
+//   let { merchant_id, payment_method } = req.body;
+
+//   // If cash is selected, force merchant_id to null
+//   if (payment_method === 'CASH' || !merchant_id) {
+//     merchant_id = null;
+//   }
+
+//   try {
+//     const order = await Order.findByPk(req.params.id, {
+//       include: OrderItem
+//     });
+
+//     if (!order) {
+//       await t.rollback();
+//       return res.status(404).json({ success: false, message: 'Order not found' });
+//     }
+
+//     // Deduct inventory stock
+//     for (let item of order.OrderItems) {
+//       const product = await Product.findByPk(item.product_id);
+//       if (product) {
+//         product.quantity_in_stock -= item.quantity;
+//         await product.save({ transaction: t });
+
+//         await StockMovement.create({
+//           product_id: product.id,
+//           type: 'OUT',
+//           quantity: item.quantity,
+//           reference: order.order_number,
+//           created_by: userId,
+//           business_id: business_id
+//         }, { transaction: t });
+//       }
+//     }
+
+//     // Update order status & payment details
+//     await order.update({
+//       status: 'completed',
+//       merchant_id: merchant_id,
+//       payment_method: payment_method || 'CASH'
+//     }, { transaction: t });
+
+//     await t.commit();
+
+//     if (req.xhr || (req.headers.accept && req.headers.accept.indexOf('json') > -1)) {
+//       return res.json({ success: true, message: 'Order completed successfully!' });
+//     }
+
+//     res.redirect('/orders');
+
+//   } catch (err) {
+//     await t.rollback();
+//     console.error('Error completing order:', err);
+//     if (req.xhr || (req.headers.accept && req.headers.accept.indexOf('json') > -1)) {
+//       return res.status(500).json({ success: false, message: 'Failed to complete order.' });
+//     }
+//     return res.status(500).render('error', {
+//       message: 'Failed to complete order.',
+//       username: req.session.user?.full_name,
+//       userRole: req.session.user?.role
+//     });
+//   }
+// };
+
 exports.completeOrder = async (req, res) => {
   const t = await sequelize.transaction();
   const userId = req.session.user.id;
   const business_id = req.session.user.business_id;
 
-  let { merchant_id, payment_method } = req.body;
+  // Accept discount from payment completion form/modal
+  let { merchant_id, payment_method, discount = 0 } = req.body;
 
   // If cash is selected, force merchant_id to null
   if (payment_method === 'CASH' || !merchant_id) {
@@ -220,7 +290,8 @@ exports.completeOrder = async (req, res) => {
 
   try {
     const order = await Order.findByPk(req.params.id, {
-      include: OrderItem
+      include: OrderItem,
+      transaction: t
     });
 
     if (!order) {
@@ -228,10 +299,22 @@ exports.completeOrder = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    // Deduct inventory stock
+    // Process discount at payment time
+    const discountAmount = parseFloat(discount) || 0;
+    const finalAmount = order.total_amount - discountAmount;
+
+    if (finalAmount < 0) {
+      await t.rollback();
+      return res.status(400).json({ success: false, message: 'Discount cannot exceed order total.' });
+    }
+
+    // Deduct inventory stock & compute base gross profit
+    let grossProfit = 0;
     for (let item of order.OrderItems) {
-      const product = await Product.findByPk(item.product_id);
+      const product = await Product.findByPk(item.product_id, { transaction: t });
       if (product) {
+        grossProfit += (item.unit_price - product.buy_price) * item.quantity;
+
         product.quantity_in_stock -= item.quantity;
         await product.save({ transaction: t });
 
@@ -246,11 +329,17 @@ exports.completeOrder = async (req, res) => {
       }
     }
 
-    // Update order status & payment details
+    // Net profit deducting discount given during payment
+    const netProfit = grossProfit - discountAmount;
+
+    // Finalize order with payment method and applied discount
     await order.update({
       status: 'completed',
       merchant_id: merchant_id,
-      payment_method: payment_method || 'CASH'
+      payment_method: payment_method || 'CASH',
+      discount: discountAmount,
+      final_amount: finalAmount,
+      profit_amount: netProfit
     }, { transaction: t });
 
     await t.commit();
@@ -265,7 +354,7 @@ exports.completeOrder = async (req, res) => {
     await t.rollback();
     console.error('Error completing order:', err);
     if (req.xhr || (req.headers.accept && req.headers.accept.indexOf('json') > -1)) {
-      return res.status(500).json({ success: false, message: 'Failed to complete order.' });
+      return res.status(500).json({ success: false, message: err.message || 'Failed to complete order.' });
     }
     return res.status(500).render('error', {
       message: 'Failed to complete order.',

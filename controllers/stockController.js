@@ -93,7 +93,7 @@ exports.history = async (req, res) => {
     // 3. Total Sales & Profit Aggregation
     const salesSummary = await Order.findAll({
       attributes: [
-        [sequelize.fn('SUM', sequelize.col('total_amount')), 'totalSales'],
+        [sequelize.fn('SUM', sequelize.col('final_amount')), 'totalSales'],
         [sequelize.fn('SUM', sequelize.col('profit_amount')), 'totalProfit']
       ],
       where: {
@@ -108,7 +108,7 @@ exports.history = async (req, res) => {
     const totalProfit = Number(salesSummary[0]?.totalProfit) || 0;
 
     // 4. CASH Sales Aggregation
-    const cashSalesRaw = await Order.sum('total_amount', {
+    const cashSalesRaw = await Order.sum('final_amount', {
       where: {
         business_id,
         status: 'completed',
@@ -119,7 +119,7 @@ exports.history = async (req, res) => {
     const cashSales = Number(cashSalesRaw) || 0;
 
     // 5. NON-CASH Sales Aggregation (LIPA_NUMBER, CREDIT, etc.)
-    const nonCashSalesRaw = await Order.sum('total_amount', {
+    const nonCashSalesRaw = await Order.sum('final_amount', {
       where: {
         business_id,
         status: 'completed',

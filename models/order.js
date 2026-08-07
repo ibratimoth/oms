@@ -20,6 +20,16 @@ module.exports = (sequelize) => {
       type: DataTypes.FLOAT,
       defaultValue: 0
     },
+    discount: {
+      type: DataTypes.DECIMAL(12, 2),
+      defaultValue: 0.00,
+      allowNull: false
+    },
+    final_amount: {
+      type: DataTypes.DECIMAL(12, 2),
+      defaultValue: 0.00,
+      allowNull: false
+    },
     profit_amount: {
       type: DataTypes.DECIMAL(12, 2),
       defaultValue: 0
