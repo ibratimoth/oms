@@ -100,6 +100,7 @@
                 <input type="text" name="username" required
                   class="block w-full pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg text-sm focus:outline-none focus:ring-2 focus-brand-teal transition duration-200"
                   placeholder="Enter your username">
+                <input type="hidden" name="returnTo" value="<%= typeof returnTo !== 'undefined' ? returnTo : '' %>">
               </div>
             </div>
 
@@ -115,7 +116,8 @@
                 <input type="password" name="password" id="passwordField" required
                   class="block w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg text-sm focus:outline-none focus:ring-2 focus-brand-teal transition duration-200"
                   placeholder="••••••••">
-                <button type="button" onclick="togglePasswordVisibility()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none select-none">
+                <button type="button" onclick="togglePasswordVisibility()"
+                  class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none select-none">
                   <i id="toggleIcon" class="fas fa-eye text-sm"></i>
                 </button>
               </div>
@@ -146,7 +148,7 @@
     function togglePasswordVisibility() {
       const passwordField = document.getElementById('passwordField');
       const toggleIcon = document.getElementById('toggleIcon');
-      
+
       if (passwordField.type === 'password') {
         passwordField.type = 'text';
         toggleIcon.classList.remove('fa-eye');

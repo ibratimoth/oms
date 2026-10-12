@@ -71,6 +71,29 @@
               <span>Dashboard Overview</span>
             </a>
 
+            <!-- Attendance Dropdown -->
+            <div class="space-y-1">
+              <button 
+                onclick="toggleDropdownMenu('attendanceDropdown', 'attendanceChevron')"
+                class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium rounded-lg text-teal-100 hover:bg-white/10 hover:text-white transition duration-150 group focus:outline-none <%= currentPath.startsWith('/attendance') ? 'bg-white/5 text-white' : '' %>"
+              >
+                <div class="flex items-center gap-3">
+                  <i class="fas fa-user-clock text-base text-teal-300 group-hover:text-white w-5 text-center"></i>
+                  <span>Attendance</span>
+                </div>
+                <i id="attendanceChevron" class="fas fa-chevron-right text-[10px] transform transition-transform duration-200 <%= currentPath.startsWith('/attendance') ? 'rotate-90' : '' %>"></i>
+              </button>
+              
+              <div id="attendanceDropdown" class="<%= currentPath.startsWith('/attendance') ? 'block' : 'hidden' %> pl-9 pr-2 space-y-1 py-1 bg-brand-tealDark/30 rounded-lg">
+                <a href="/attendance" class="block py-2 px-3 text-xs font-medium rounded-md hover:text-white transition duration-150 <%= currentPath === '/attendance' ? 'text-brand-gold font-bold' : 'text-teal-200 hover:bg-white/5' %>">
+                  <i class="fas fa-calendar-day mr-1.5 opacity-70"></i> Today's Attendance
+                </a>
+                <a href="/attendance/report" class="block py-2 px-3 text-xs font-medium rounded-md hover:text-white transition duration-150 <%= currentPath === '/attendance/report' ? 'text-brand-gold font-bold' : 'text-teal-200 hover:bg-white/5' %>">
+                  <i class="fas fa-history mr-1.5 opacity-70"></i> Attendance History
+                </a>
+              </div>
+            </div>
+
             <!-- Products Dropdown -->
             <div class="space-y-1">
               <button 

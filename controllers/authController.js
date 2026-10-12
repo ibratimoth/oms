@@ -3,35 +3,92 @@ const { User, Business } = require('../models');
 const logger = require('./../utils/logger');
 
 exports.showLogin = (req, res) => {
-  res.render('auth/login');
+  //res.render('auth/login');
+  res.render('auth/login', {
+  error: null,
+  returnTo: req.query.returnTo || ''
+});
 };
 
-exports.login = async (req, res) => {
-  const { username, password } = req.body;
+// exports.login = async (req, res) => {
+//   const { username, password } = req.body;
 
-  console.log(req.body);
+//   console.log(req.body);
 
-  const user = await User.findOne({ where: { username } });
+//   const user = await User.findOne({ where: { username } });
 
-  if (!user) {
-    return res.render('auth/login', { error: 'Invalid credentials' });
+//   if (!user) {
+//     return res.render('auth/login', { error: 'Invalid credentials' });
+//   }
+
+//   const match = await bcrypt.compare(password, user.password);
+
+//   if (!match) {
+//     return res.render('auth/login', { error: 'Invalid credentials' });
+//   }
+
+//   req.session.user = {
+//     id: user.id,
+//     full_name: user.full_name,
+//     role: user.role,
+//     business_id: user.business_id
+//   };
+
+//   console.log(`user session: ${JSON.stringify(req.session.user)}`);
+//   return res.redirect('/dashboard');
+// };
+
+exports.login = async (req, res, next) => {
+  try {
+    const { username, password, returnTo } = req.body;
+
+    console.log(req.body);
+
+    const user = await User.findOne({ where: { username } });
+
+    if (!user) {
+      return res.render('auth/login', {
+        error: 'Invalid credentials',
+        returnTo: returnTo || ''
+      });
+    }
+
+    const match = await bcrypt.compare(password, user.password);
+
+    if (!match) {
+      return res.render('auth/login', {
+        error: 'Invalid credentials',
+        returnTo: returnTo || ''
+      });
+    }
+
+    req.session.user = {
+      id: user.id,
+      full_name: user.full_name,
+      role: user.role,
+      business_id: user.business_id
+    };
+
+    // Prevent redirects to external websites
+    const safeReturnTo =
+      typeof returnTo === 'string' &&
+      returnTo.startsWith('/') &&
+      !returnTo.startsWith('//')
+        ? returnTo
+        : '/dashboard';
+
+    console.log(`user session: ${JSON.stringify(req.session.user)}`);
+
+    req.session.save((err) => {
+      if (err) {
+        return next(err);
+      }
+
+      return res.redirect(safeReturnTo);
+    });
+  } catch (error) {
+    next(error);
   }
-
-  const match = await bcrypt.compare(password, user.password);
-
-  if (!match) {
-    return res.render('auth/login', { error: 'Invalid credentials' });
-  }
-
-  req.session.user = {
-    id: user.id,
-    full_name: user.full_name,
-    role: user.role,
-    business_id: user.business_id
-  };
-
-  console.log(`user session: ${JSON.stringify(req.session.user)}`);
-  return res.redirect('/dashboard');
 };
 
 exports.logout = (req, res) => {

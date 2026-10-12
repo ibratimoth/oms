@@ -54,19 +54,34 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(morgan('dev'));
 
+// app.use(
+//   session({
+//     store: new RedisStore({ client: redisClient }), 
+//     secret: process.env.SESSION_SECRET,
+//     resave: false,
+//     saveUninitialized: false,
+//     cookie: {
+//       secure: process.env.NODE_ENV === 'production',
+//       httpOnly: true,
+//       maxAge: 24 * 60 * 60 * 1000 
+//     }
+//   })
+// );
+
+
 app.use(
   session({
-    store: new RedisStore({ client: redisClient }), 
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
       secure: process.env.NODE_ENV === 'production',
       httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000 
+      maxAge: 24 * 60 * 60 * 1000
     }
   })
 );
+
 
 app.use(flash());
 
@@ -93,6 +108,7 @@ app.use('/business', require('./routes/businessRoutes'));
 app.use('/debts', require('./routes/debtRoutes'));
 app.use('/expenses', require('./routes/expenseRoutes'));
 app.use('/merchants', require('./routes/merchantRoutes'));
+app.use('/attendance', require('./routes/attendanceRoutes'));
 
 Sentry.setupExpressErrorHandler(app);
 

@@ -7,7 +7,7 @@ router.get('/logout', authController.logout);
 
 const isAuthenticated = (req, res, next) => {
   if (req.session.user) return next();
-  return res.redirect('/login');
+  return res.redirect('/');
 };
 
 // Check for explicit superadmin authority string

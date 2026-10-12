@@ -10,6 +10,7 @@ const Business = require('./business')(sequelize);
 const Expense = require('./expense')(sequelize);
 const Debt = require('./debt')(sequelize);
 const Merchant = require('./merchant')(sequelize);
+const Attendance = require('./attendance')(sequelize);
 
 /* =========================
    RELATIONSHIPS
@@ -76,6 +77,12 @@ Debt.belongsTo(Order, { foreignKey: 'order_id' });
 Order.belongsTo(Merchant, { foreignKey: 'merchant_id'});
 Merchant.hasMany(Order, { foreignKey: 'merchant_id', onDelete: 'SET NULL', onUpdate: 'CASCADE' });
 
+Business.hasMany(Attendance, { foreignKey: 'business_id', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+Attendance.belongsTo(Business, { foreignKey: 'business_id' });
+
+User.hasMany(Attendance, { foreignKey: 'user_id', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+Attendance.belongsTo(User, { foreignKey: 'user_id' });
+
 module.exports = {
   sequelize,
   User,
@@ -86,5 +93,6 @@ module.exports = {
   Business,
   Expense,
   Debt,
-  Merchant
+  Merchant,
+  Attendance
 };

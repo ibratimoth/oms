@@ -1,0 +1,101 @@
+<%- include('../layouts/header') %>
+
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight text-slate-800">Attendance Reports</h1>
+      <p class="text-sm text-slate-500 mt-1">Review historical worker arrival and departure logs over custom date ranges.</p>
+    </div>
+    <div>
+      <a href="/attendance"
+        class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-lg transition duration-150 whitespace-nowrap">
+        <i class="fas fa-arrow-left text-xs"></i> Back to Today's Logs
+      </a>
+    </div>
+  </div>
+
+  <!-- Filter Form -->
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 mb-6 max-w-5xl">
+    <form method="GET" action="/attendance/report" class="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
+      <div>
+        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Select User</label>
+        <select name="userId" class="w-full text-sm border border-slate-200 rounded-lg p-2 bg-slate-50 focus:outline-none focus:border-brand-teal">
+          <% users.forEach(u => { %>
+            <option value="<%= u.id %>" <%= selectedUserId === u.id ? 'selected' : '' %>><%= u.full_name %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Start Date</label>
+        <input type="date" name="startDate" value="<%= startDate %>" class="w-full text-sm border border-slate-200 rounded-lg p-2 bg-slate-50 focus:outline-none focus:border-brand-teal">
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">End Date</label>
+        <input type="date" name="endDate" value="<%= endDate %>" class="w-full text-sm border border-slate-200 rounded-lg p-2 bg-slate-50 focus:outline-none focus:border-brand-teal">
+      </div>
+      <div>
+        <button type="submit" class="w-full py-2 px-4 bg-brand-teal hover:bg-brand-tealDark text-white text-sm font-semibold rounded-lg shadow-sm transition">
+          <i class="fas fa-filter text-xs mr-1"></i> Filter Logs
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden max-w-5xl">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse whitespace-nowrap">
+        <thead>
+          <tr class="bg-slate-50 border-b border-slate-200 text-slate-400 text-xs font-bold uppercase tracking-wider">
+            <th class="py-3.5 px-6">Date</th>
+            <th class="py-3.5 px-6">Staff Member</th>
+            <th class="py-3.5 px-6">Sign In</th>
+            <th class="py-3.5 px-6">Sign Out</th>
+            <th class="py-3.5 px-6 text-right">Duration / Status</th>
+          </tr>
+        </thead>
+        <tbody class="text-sm divide-y divide-slate-100">
+          <% if (typeof attendances !== 'undefined' && attendances.length > 0) { %>
+            <% attendances.forEach(att => { %>
+              <tr class="hover:bg-slate-50/70 transition duration-150 group">
+                <td class="py-4 px-6 text-slate-600 text-xs">
+                  <%= new Date(att.sign_in).toLocaleDateString('en-GB') %>
+                </td>
+                <td class="py-4 px-6 font-semibold text-slate-800">
+                  <%= att.User ? att.User.full_name : 'Unknown User' %>
+                </td>
+                <td class="py-4 px-6 text-slate-600 text-xs">
+                  <%= new Date(att.sign_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %>
+                </td>
+                <td class="py-4 px-6 text-slate-600 text-xs">
+                  <% if (att.sign_out) { %>
+                    <%= new Date(att.sign_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %>
+                  <% } else { %>
+                    <span class="text-slate-400 italic">Active</span>
+                  <% } %>
+                </td>
+                <td class="py-4 px-6 text-right text-xs">
+                  <% if (att.sign_out) { %>
+                    <% 
+                      const diffMs = new Date(att.sign_out) - new Date(att.sign_in);
+                      const diffHrs = (diffMs / (1000 * 60 * 60)).toFixed(1);
+                    %>
+                    <span class="font-medium text-slate-700"><%= diffHrs %> hours</span>
+                  <% } else { %>
+                    <span class="text-emerald-600 font-semibold">Still Shift Active</span>
+                  <% } %>
+                </td>
+              </tr>
+            <% }) %>
+          <% } else { %>
+            <tr>
+              <td colspan="5" class="py-12 text-center">
+                <div class="text-slate-300 mb-2"><i class="fas folder-open text-4xl"></i></div>
+                <p class="text-sm text-slate-400 italic">No historical records match the selected criteria.</p>
+              </td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+<%- include('../layouts/footer') %>
