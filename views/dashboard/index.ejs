@@ -6,57 +6,57 @@
     <p class="text-sm text-slate-500 mt-1">Real-time metrics, financial standing, and order statistics.</p>
   </div>
 
-  <!-- TOP METRICS GRID (OPERATIONAL) -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
+<!-- TOP METRICS GRID (OPERATIONAL) -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
 
     <!-- PRODUCTS -->
-    <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm flex items-center justify-between">
+    <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-between">
       <div>
-        <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Products</p>
-        <h3 class="text-2xl font-bold text-slate-800 mt-1">
+        <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Products</p>
+        <h3 class="text-2xl font-extrabold text-slate-800 mt-1">
           <%= totalProducts %>
         </h3>
       </div>
-      <div class="w-12 h-12 rounded-lg bg-teal-50 flex items-center justify-center text-brand-teal">
+      <div class="w-12 h-12 rounded-xl bg-teal-50 flex items-center justify-center text-brand-teal shadow-inner">
         <i class="fas fa-box text-xl"></i>
       </div>
     </div>
 
     <!-- TOTAL ORDERS -->
-    <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm flex items-center justify-between">
+    <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-between">
       <div>
-        <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Orders</p>
-        <h3 class="text-2xl font-bold text-slate-800 mt-1">
+        <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Orders</p>
+        <h3 class="text-2xl font-extrabold text-slate-800 mt-1">
           <%= totalOrders %>
         </h3>
       </div>
-      <div class="w-12 h-12 rounded-lg bg-amber-50 flex items-center justify-center text-brand-gold">
+      <div class="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-brand-gold shadow-inner">
         <i class="fas fa-shopping-cart text-xl"></i>
       </div>
     </div>
 
     <!-- COMPLETED ORDERS -->
-    <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm flex items-center justify-between">
+    <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-between">
       <div>
-        <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Completed Orders</p>
-        <h3 class="text-2xl font-bold text-emerald-600 mt-1">
+        <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Completed Orders</p>
+        <h3 class="text-2xl font-extrabold text-emerald-600 mt-1">
           <%= completedOrders %>
         </h3>
       </div>
-      <div class="w-12 h-12 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
+      <div class="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shadow-inner">
         <i class="fas fa-check-circle text-xl"></i>
       </div>
     </div>
 
     <!-- PENDING ORDERS -->
-    <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm flex items-center justify-between">
+    <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-between">
       <div>
-        <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Pending Orders</p>
-        <h3 class="text-2xl font-bold text-amber-600 mt-1">
+        <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Pending Orders</p>
+        <h3 class="text-2xl font-extrabold text-amber-600 mt-1">
           <%= pendingOrders %>
         </h3>
       </div>
-      <div class="w-12 h-12 rounded-lg bg-amber-50/70 flex items-center justify-center text-amber-600">
+      <div class="w-12 h-12 rounded-xl bg-amber-50/70 flex items-center justify-center text-amber-600 shadow-inner">
         <i class="fas fa-clock text-xl"></i>
       </div>
     </div>
@@ -65,72 +65,95 @@
 
   <!-- FINANCIAL BREAKDOWN SECTION -->
   <div class="mb-8">
-    <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 px-1">Financial Health & Balances</h2>
+    <div class="flex items-center justify-between mb-4 px-1">
+      <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">Financial Health & Balances</h2>
+    </div>
 
-    <!-- ROW 1: CORE INCOME, EXPENSES & DEBTS -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+    <!-- ROW 1: CORE INCOME, COSTS & DEBTS -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
 
       <!-- TOTAL SALES -->
-      <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
+      <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-between">
         <div>
-          <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Sales</p>
-          <h3 class="text-xl font-bold text-slate-800 mt-0.5">TSh <%= Number(totalSales || 0).toLocaleString() %>
-          </h3>
+          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Sales</p>
+          <h3 class="text-lg font-bold text-slate-800 mt-0.5">TSh <%= Number(totalSales || 0).toLocaleString() %></h3>
         </div>
-        <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
-          <i class="fas fa-chart-bar text-lg"></i>
+        <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shadow-inner">
+          <i class="fas fa-chart-line text-base"></i>
         </div>
       </div>
 
-      <!-- TOTAL EXPENSES -->
-      <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
+      <!-- ADMIN/SUPERADMIN ONLY: Registered Stock Value (Cost) -->
+      <% if (typeof userRole !== 'undefined' && (userRole === 'superadmin' || userRole === 'admin')) { %>
+      <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-between">
         <div>
-          <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Expenses</p>
-          <h3 class="text-xl font-bold text-rose-600 mt-0.5">TSh <%= Number(totalExpenses || 0).toLocaleString() %>
-          </h3>
+          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Stock Value (Cost)</p>
+          <h3 class="text-lg font-bold text-indigo-700 mt-0.5">TSh <%= Number(totalRegisteredProductsCost || 0).toLocaleString() %></h3>
         </div>
-        <div class="w-10 h-10 rounded-lg bg-rose-50 flex items-center justify-center text-rose-600">
-          <i class="fas fa-receipt text-lg"></i>
+        <div class="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 shadow-inner">
+          <i class="fas fa-warehouse text-base"></i>
+        </div>
+      </div>
+      <% } %>
+
+      <!-- ADMIN/SUPERADMIN ONLY: Cost of Goods Sold (COGS) -->
+      <% if (typeof userRole !== 'undefined' && (userRole === 'superadmin' || userRole === 'admin')) { %>
+      <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-between">
+        <div>
+          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Cost of Goods Sold</p>
+          <h3 class="text-lg font-bold text-amber-700 mt-0.5">TSh <%= Number(totalSoldProductsCost || 0).toLocaleString() %></h3>
+        </div>
+        <div class="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600 shadow-inner">
+          <i class="fas fa-tags text-base"></i>
+        </div>
+      </div>
+      <% } %>
+
+      <!-- TOTAL EXPENSES -->
+      <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-between">
+        <div>
+          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Expenses</p>
+          <h3 class="text-lg font-bold text-rose-600 mt-0.5">TSh <%= Number(totalExpenses || 0).toLocaleString() %></h3>
+        </div>
+        <div class="w-10 h-10 rounded-lg bg-rose-50 flex items-center justify-center text-rose-600 shadow-inner">
+          <i class="fas fa-receipt text-base"></i>
         </div>
       </div>
 
       <!-- DEBTS OWED TO YOU (RECEIVABLES) -->
-      <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
+      <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-between">
         <div>
-          <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Debts Owed To You</p>
-          <h3 class="text-xl font-bold text-indigo-600 mt-0.5">TSh <%= Number(debtsOwedToYou || 0).toLocaleString() %>
-          </h3>
+          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Debts Owed To You</p>
+          <h3 class="text-lg font-bold text-indigo-600 mt-0.5">TSh <%= Number(debtsOwedToYou || 0).toLocaleString() %></h3>
         </div>
-        <div class="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
-          <i class="fas fa-hand-holding-usd text-lg"></i>
+        <div class="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 shadow-inner">
+          <i class="fas fa-hand-holding-usd text-base"></i>
         </div>
       </div>
 
       <!-- DEBTS YOU OWE (PAYABLES) -->
-      <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
+      <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-between">
         <div>
-          <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Debts You Owe</p>
-          <h3 class="text-xl font-bold text-amber-600 mt-0.5">TSh <%= Number(debtsYouOwe || 0).toLocaleString() %>
-          </h3>
+          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Debts You Owe</p>
+          <h3 class="text-lg font-bold text-amber-600 mt-0.5">TSh <%= Number(debtsYouOwe || 0).toLocaleString() %></h3>
         </div>
-        <div class="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600">
-          <i class="fas fa-file-invoice-dollar text-lg"></i>
+        <div class="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600 shadow-inner">
+          <i class="fas fa-file-invoice-dollar text-base"></i>
         </div>
       </div>
 
-      <!-- TOTAL PROFIT -->
-      <% if (typeof userRole !=='undefined' && (userRole==='superadmin' )) { %>
-        <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
+      <!-- GROSS PROFIT -->
+      <% if (typeof userRole !== 'undefined' && (userRole === 'superadmin' || userRole === 'admin')) { %>
+        <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-between">
           <div>
-            <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Gross Profit</p>
-            <h3 class="text-xl font-bold text-emerald-600 mt-0.5">TSh <%= Number(totalProfit || 0).toLocaleString() %>
-            </h3>
+            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Gross Profit</p>
+            <h3 class="text-lg font-bold text-emerald-600 mt-0.5">TSh <%= Number(totalProfit || 0).toLocaleString() %></h3>
           </div>
-          <div class="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
-            <i class="fas fa-wallet text-lg"></i>
+          <div class="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 shadow-inner">
+            <i class="fas fa-wallet text-base"></i>
           </div>
         </div>
-        <% } %>
+      <% } %>
 
     </div>
 
@@ -138,44 +161,34 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
 
       <!-- CASH IN HAND (LIQUID) -->
-      <div
-        class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm flex items-center justify-between relative overflow-hidden ring-1 ring-emerald-500/10">
-        <div class="absolute -right-4 -bottom-4 w-20 h-20 bg-emerald-500/5 rounded-full"></div>
-        <div>
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-between relative overflow-hidden ring-1 ring-emerald-500/10">
+        <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-emerald-500/5 rounded-full pointer-events-none"></div>
+        <div class="relative z-10">
           <div class="flex items-center gap-2">
             <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Cash in Hand (Liquid)</p>
-            <span
-              class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700">Actual
-              Money</span>
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">Actual Money</span>
           </div>
-          <h3 class="text-2xl font-black text-emerald-700 mt-1">TSh <%= Number(cashInHand || 0).toLocaleString() %>
-          </h3>
+          <h3 class="text-2xl font-black text-emerald-700 mt-1.5">TSh <%= Number(cashInHand || 0).toLocaleString() %></h3>
           <p class="text-xs text-slate-400 mt-1">Calculated as: (Collected Sales - Paid Expenses)</p>
         </div>
-        <div
-          class="w-12 h-12 rounded-xl bg-emerald-100/70 flex items-center justify-center text-emerald-700 relative z-10">
-          <i class="fas fa-money-bill-wave text-xl"></i>
+        <div class="w-14 h-14 rounded-2xl bg-emerald-100/70 flex items-center justify-center text-emerald-700 shadow-inner relative z-10 shrink-0">
+          <i class="fas fa-money-bill-wave text-2xl"></i>
         </div>
       </div>
 
       <!-- NET FINANCIAL POSITION -->
-      <div
-        class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm flex items-center justify-between relative overflow-hidden ring-1 ring-brand-teal/10">
-        <div class="absolute -right-4 -bottom-4 w-20 h-20 bg-brand-teal/5 rounded-full"></div>
-        <div>
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-between relative overflow-hidden ring-1 ring-brand-teal/10">
+        <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-brand-teal/5 rounded-full pointer-events-none"></div>
+        <div class="relative z-10">
           <div class="flex items-center gap-2">
             <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Net Financial Position</p>
-            <span
-              class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-teal-50 text-teal-700">Overall
-              Worth</span>
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-200">Overall Worth</span>
           </div>
-          <h3 class="text-2xl font-black text-brand-teal mt-1">TSh <%= Number(netFinancialPosition ||
-              0).toLocaleString() %>
-          </h3>
+          <h3 class="text-2xl font-black text-brand-teal mt-1.5">TSh <%= Number(netFinancialPosition || 0).toLocaleString() %></h3>
           <p class="text-xs text-slate-400 mt-1">Calculated as: (Cash in Hand + Receivables) - Liabilities</p>
         </div>
-        <div class="w-12 h-12 rounded-xl bg-teal-100/70 flex items-center justify-center text-brand-teal relative z-10">
-          <i class="fas fa-scale-balanced text-xl"></i>
+        <div class="w-14 h-14 rounded-2xl bg-teal-100/70 flex items-center justify-center text-brand-teal shadow-inner relative z-10 shrink-0">
+          <i class="fas fa-scale-balanced text-2xl"></i>
         </div>
       </div>
 

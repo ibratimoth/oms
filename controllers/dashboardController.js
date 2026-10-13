@@ -1,4 +1,4 @@
-const { Order, Product, Expense, Debt, sequelize } = require('../models');
+const { Order, Product, Expense, Debt, sequelize, OrderItem } = require('../models');
 const { Op } = require('sequelize');
 const logger = require('./../utils/logger');
 
@@ -29,7 +29,7 @@ exports.index = async (req, res) => {
     }) || 0;
 
     // 2. Financial Metrics (Sales, Expenses & Debts)
-    
+
     // Total Sales Revenue (from completed orders)
     const totalSales = await Order.sum('final_amount', {
       where: { ...businessFilter, status: 'completed' }
@@ -107,6 +107,40 @@ exports.index = async (req, res) => {
       order: [[sequelize.literal('DATE(created_at)'), 'DESC']]
     });
 
+    // NEW: Total Cost of All Registered Products (buy_price * quantity_in_stock)
+    // We fetch all products for the business and sum up (buy_price * quantity_in_stock)
+    const allProducts = await Product.findAll({
+      where: businessFilter,
+      attributes: ['buy_price', 'quantity_in_stock']
+    });
+
+    const totalRegisteredProductsCost = allProducts.reduce((sum, p) => {
+      const buyPrice = p.buy_price || 0;
+      const qty = p.quantity_in_stock || 0;
+      return sum + (buyPrice * qty);
+    }, 0);
+
+    // NEW: Total Cost of All Sold Products (COGS)
+    // We join OrderItems with completed Orders filtered by business
+    const soldOrderItems = await OrderItem.findAll({
+      include: [
+        {
+          model: Order,
+          where: { ...businessFilter, status: 'completed' },
+          attributes: []
+        },
+        {
+          model: Product,
+          attributes: ['buy_price']
+        }
+      ]
+    });
+
+    const totalSoldProductsCost = soldOrderItems.reduce((sum, item) => {
+      const buyPrice = item.Product ? (item.Product.buy_price || 0) : 0;
+      const quantitySold = item.quantity || 0;
+      return sum + (buyPrice * quantitySold);
+    }, 0);
     // 5. Render View with All Financial Data
     return res.render('dashboard/index', {
       totalProducts,
@@ -114,7 +148,7 @@ exports.index = async (req, res) => {
       completedOrders,
       pendingOrders,
       totalProfit,
-      
+
       // New Financial Balance Metrics
       totalSales,
       totalExpenses,
@@ -122,6 +156,10 @@ exports.index = async (req, res) => {
       debtsYouOwe,
       cashInHand,
       netFinancialPosition,
+
+      // NEW: Cost Metrics
+      totalRegisteredProductsCost,
+      totalSoldProductsCost,
 
       lowStockProducts,
       recentOrders,

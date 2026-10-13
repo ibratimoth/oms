@@ -69,8 +69,37 @@ exports.signOut = async (req, res) => {
 };
 
 // View today's attendance for the business
+// exports.getTodayAttendance = async (req, res) => {
+//   const userId = req.session.user?.id;
+//   const username = req.session.user?.full_name || 'User';
+
+//   try {
+//     const startOfDay = new Date();
+//     startOfDay.setHours(0, 0, 0, 0);
+
+//     const endOfDay = new Date();
+//     endOfDay.setHours(23, 59, 59, 999);
+
+//     const attendances = await Attendance.findAll({
+//       where: {
+//         user_id: userId,
+//         sign_in: { [Op.between]: [startOfDay, endOfDay] }
+//       },
+//       include: [{ model: User, attributes: ['id', 'full_name', 'username', 'role'] }],
+//       order: [['sign_in', 'DESC']]
+//     });
+
+//     return res.render('attendance/today', { attendances, username, userRole: req.session.user?.role, error: null });
+//   } catch (error) {
+//     console.error('Failed to fetch today attendance:', error);
+//     return res.status(500).render('error', { message: 'Failed to load today attendance.', username, userRole: req.session.user?.role });
+//   }
+// };
+
+// View today's attendance for the business
 exports.getTodayAttendance = async (req, res) => {
   const userId = req.session.user?.id;
+  const businessId = req.session.user?.business_id;
   const username = req.session.user?.full_name || 'User';
 
   try {
@@ -80,6 +109,7 @@ exports.getTodayAttendance = async (req, res) => {
     const endOfDay = new Date();
     endOfDay.setHours(23, 59, 59, 999);
 
+    // 1. Fetch today's attendance records for the entire business
     const attendances = await Attendance.findAll({
       where: {
         user_id: userId,
@@ -89,7 +119,22 @@ exports.getTodayAttendance = async (req, res) => {
       order: [['sign_in', 'DESC']]
     });
 
-    return res.render('attendance/today', { attendances, username, userRole: req.session.user?.role, error: null });
+    // 2. Check the logged-in user's active status for today
+    const currentUserAttendance = attendances.find(att => att.user_id === userId);
+
+    const hasSignedInToday = !!currentUserAttendance;
+    const hasSignedOutToday = !!(currentUserAttendance && currentUserAttendance.sign_out);
+
+    // 3. Render page with button state flags
+    return res.render('attendance/today', { 
+      attendances, 
+      hasSignedInToday,
+      hasSignedOutToday,
+      username, 
+      userRole: req.session.user?.role, 
+      currentPath: '/attendance',
+      error: req.query.error || null 
+    });
   } catch (error) {
     console.error('Failed to fetch today attendance:', error);
     return res.status(500).render('error', { message: 'Failed to load today attendance.', username, userRole: req.session.user?.role });
