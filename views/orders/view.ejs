@@ -1,263 +1,287 @@
 <%- include('../layouts/header') %>
+<%
+  /* ---------- derived values ---------- */
+  const money   = (v) => Number(v || 0).toLocaleString('en-US');
+  const items   = (order.OrderItems && order.OrderItems.length) ? order.OrderItems : [];
+  const accts   = (typeof merchants !== 'undefined' && merchants) ? merchants : [];
+  const total   = Number(order.total_amount || 0);
+  const disc    = Number(order.discount || 0);
+  const final   = Number(order.final_amount || (total - disc) || total);
+  const done    = order.status === 'completed';
+  const units   = items.reduce((s, i) => s + Number(i.quantity || 0), 0);
+  const created = order.createdAt ? new Date(order.createdAt) : null;
+  const iso     = (d) => (d && !isNaN(d)) ? d.toISOString() : '';
+  const doneAt  = order.completed_at ? new Date(order.completed_at) : null;
 
-  <!-- Top Row Action Header & Breadcrumbs -->
-  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+  const METHODS = { CASH: 'Cash', LIPA_NUMBER: 'Lipa number', CREDIT: 'Credit' };
+  const merchantName = order.Merchant ? order.Merchant.name : '';
+  const merchantLabel = (m) => { const x = [m.provider, m.account_number].filter(Boolean).join(' - '); return x ? m.name + ' (' + x + ')' : m.name; };
+
+  const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const pill = (s) => {
+    s = esc(s);
+    if (s === 'completed') return '<span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold capitalize text-emerald-700 ring-1 ring-inset ring-emerald-600/15"><span class="h-2 w-2 rounded-full bg-emerald-500"></span>' + s + '</span>';
+    if (s === 'pending')   return '<span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-sm font-semibold capitalize text-amber-700 ring-1 ring-inset ring-amber-600/20"><span class="relative flex h-2 w-2"><span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75"></span><span class="relative inline-flex h-2 w-2 rounded-full bg-amber-500"></span></span>' + s + '</span>';
+    return '<span class="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3 py-1 text-sm font-semibold capitalize text-sky-700 ring-1 ring-inset ring-sky-600/15"><span class="h-2 w-2 rounded-full bg-sky-500"></span>' + (s || 'unknown') + '</span>';
+  };
+%>
+
+<div class="mx-auto max-w-6xl space-y-6">
+
+  <!-- ============ Header ============ -->
+  <div class="flex flex-wrap items-end justify-between gap-4">
     <div>
-      <div class="flex items-center gap-2 text-sm font-medium text-slate-400">
-        <a href="/orders" class="hover:text-brand-teal transition duration-150">Orders</a>
-        <i class="fas fa-chevron-right text-[10px]"></i>
-        <span class="text-slate-600">Order Details</span>
+      <nav aria-label="Breadcrumb" class="flex items-center gap-2 text-sm text-slate-500">
+        <a href="/orders" class="group inline-flex items-center gap-2 font-medium transition-colors hover:text-brand-teal"><i class="fas fa-arrow-left text-xs transition-transform group-hover:-translate-x-0.5"></i>Orders</a>
+        <i class="fas fa-chevron-right text-[10px] text-slate-300"></i><span class="text-slate-700">Details</span>
+      </nav>
+      <div class="mt-2 flex flex-wrap items-center gap-3">
+        <h2 class="text-3xl font-extrabold tracking-tight text-brand-tealDark">Order #<%= order.order_number %></h2>
+        <%- pill(order.status) %>
       </div>
-      <h1 class="text-2xl font-bold tracking-tight text-slate-800 mt-1">Order #<%= order.order_number %>
-      </h1>
     </div>
 
-    <div class="flex items-center gap-3 flex-wrap sm:flex-nowrap">
-      <a href="/orders"
-        class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-lg border border-slate-200 transition duration-150">
-        <i class="fas fa-arrow-left text-xs"></i> Back to List
+    <div class="flex flex-wrap items-center gap-2">
+      <a href="/orders/invoice/<%= order.id %>" target="_blank" rel="noopener" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-brand-teal/40 hover:text-brand-teal">
+        <i class="fas fa-print text-xs"></i>Print invoice
       </a>
-
-      <!-- Top Conditional Complete Action with Modal -->
-      <% if (order.status !=='completed' ) { %>
-        <button type="button" onclick="openCompleteModal('<%= order.id %>', '<%= order.order_number %>')"
-          class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg shadow-sm transition duration-150 cursor-pointer">
-          <i class="fas fa-check text-xs"></i> Complete Order
+      <% if (!done) { %>
+        <a href="/orders/edit/<%= order.id %>" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-brand-gold/50 hover:text-brand-goldHover">
+          <i class="fas fa-edit text-xs"></i>Edit
+        </a>
+        <button type="button" data-open-complete class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700">
+          <i class="fas fa-check text-xs"></i>Complete order
         </button>
-        <% } %>
-
-          <a href="/orders/invoice/<%= order.id %>" target="_blank"
-            class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-brand-teal hover:bg-brand-tealDark text-white text-sm font-semibold rounded-lg shadow-sm transition duration-150">
-            <i class="fas fa-print text-xs"></i> Print Invoice
-          </a>
+      <% } %>
     </div>
   </div>
 
-  <!-- METADATA OVERVIEW GRID -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
-    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
-      <div class="truncate">
-        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Customer</p>
-        <h3 class="text-sm font-bold text-slate-800 truncate mt-1">
-          <%= order.customer_name || 'Walk-in Customer' %>
-        </h3>
-        <p class="text-xs font-mono text-slate-500 mt-0.5">
-          <%= order.customer_phone || 'No phone provided' %>
-        </p>
-      </div>
-      <div class="text-slate-300 shrink-0 pl-2"><i class="fas fa-user text-xl"></i></div>
-    </div>
+  <div class="grid items-start gap-6 lg:grid-cols-3">
 
-    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
-      <div>
-        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Fulfillment Status</p>
-        <div class="mt-1.5">
-          <% if (order.status==='completed' ) { %>
-            <span
-              class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
-              <%= order.status %>
-            </span>
-            <% } else if (order.status==='pending' ) { %>
-              <span
-                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-100">
-                <span class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5 animate-pulse"></span>
-                <%= order.status %>
-              </span>
-              <% } %>
+    <!-- ============ Invoice ============ -->
+    <article class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white lg:col-span-2">
+      <div class="h-1.5 bg-brand-teal"></div>
+
+      <div class="flex flex-wrap items-start justify-between gap-4 px-6 pt-6 sm:px-8">
+        <div class="flex items-center gap-3">
+          <img src="/images/delleventures.jpeg" alt="Delle Ventures" class="h-11 w-11 rounded-xl border border-slate-200 bg-white object-contain p-1">
+          <div><p class="text-base font-bold leading-tight text-brand-tealDark">Delle <span class="text-brand-gold">Ventures</span></p><p class="text-xs text-slate-500">Order summary</p></div>
+        </div>
+        <div class="text-right text-sm">
+          <p class="text-slate-500">Placed on</p>
+          <p class="font-semibold text-slate-800"><% if (created && !isNaN(created)) { %><time data-dt datetime="<%= iso(created) %>"><%= iso(created).substr(0, 10) %></time><% } else { %>-<% } %></p>
         </div>
       </div>
-      <div class="text-slate-300 shrink-0"><i class="fas fa-info-circle text-xl"></i></div>
-    </div>
 
-    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
-      <div>
-        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Order Total</p>
-        <h3 class="text-lg font-bold text-slate-900 mt-0.5">TSh <%= Number(order.total_amount).toLocaleString() %>
-        </h3>
+      <div class="mt-6 grid gap-4 px-6 sm:grid-cols-2 sm:px-8">
+        <div class="rounded-xl bg-slate-50 px-4 py-3.5">
+          <p class="text-xs font-medium text-slate-500">Customer</p>
+          <p class="mt-1 text-sm font-semibold text-slate-800"><%= order.customer_name || 'Walk-in customer' %></p>
+          <p class="mt-0.5 text-sm <%= order.customer_phone ? 'font-mono text-slate-600' : 'italic text-slate-400' %>"><%= order.customer_phone || 'No phone number' %></p>
+        </div>
+        <div class="rounded-xl bg-slate-50 px-4 py-3.5">
+          <p class="text-xs font-medium text-slate-500">Items</p>
+          <p class="mt-1 text-sm font-semibold text-slate-800"><%= items.length %> <%= items.length === 1 ? 'product' : 'products' %></p>
+          <p class="mt-0.5 text-sm text-slate-600"><%= units %> <%= units === 1 ? 'unit' : 'units' %> in total</p>
+        </div>
       </div>
-      <div class="text-brand-gold shrink-0"><i class="fas fa-coins text-xl"></i></div>
-    </div>
 
-    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
-      <div>
-        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Placement Date</p>
-        <h3 class="text-sm font-semibold text-slate-700 mt-1.5">
-          <%= new Date(order.createdAt).toLocaleDateString('en-GB', { day: 'numeric' , month: 'short' , year: 'numeric'
-            , hour: '2-digit' , minute:'2-digit' }) %>
-        </h3>
-      </div>
-      <div class="text-slate-300 shrink-0"><i class="fas fa-calendar-alt text-xl"></i></div>
-    </div>
-  </div>
-
-  <!-- ORDER ITEMS TABLE CARD CONTAINER -->
-  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-6">
-    <div class="px-5 py-4 border-b border-slate-100 bg-slate-50/50">
-      <h3 class="font-bold text-slate-800 text-sm tracking-wide uppercase">Purchased Items Ledger</h3>
-    </div>
-
-    <div class="overflow-x-auto">
-      <table class="w-full text-left border-collapse whitespace-nowrap">
-        <thead>
-          <tr
-            class="bg-slate-50/70 border-b border-slate-200 text-slate-400 text-xs font-bold uppercase tracking-wider">
-            <th class="py-3 px-6 w-12 text-center">#</th>
-            <th class="py-3 px-6">Product Description</th>
-            <th class="py-3 px-6 text-center w-24">Quantity</th>
-            <th class="py-3 px-6 text-right w-36">Unit Price</th>
-            <th class="py-3 px-6 text-right w-40">Subtotal Amount</th>
-          </tr>
-        </thead>
-        <tbody class="text-sm divide-y divide-slate-100 text-slate-700">
-          <% if (order.OrderItems && order.OrderItems.length> 0) { %>
-            <% order.OrderItems.forEach((item, index)=> { %>
-              <tr class="hover:bg-slate-50/50 transition duration-150">
-                <td class="py-3.5 px-6 text-center font-mono text-xs text-slate-400">
-                  <%= index + 1 %>
-                </td>
-                <td class="py-3.5 px-6 font-medium text-slate-800">
-                  <%= item.Product ? item.Product.name : 'Unknown Item' %>
-                </td>
-                <td class="py-3.5 px-6 text-center font-mono font-medium text-slate-600">
-                  <%= item.quantity %>
-                </td>
-                <td class="py-3.5 px-6 text-right font-mono text-slate-600">TSh <%=
-                    Number(item.unit_price).toLocaleString() %>
-                </td>
-                <td class="py-3.5 px-6 text-right font-mono font-bold text-slate-900">TSh <%=
-                    Number(item.subtotal).toLocaleString() %>
-                </td>
-              </tr>
+      <!-- Items -->
+      <div class="mt-6 overflow-x-auto border-t border-slate-100">
+        <table class="w-full text-left text-sm">
+          <thead>
+            <tr class="text-xs font-medium text-slate-500">
+              <th scope="col" class="hidden w-12 px-6 py-3 text-center sm:table-cell sm:pl-8">#</th>
+              <th scope="col" class="px-6 py-3 sm:px-3">Product</th>
+              <th scope="col" class="px-3 py-3 text-center">Qty</th>
+              <th scope="col" class="hidden px-3 py-3 text-right sm:table-cell">Unit price</th>
+              <th scope="col" class="px-6 py-3 text-right sm:pr-8">Amount</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            <% if (items.length) { %>
+              <% items.forEach((item, i) => { %>
+                <tr>
+                  <td class="hidden px-6 py-4 text-center font-mono text-xs text-slate-400 sm:table-cell sm:pl-8"><%= i + 1 %></td>
+                  <td class="px-6 py-4 sm:px-3">
+                    <p class="font-semibold text-slate-800"><%= item.Product ? item.Product.name : 'Unknown item' %></p>
+                    <p class="mt-0.5 text-xs tabular-nums text-slate-500 sm:hidden">TSh <%= money(item.unit_price) %> each</p>
+                  </td>
+                  <td class="px-3 py-4 text-center font-semibold tabular-nums text-slate-700"><%= item.quantity %></td>
+                  <td class="hidden px-3 py-4 text-right tabular-nums text-slate-600 sm:table-cell">TSh <%= money(item.unit_price) %></td>
+                  <td class="px-6 py-4 text-right font-bold tabular-nums text-slate-900 sm:pr-8">TSh <%= money(item.subtotal) %></td>
+                </tr>
               <% }) %>
-                <% } %>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- BOTTOM SUMMARY & ACTION BANNER -->
-  <div
-    class="flex flex-col md:flex-row justify-between items-center bg-slate-100 rounded-xl border border-slate-200/60 p-5 gap-4">
-    <div class="text-xs font-medium text-slate-500 text-center md:text-left max-w-xl">
-      <% if (order.status !=='completed' ) { %>
-        This order is currently active. Finalize transaction details to complete order.
-        <% } else { %>
-          This transaction is closed and fully completed.
-          <% } %>
-    </div>
-
-    <div class="w-full md:w-auto flex flex-col sm:flex-row items-center gap-3">
-      <% if (order.status !=='completed' ) { %>
-        <button type="button" onclick="openCompleteModal('<%= order.id %>', '<%= order.order_number %>')"
-          class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg shadow-sm transition duration-150 whitespace-nowrap cursor-pointer">
-          <i class="fas fa-check text-xs"></i> Finalize & Complete
-        </button>
-        <% } %>
-
-          <a href="/orders/invoice/<%= order.id %>" target="_blank"
-            class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-brand-gold hover:bg-brand-goldHover text-white text-sm font-semibold rounded-lg shadow-sm transition duration-150 whitespace-nowrap">
-            <i class="fas fa-print text-xs"></i> Open Printing Dialogue
-          </a>
-    </div>
-  </div>
-
-  <!-- COMPLETION MODAL POPUP -->
-  <div id="completeOrderModal"
-    class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md p-6">
-      <div class="flex justify-between items-center pb-3 border-b border-slate-100">
-        <h3 class="text-base font-bold text-slate-800" id="modalTitle">Complete Order</h3>
-        <button type="button" onclick="closeCompleteModal()"
-          class="text-slate-400 hover:text-slate-600 transition duration-150">
-          <i class="fas fa-times"></i>
-        </button>
+            <% } else { %>
+              <tr><td colspan="5" class="px-6 py-10 text-center text-sm text-slate-500">This order has no items.</td></tr>
+            <% } %>
+          </tbody>
+        </table>
       </div>
 
-      <form id="completeOrderForm" method="POST" action="/orders/complete/<%= order.id %>" class="mt-4 space-y-4">
+      <!-- Totals -->
+      <div class="border-t border-slate-100 bg-slate-50/60 px-6 py-6 sm:px-8">
+        <dl class="ml-auto max-w-xs space-y-2.5 text-sm tabular-nums">
+          <div class="flex items-center justify-between"><dt class="text-slate-500">Subtotal</dt><dd class="font-medium text-slate-800">TSh <%= money(total) %></dd></div>
+          <% if (disc > 0) { %>
+            <div class="flex items-center justify-between"><dt class="text-slate-500">Discount</dt><dd class="font-semibold text-amber-700">-TSh <%= money(disc) %></dd></div>
+          <% } %>
+          <div class="flex items-baseline justify-between border-t border-slate-200 pt-3">
+            <dt class="font-semibold text-slate-800"><%= done ? 'Total paid' : 'Amount to collect' %></dt>
+            <dd class="text-2xl font-extrabold tracking-tight text-brand-tealDark"><span class="text-sm font-semibold text-brand-gold">TSh</span> <%= money(final) %></dd>
+          </div>
+        </dl>
+        <% if (!done) { %>
+          <p class="mt-4 flex items-start gap-2 text-sm text-slate-500"><i class="fas fa-info-circle mt-0.5 text-xs text-brand-teal"></i>This order is still open. Complete it once the customer has paid, and you can apply a discount then.</p>
+        <% } %>
+      </div>
+    </article>
 
-        <!-- 1. PAYMENT METHOD FIRST (ENUM VALUES) -->
-        <div>
-          <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Payment Method</label>
-          <select id="paymentMethodSelect" name="payment_method" onchange="toggleMerchantField()"
-            class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-teal transition duration-150"
-            required>
-            <option value="CASH" selected>Cash</option>
-            <option value="LIPA_NUMBER">Lipa Number (Mobile Money / Till / QR)</option>
-            <option value="CREDIT">Credit</option>
-          </select>
-        </div>
+    <!-- ============ Side panels ============ -->
+    <aside class="space-y-6">
 
-        <!-- 2. MERCHANT DROPDOWN (HIDDEN FOR CASH AND CREDIT) -->
-        <div id="merchantContainer" class="hidden">
-          <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Merchant / Account</label>
-          <select id="merchantSelect" name="merchant_id"
-            class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-teal transition duration-150">
-            <option value="">Select Merchant Account</option>
-            <% if (typeof merchants !=='undefined' && merchants.length> 0) { %>
-              <% merchants.forEach(m=> { %>
-                <option value="<%= m.id %>">
-                  <%= m.name %>
-                    <%= m.provider ? `(${m.provider}` : '' %>
-                      <%= m.account_number ? ` - ${m.account_number})` : ')' %>
-                </option>
-                <% }) %>
-                  <% } %>
-          </select>
-        </div>
+      <section class="rounded-2xl border border-slate-200/80 bg-white p-6">
+        <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>Progress</h3>
+        <ol class="mt-5">
+          <li class="relative flex gap-3 pb-6">
+            <span class="absolute left-[0.95rem] top-8 h-[calc(100%-1.5rem)] w-px <%= done ? 'bg-emerald-300' : 'bg-slate-200' %>"></span>
+            <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-teal text-white"><i class="fas fa-receipt text-xs"></i></span>
+            <div><p class="text-sm font-semibold text-slate-800">Order placed</p><p class="text-xs text-slate-500"><% if (created && !isNaN(created)) { %><time data-dt-full datetime="<%= iso(created) %>"><%= iso(created).substr(0, 10) %></time><% } %></p></div>
+          </li>
+          <li class="flex gap-3">
+            <% if (done) { %>
+              <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-emerald-500 text-white"><i class="fas fa-check text-xs"></i></span>
+              <div><p class="text-sm font-semibold text-slate-800">Completed</p><p class="text-xs text-slate-500"><% if (doneAt && !isNaN(doneAt)) { %><time data-dt-full datetime="<%= iso(doneAt) %>"><%= iso(doneAt).substr(0, 10) %></time><% } else { %>Payment recorded<% } %></p></div>
+            <% } else { %>
+              <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 border-dashed border-amber-400 text-amber-500"><i class="fas fa-hourglass-half text-xs"></i></span>
+              <div><p class="text-sm font-semibold text-slate-800">Waiting for payment</p><p class="text-xs text-slate-500">Complete the order when the customer pays</p></div>
+            <% } %>
+          </li>
+        </ol>
+      </section>
 
-        <div class="mb-4">
-          <label for="discount" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Discount Amount (TSH)
-          </label>
-          <input type="number" name="discount" id="discount" placeholder="0" min="0"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white" />
-        </div>
+      <% if (done && (order.payment_method || merchantName)) { %>
+        <section class="rounded-2xl border border-slate-200/80 bg-white p-6">
+          <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>Payment</h3>
+          <dl class="mt-4 space-y-3 text-sm">
+            <% if (order.payment_method) { %><div class="flex items-center justify-between gap-3"><dt class="text-slate-500">Method</dt><dd class="font-semibold text-slate-800"><%= METHODS[order.payment_method] || order.payment_method %></dd></div><% } %>
+            <% if (merchantName) { %><div class="flex items-center justify-between gap-3"><dt class="text-slate-500">Account</dt><dd class="font-semibold text-slate-800"><%= merchantName %></dd></div><% } %>
+          </dl>
+        </section>
+      <% } %>
 
-        <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 mt-5">
-          <button type="button" onclick="closeCompleteModal()"
-            class="px-4 py-2 bg-slate-100 text-slate-600 text-xs font-semibold rounded-lg hover:bg-slate-200 transition duration-150">
-            Cancel
-          </button>
-          <button type="submit"
-            class="px-4 py-2 bg-emerald-600 text-white text-xs font-semibold rounded-lg hover:bg-emerald-700 shadow-sm transition duration-150">
-            Confirm & Complete
-          </button>
-        </div>
-      </form>
-    </div>
+      <% if (!done) { %>
+        <section class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
+          <div class="h-1 bg-brand-gold"></div>
+          <div class="p-6">
+            <p class="text-sm font-semibold text-slate-800">Ready to collect payment?</p>
+            <p class="mt-1 text-sm text-slate-500">Record how it was paid to close this order.</p>
+            <button type="button" data-open-complete class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700"><i class="fas fa-check text-xs"></i>Complete order</button>
+          </div>
+        </section>
+      <% } %>
+    </aside>
   </div>
+</div>
 
-  <script>
-    function openCompleteModal(orderId, orderNum) {
-      document.getElementById('modalTitle').innerText = 'Complete Order #' + orderNum;
+<% if (!done) { %>
+<!-- ============ Complete order dialog ============ -->
+<div id="completeModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" class="!mt-0 fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+  <div class="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white shadow-2xl">
+    <div class="h-1 bg-brand-gold"></div>
+    <div class="flex items-start justify-between gap-4 px-6 pt-5">
+      <div><h3 id="modalTitle" class="text-lg font-bold text-brand-tealDark">Complete order #<%= order.order_number %></h3><p class="mt-0.5 text-sm text-slate-500"><%= order.customer_name || 'Walk-in customer' %></p></div>
+      <button type="button" data-close aria-label="Close" class="grid h-9 w-9 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600"><i class="fas fa-times"></i></button>
+    </div>
 
-      // Reset payment method to default CASH and adjust visibility
-      document.getElementById('paymentMethodSelect').value = 'CASH';
-      toggleMerchantField();
+    <form id="completeForm" method="POST" action="/orders/complete/<%= order.id %>" class="px-6 pb-6 pt-4">
+      <div class="rounded-xl bg-teal-50 px-4 py-3">
+        <p class="text-xs font-medium text-brand-teal">Amount to collect</p>
+        <p class="mt-0.5 text-2xl font-extrabold tabular-nums text-brand-tealDark">TSh <span id="dueAmount"><%= money(total) %></span></p>
+        <p id="discountNote" class="mt-0.5 hidden text-xs text-slate-600"></p>
+      </div>
 
-      document.getElementById('completeOrderModal').classList.remove('hidden');
+      <fieldset class="mt-5">
+        <legend class="mb-2 text-sm font-medium text-slate-700">How was it paid?</legend>
+        <div class="grid gap-2">
+          <% [['CASH', 'fa-money-bill-wave', 'Cash', 'Paid in hand'], ['LIPA_NUMBER', 'fa-mobile-alt', 'Lipa number', 'Mobile money, till or QR'], ['CREDIT', 'fa-file-invoice-dollar', 'Credit', 'Customer pays later']].forEach((m, i) => { %>
+            <label class="cursor-pointer">
+              <input type="radio" name="payment_method" value="<%= m[0] %>" class="peer sr-only" <%= i === 0 ? 'checked' : '' %>>
+              <span class="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 transition-all peer-checked:border-brand-teal peer-checked:bg-brand-teal/5 peer-checked:ring-2 peer-checked:ring-brand-teal/15 peer-focus-visible:ring-2 peer-focus-visible:ring-brand-gold">
+                <span class="grid h-9 w-9 place-items-center rounded-lg bg-slate-100 text-slate-500"><i class="fas <%= m[1] %> text-sm"></i></span>
+                <span><span class="block text-sm font-semibold text-slate-800"><%= m[2] %></span><span class="block text-xs text-slate-500"><%= m[3] %></span></span>
+              </span>
+            </label>
+          <% }) %>
+        </div>
+      </fieldset>
+
+      <div id="merchantBox" class="mt-4 hidden">
+        <label for="merchantSelect" class="mb-1.5 block text-sm font-medium text-slate-700">Merchant account</label>
+        <% if (accts.length) { %>
+          <select id="merchantSelect" name="merchant_id" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 focus:border-brand-teal focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-teal/20">
+            <option value="">Select a merchant account</option>
+            <% accts.forEach(m => { %><option value="<%= m.id %>"><%= merchantLabel(m) %></option><% }) %>
+          </select>
+        <% } else { %>
+          <p class="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">You have no merchant accounts yet. <a href="/merchants" class="font-semibold underline">Add one</a> before using this payment method.</p>
+          <input type="hidden" id="merchantSelect" name="merchant_id" value="">
+        <% } %>
+      </div>
+
+      <div class="mt-4">
+        <label for="discount" class="mb-1.5 block text-sm font-medium text-slate-700">Discount <span class="font-normal text-slate-400">(optional)</span></label>
+        <div class="relative">
+          <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">TSh</span>
+          <input type="number" id="discount" name="discount" min="0" max="<%= total %>" inputmode="numeric" placeholder="0" class="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-11 pr-3 text-sm tabular-nums text-slate-800 focus:border-brand-teal focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-teal/20">
+        </div>
+        <p class="mt-1.5 text-xs text-slate-500">It cannot be more than TSh <%= money(total) %>.</p>
+      </div>
+
+      <div class="mt-6 flex items-center justify-end gap-2">
+        <button type="button" data-close class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
+        <button type="submit" id="confirmBtn" class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"><i class="fas fa-check text-xs"></i><span>Confirm and complete</span></button>
+      </div>
+    </form>
+  </div>
+</div>
+<% } %>
+
+<script>
+  (function () {
+    /* Dates in the viewer's own time zone */
+    document.querySelectorAll('time[data-dt], time[data-dt-full]').forEach(function (t) {
+      var d = new Date(t.getAttribute('datetime')); if (isNaN(d)) return;
+      var full = t.hasAttribute('data-dt-full');
+      t.textContent = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) + (full ? ', ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '');
+      if (!full) t.title = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    });
+
+    var modal = document.getElementById('completeModal'); if (!modal) return;
+    var form = document.getElementById('completeForm'), box = document.getElementById('merchantBox'), select = document.getElementById('merchantSelect'),
+        discount = document.getElementById('discount'), confirm = document.getElementById('confirmBtn'), TOTAL = <%= total %>;
+
+    function method() { return form.querySelector('input[name="payment_method"]:checked').value; }
+    function sync() {
+      var lipa = method() === 'LIPA_NUMBER';                       // a merchant account is only needed for Lipa number
+      box.classList.toggle('hidden', !lipa);
+      if (lipa) select.setAttribute('required', 'required'); else { select.removeAttribute('required'); select.value = ''; }
+      var d = Math.min(TOTAL, Math.max(0, parseFloat(discount.value) || 0)), note = document.getElementById('discountNote');
+      document.getElementById('dueAmount').textContent = Math.max(0, TOTAL - d).toLocaleString('en-US');
+      note.classList.toggle('hidden', d <= 0); note.textContent = d > 0 ? 'After a discount of TSh ' + d.toLocaleString('en-US') : '';
+      confirm.disabled = (lipa && select.type === 'hidden') || (parseFloat(discount.value) > TOTAL);   // no accounts to pick, or discount too large
     }
+    function open() { form.reset(); sync(); confirm.querySelector('span').textContent = 'Confirm and complete'; modal.classList.remove('hidden'); modal.classList.add('flex'); document.body.classList.add('overflow-hidden'); form.querySelector('input[name="payment_method"]:checked').focus(); }
+    function close() { modal.classList.add('hidden'); modal.classList.remove('flex'); document.body.classList.remove('overflow-hidden'); }
 
-    function closeCompleteModal() {
-      document.getElementById('completeOrderModal').classList.add('hidden');
-    }
+    document.addEventListener('click', function (e) {
+      if (e.target.closest('[data-open-complete]')) { open(); return; }
+      if (e.target.closest('[data-close]') || e.target === modal) close();
+    });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+    form.addEventListener('change', sync); discount.addEventListener('input', sync);
+    form.addEventListener('submit', function () { confirm.disabled = true; confirm.querySelector('span').textContent = 'Saving'; });
+  })();
+</script>
 
-    function toggleMerchantField() {
-      const paymentMethod = document.getElementById('paymentMethodSelect').value;
-      const merchantContainer = document.getElementById('merchantContainer');
-      const merchantSelect = document.getElementById('merchantSelect');
-
-      // Only require merchant when Lipa Number is selected
-      if (paymentMethod === 'LIPA_NUMBER') {
-        merchantContainer.classList.remove('hidden');
-        merchantSelect.setAttribute('required', 'required');
-      } else {
-        merchantContainer.classList.add('hidden');
-        merchantSelect.removeAttribute('required');
-        merchantSelect.value = ''; // Reset selection
-      }
-    }
-  </script>
-
-  <%- include('../layouts/footer') %>
+<%- include('../layouts/footer') %>

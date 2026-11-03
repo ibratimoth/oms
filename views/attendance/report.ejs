@@ -1,101 +1,250 @@
 <%- include('../layouts/header') %>
+<%
+  /* ---------- derived data ---------- */
+  const L        = locals;
+  const userList = L.users || [];
+  const list     = L.attendances || [];
+  const chosen   = userList.find(u => String(u.id) === String(L.selectedUserId));
+  const start    = L.startDate || '';
+  const end      = L.endDate || '';
 
-  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-    <div>
-      <h1 class="text-2xl font-bold tracking-tight text-slate-800">Attendance Reports</h1>
-      <p class="text-sm text-slate-500 mt-1">Review historical worker arrival and departure logs over custom date ranges.</p>
+  const fmtDay = (s) => { const d = new Date(s + 'T00:00:00'); return isNaN(d) ? s : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); };
+  const iso    = (v) => { const d = new Date(v); return isNaN(d) ? '' : d.toISOString(); };
+  const hm     = (m) => m === null ? '-' : Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
+
+  const rows = list.map(a => {
+    const inMs  = new Date(a.sign_in).getTime();
+    const outMs = a.sign_out ? new Date(a.sign_out).getTime() : null;
+    return {
+      name: (a.User && a.User.full_name) ? a.User.full_name : 'Unknown user',
+      inIso: iso(a.sign_in), outIso: a.sign_out ? iso(a.sign_out) : '',
+      active: !a.sign_out,
+      mins: (outMs && inMs) ? Math.max(0, Math.round((outMs - inMs) / 60000)) : null
+    };
+  });
+
+  const done      = rows.filter(r => r.mins !== null);
+  const totalMins = done.reduce((s, r) => s + r.mins, 0);
+  const avgMins   = done.length ? Math.round(totalMins / done.length) : null;
+  const longest   = done.reduce((m, r) => Math.max(m, r.mins), 0);
+  const openCount = rows.filter(r => r.active).length;
+
+  const dateHtml = (v) => v ? `<time data-date datetime="${v}">${v.substr(0, 10)}</time>` : '-';
+  const timeHtml = (v, empty) => v ? `<time data-time datetime="${v}">${v.substr(11, 5)}</time>` : `<span class="text-slate-400">${empty}</span>`;
+  const lengthHtml = (r) => r.active
+    ? '<span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>Shift still open</span>'
+    : `<div class="flex items-center justify-end gap-3"><span class="font-semibold tabular-nums text-slate-800">${hm(r.mins)}</span><span class="hidden h-1.5 w-20 overflow-hidden rounded-full bg-slate-100 lg:block"><span class="block h-full rounded-full bg-brand-teal" style="width:${longest ? Math.round((r.mins / longest) * 100) : 0}%"></span></span></div>`;
+
+  const stats = [
+    { label: 'Shifts', value: rows.length, tone: 'text-brand-tealDark' },
+    { label: 'Hours worked', value: hm(done.length ? totalMins : null), tone: 'text-brand-tealDark' },
+    { label: 'Average shift', value: hm(avgMins), tone: 'text-brand-tealDark' },
+    { label: 'Still open', value: openCount, tone: openCount ? 'text-amber-600' : 'text-slate-400' }
+  ];
+%>
+
+<div class="mx-auto max-w-5xl space-y-6">
+
+  <!-- ============ Header ============ -->
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div class="flex min-w-0 items-center gap-4">
+      <span class="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-brand-teal text-xl font-bold text-white">
+        <%= chosen ? chosen.full_name.charAt(0).toUpperCase() : '?' %>
+      </span>
+      <div class="min-w-0">
+        <h2 class="truncate text-2xl font-bold tracking-tight text-brand-tealDark"><%= chosen ? chosen.full_name : 'Choose a staff member' %></h2>
+        <p class="mt-0.5 text-sm text-slate-500">
+          <% if (start && end) { %>Attendance from <%= fmtDay(start) %> to <%= fmtDay(end) %><% } else { %>Pick a date range to review attendance<% } %>
+        </p>
+      </div>
     </div>
-    <div>
-      <a href="/attendance"
-        class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-lg transition duration-150 whitespace-nowrap">
-        <i class="fas fa-arrow-left text-xs"></i> Back to Today's Logs
+    <div class="flex items-center gap-2">
+      <a href="/attendance" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-600 transition-colors hover:border-brand-teal/40 hover:text-brand-teal">
+        <i class="fas fa-arrow-left text-xs"></i>Today's attendance
       </a>
+      <button id="exportCsv" type="button" <%= rows.length ? '' : 'disabled' %>
+        class="inline-flex items-center gap-2 rounded-xl bg-brand-teal px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-tealDark disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none">
+        <i class="fas fa-file-download text-xs"></i>Export CSV
+      </button>
     </div>
   </div>
 
-  <!-- Filter Form -->
-  <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 mb-6 max-w-5xl">
-    <form method="GET" action="/attendance/report" class="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
+  <!-- ============ Filters ============ -->
+  <form id="filterForm" method="GET" action="/attendance/report" class="rounded-2xl border border-slate-200/80 bg-white p-5">
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_auto] lg:items-end">
       <div>
-        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Select User</label>
-        <select name="userId" class="w-full text-sm border border-slate-200 rounded-lg p-2 bg-slate-50 focus:outline-none focus:border-brand-teal">
-          <% users.forEach(u => { %>
-            <option value="<%= u.id %>" <%= selectedUserId === u.id ? 'selected' : '' %>><%= u.full_name %></option>
+        <label for="userId" class="mb-1.5 block text-sm font-medium text-slate-700">Staff member</label>
+        <select id="userId" name="userId"
+          class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 focus:border-brand-teal focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-teal/20">
+          <% userList.forEach(u => { %>
+            <option value="<%= u.id %>" <%= String(L.selectedUserId) === String(u.id) ? 'selected' : '' %>><%= u.full_name %></option>
           <% }) %>
         </select>
       </div>
       <div>
-        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Start Date</label>
-        <input type="date" name="startDate" value="<%= startDate %>" class="w-full text-sm border border-slate-200 rounded-lg p-2 bg-slate-50 focus:outline-none focus:border-brand-teal">
+        <label for="startDate" class="mb-1.5 block text-sm font-medium text-slate-700">From</label>
+        <input id="startDate" type="date" name="startDate" value="<%= start %>"
+          class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 focus:border-brand-teal focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-teal/20">
       </div>
       <div>
-        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">End Date</label>
-        <input type="date" name="endDate" value="<%= endDate %>" class="w-full text-sm border border-slate-200 rounded-lg p-2 bg-slate-50 focus:outline-none focus:border-brand-teal">
+        <label for="endDate" class="mb-1.5 block text-sm font-medium text-slate-700">To</label>
+        <input id="endDate" type="date" name="endDate" value="<%= end %>" min="<%= start %>"
+          class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 focus:border-brand-teal focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-teal/20">
       </div>
-      <div>
-        <button type="submit" class="w-full py-2 px-4 bg-brand-teal hover:bg-brand-tealDark text-white text-sm font-semibold rounded-lg shadow-sm transition">
-          <i class="fas fa-filter text-xs mr-1"></i> Filter Logs
-        </button>
-      </div>
-    </form>
-  </div>
+      <button type="submit"
+        class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-gold px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-goldHover sm:col-span-2 lg:col-span-1">
+        <i class="fas fa-search text-xs"></i>Show logs
+      </button>
+    </div>
 
-  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden max-w-5xl">
-    <div class="overflow-x-auto">
-      <table class="w-full text-left border-collapse whitespace-nowrap">
-        <thead>
-          <tr class="bg-slate-50 border-b border-slate-200 text-slate-400 text-xs font-bold uppercase tracking-wider">
-            <th class="py-3.5 px-6">Date</th>
-            <th class="py-3.5 px-6">Staff Member</th>
-            <th class="py-3.5 px-6">Sign In</th>
-            <th class="py-3.5 px-6">Sign Out</th>
-            <th class="py-3.5 px-6 text-right">Duration / Status</th>
-          </tr>
-        </thead>
-        <tbody class="text-sm divide-y divide-slate-100">
-          <% if (typeof attendances !== 'undefined' && attendances.length > 0) { %>
-            <% attendances.forEach(att => { %>
-              <tr class="hover:bg-slate-50/70 transition duration-150 group">
-                <td class="py-4 px-6 text-slate-600 text-xs">
-                  <%= new Date(att.sign_in).toLocaleDateString('en-GB') %>
-                </td>
-                <td class="py-4 px-6 font-semibold text-slate-800">
-                  <%= att.User ? att.User.full_name : 'Unknown User' %>
-                </td>
-                <td class="py-4 px-6 text-slate-600 text-xs">
-                  <%= new Date(att.sign_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %>
-                </td>
-                <td class="py-4 px-6 text-slate-600 text-xs">
-                  <% if (att.sign_out) { %>
-                    <%= new Date(att.sign_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %>
-                  <% } else { %>
-                    <span class="text-slate-400 italic">Active</span>
-                  <% } %>
-                </td>
-                <td class="py-4 px-6 text-right text-xs">
-                  <% if (att.sign_out) { %>
-                    <% 
-                      const diffMs = new Date(att.sign_out) - new Date(att.sign_in);
-                      const diffHrs = (diffMs / (1000 * 60 * 60)).toFixed(1);
-                    %>
-                    <span class="font-medium text-slate-700"><%= diffHrs %> hours</span>
-                  <% } else { %>
-                    <span class="text-emerald-600 font-semibold">Still Shift Active</span>
-                  <% } %>
-                </td>
+    <div class="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
+      <span class="mr-1 text-sm text-slate-500">Quick range</span>
+      <% [['week','This week'],['month','This month'],['last30','Last 30 days'],['lastMonth','Last month']].forEach(p => { %>
+        <button type="button" data-range="<%= p[0] %>"
+          class="range-chip rounded-full border border-slate-200 px-3 py-1 text-sm font-medium text-slate-600 transition-colors hover:border-brand-teal/40 hover:text-brand-teal"><%= p[1] %></button>
+      <% }) %>
+    </div>
+  </form>
+
+  <!-- ============ Summary ============ -->
+  <section aria-label="Summary" class="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-200/80 md:grid-cols-4">
+    <% stats.forEach(s => { %>
+      <div class="bg-white px-5 py-4">
+        <p class="text-sm text-slate-500"><%= s.label %></p>
+        <p class="mt-1 text-2xl font-bold tabular-nums tracking-tight <%= s.tone %>"><%= s.value %></p>
+      </div>
+    <% }) %>
+  </section>
+
+  <!-- ============ Log ============ -->
+  <section class="rounded-2xl border border-slate-200/80 bg-white">
+    <% if (rows.length > 0) { %>
+
+      <!-- Desktop table -->
+      <div class="hidden overflow-x-auto md:block">
+        <table class="w-full text-left text-sm">
+          <thead>
+            <tr class="border-b border-slate-100 text-xs font-medium text-slate-500">
+              <th scope="col" class="px-6 py-3.5">Date</th>
+              <th scope="col" class="px-4 py-3.5">Staff member</th>
+              <th scope="col" class="px-4 py-3.5">Signed in</th>
+              <th scope="col" class="px-4 py-3.5">Signed out</th>
+              <th scope="col" class="px-6 py-3.5 text-right">Time on shift</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            <% rows.forEach(r => { %>
+              <tr class="transition-colors hover:bg-brand-teal/[0.03]">
+                <td class="whitespace-nowrap px-6 py-3.5 font-medium text-slate-700"><%- dateHtml(r.inIso) %></td>
+                <td class="px-4 py-3.5 font-semibold text-slate-800"><%= r.name %></td>
+                <td class="px-4 py-3.5 font-medium tabular-nums text-slate-700"><%- timeHtml(r.inIso, '-') %></td>
+                <td class="px-4 py-3.5 font-medium tabular-nums text-slate-700"><%- timeHtml(r.outIso, 'Not yet') %></td>
+                <td class="px-6 py-3.5 text-right"><%- lengthHtml(r) %></td>
               </tr>
             <% }) %>
-          <% } else { %>
-            <tr>
-              <td colspan="5" class="py-12 text-center">
-                <div class="text-slate-300 mb-2"><i class="fas folder-open text-4xl"></i></div>
-                <p class="text-sm text-slate-400 italic">No historical records match the selected criteria.</p>
-              </td>
-            </tr>
-          <% } %>
-        </tbody>
-      </table>
-    </div>
-  </div>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Mobile cards -->
+      <ul class="divide-y divide-slate-100 md:hidden">
+        <% rows.forEach(r => { %>
+          <li class="px-5 py-4">
+            <div class="flex items-center justify-between gap-3">
+              <p class="font-semibold text-slate-800"><%- dateHtml(r.inIso) %></p>
+              <%- lengthHtml(r) %>
+            </div>
+            <p class="mt-0.5 truncate text-xs text-slate-500"><%= r.name %></p>
+            <div class="mt-3 grid grid-cols-2 gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-xs">
+              <div><span class="text-slate-500">Signed in</span><p class="mt-0.5 font-semibold tabular-nums text-slate-800"><%- timeHtml(r.inIso, '-') %></p></div>
+              <div><span class="text-slate-500">Signed out</span><p class="mt-0.5 font-semibold tabular-nums text-slate-800"><%- timeHtml(r.outIso, 'Not yet') %></p></div>
+            </div>
+          </li>
+        <% }) %>
+      </ul>
+
+    <% } else { %>
+      <div class="px-6 py-14 text-center">
+        <span class="mx-auto grid h-12 w-12 place-items-center rounded-full bg-brand-teal/10 text-brand-teal"><i class="fas fa-folder-open text-lg"></i></span>
+        <p class="mt-4 text-sm font-semibold text-slate-800">No shifts found for this period</p>
+        <p class="mx-auto mt-1 max-w-xs text-sm text-slate-500">Try a wider date range or a different staff member.</p>
+        <button type="button" data-range="month" class="range-chip mt-4 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-brand-teal transition-colors hover:bg-brand-teal/5">Show this month</button>
+      </div>
+    <% } %>
+  </section>
+</div>
+
+<script type="application/json" id="reportData"><%- JSON.stringify({ name: chosen ? chosen.full_name : 'staff', start: start, end: end, rows: rows }).replace(/</g, '\\u003c') %></script>
+
+<script>
+  (function () {
+    var form = document.getElementById('filterForm'),
+        startEl = document.getElementById('startDate'),
+        endEl = document.getElementById('endDate');
+
+    /* Show dates and times in the viewer's own time zone */
+    document.querySelectorAll('time[data-date]').forEach(function (t) {
+      var d = new Date(t.getAttribute('datetime'));
+      if (!isNaN(d)) t.textContent = d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+    });
+    document.querySelectorAll('time[data-time]').forEach(function (t) {
+      var d = new Date(t.getAttribute('datetime'));
+      if (!isNaN(d)) t.textContent = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    });
+
+    /* Keep "To" from going before "From" */
+    startEl.addEventListener('change', function () {
+      endEl.min = startEl.value;
+      if (endEl.value && endEl.value < startEl.value) endEl.value = startEl.value;
+    });
+
+    /* Quick ranges */
+    function ymd(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+    function range(key) {
+      var t = new Date(), s = new Date(t), e = new Date(t);
+      if (key === 'week')      { s.setDate(t.getDate() - ((t.getDay() + 6) % 7)); }          // Monday to today
+      if (key === 'month')     { s = new Date(t.getFullYear(), t.getMonth(), 1); }
+      if (key === 'last30')    { s.setDate(t.getDate() - 29); }
+      if (key === 'lastMonth') { s = new Date(t.getFullYear(), t.getMonth() - 1, 1); e = new Date(t.getFullYear(), t.getMonth(), 0); }
+      return [ymd(s), ymd(e)];
+    }
+
+    document.querySelectorAll('.range-chip').forEach(function (chip) {
+      var r = range(chip.getAttribute('data-range'));
+      if (r[0] === startEl.value && r[1] === endEl.value) {
+        chip.classList.add('border-brand-teal', 'bg-brand-teal/10', 'text-brand-tealDark');
+      }
+      chip.addEventListener('click', function () {
+        startEl.value = r[0]; endEl.value = r[1];
+        form.submit();
+      });
+    });
+
+    /* CSV export of the rows currently on screen */
+    var exportBtn = document.getElementById('exportCsv');
+    exportBtn.addEventListener('click', function () {
+      var data = JSON.parse(document.getElementById('reportData').textContent);
+      function q(v) { return '"' + String(v).replace(/"/g, '""') + '"'; }
+      var lines = [['Date', 'Staff member', 'Signed in', 'Signed out', 'Hours worked'].map(q).join(',')];
+
+      data.rows.forEach(function (r) {
+        var i = new Date(r.inIso), o = r.outIso ? new Date(r.outIso) : null;
+        var hm = { hour: '2-digit', minute: '2-digit' };
+        lines.push([
+          i.toLocaleDateString('en-GB'), r.name, i.toLocaleTimeString([], hm),
+          o ? o.toLocaleTimeString([], hm) : 'Still open',
+          r.mins === null ? '' : (r.mins / 60).toFixed(2)
+        ].map(q).join(','));
+      });
+
+      var blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'attendance_' + data.name.replace(/[^a-z0-9]+/gi, '_').toLowerCase() + '_' + data.start + '_' + data.end + '.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(a.href);
+    });
+  })();
+</script>
 
 <%- include('../layouts/footer') %>

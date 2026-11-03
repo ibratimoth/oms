@@ -1,278 +1,495 @@
 <%- include('../layouts/header') %>
+<script src="/js/xlsx.full.min.js"></script>
+<%
+  const list = (typeof products !== 'undefined' && products) ? products : [];
+  const data = list.map(p => ({
+    id: p.id, name: p.name, barcode: p.barcode ? String(p.barcode) : '',
+    stock: Number(p.quantity_in_stock || 0), reorder: p.reorder_level || 5,
+    price: (p.sell_price === undefined || p.sell_price === null) ? null : Number(p.sell_price)
+  }));
+  const hasPrices = data.some(d => d.price !== null);
 
-  <% if (typeof messages !=='undefined' && messages.error && messages.error.length> 0) { %>
-    <div
-      class="mb-6 max-w-5xl bg-rose-50 border border-rose-200 rounded-xl p-4 flex items-start gap-3 shadow-sm animate-fade-in non-printable">
-      <div class="bg-rose-100 text-rose-600 p-1.5 rounded-lg shrink-0">
-        <i class="fas fa-exclamation-circle text-lg"></i>
-      </div>
-      <div class="flex-1">
-        <h4 class="text-sm font-bold text-rose-800">Processing Error Encountered</h4>
-        <p class="text-xs text-rose-600 mt-0.5">
-          <%= messages.error %>
-        </p>
-      </div>
+  let err = '';
+  if (typeof messages !== 'undefined' && messages && messages.error && messages.error.length > 0) err = [].concat(messages.error).join(' ');
+  else if (typeof error !== 'undefined' && error && error.length > 0) err = [].concat(error).join(' ');
+
+  const field = 'w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-teal focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-teal/20';
+%>
+
+<div class="space-y-5 pb-20 lg:pb-0">
+
+  <!-- ============ Top row ============ -->
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <a href="/orders" class="group inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition-colors hover:text-brand-teal">
+      <i class="fas fa-arrow-left text-xs transition-transform group-hover:-translate-x-0.5"></i>Back to orders
+    </a>
+    <button type="button" id="openImport" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-brand-teal/40 hover:text-brand-teal">
+      <i class="fas fa-file-excel text-xs text-emerald-600"></i>Import orders from Excel
+    </button>
+  </div>
+
+  <% if (err) { %>
+    <div role="alert" class="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4">
+      <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-rose-100 text-rose-600"><i class="fas fa-exclamation-circle"></i></span>
+      <div class="min-w-0"><h4 class="text-sm font-semibold text-rose-800">The order could not be processed</h4><p class="mt-0.5 text-sm text-rose-700"><%= err %></p></div>
     </div>
-    <% } else if (typeof error !=='undefined' && error && error.length> 0) { %>
-      <div
-        class="mb-6 max-w-5xl bg-rose-50 border border-rose-200 rounded-xl p-4 flex items-start gap-3 shadow-sm animate-fade-in non-printable">
-        <div class="bg-rose-100 text-rose-600 p-1.5 rounded-lg shrink-0">
-          <i class="fas fa-exclamation-circle text-lg"></i>
+  <% } %>
+
+  <div class="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_23rem]">
+
+    <!-- ============ Catalog ============ -->
+    <section class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
+      <div class="border-b border-slate-100 p-5">
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="relative min-w-[16rem] flex-1">
+            <i class="fas fa-search pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-teal"></i>
+            <input type="text" id="scanInput" autocomplete="off" autofocus aria-label="Scan a barcode or search products by name"
+              placeholder="Scan a barcode or search by name"
+              class="<%= field %> border-teal-200 bg-teal-50/50 py-3 pl-11 pr-12">
+            <button type="button" id="clearSearch" aria-label="Clear search" class="absolute right-2 top-1/2 hidden h-8 w-8 -translate-y-1/2 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600"><i class="fas fa-times text-sm"></i></button>
+            <kbd id="slashHint" class="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-md border border-slate-200 bg-white px-2 py-0.5 text-xs font-semibold text-slate-400 sm:block" title="Press / to search">/</kbd>
+          </div>
+          <label class="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-600">
+            <input type="checkbox" id="inStockOnly" class="h-4 w-4 rounded border-slate-300 text-brand-teal focus:ring-brand-teal">In stock only
+          </label>
         </div>
-        <div class="flex-1">
-          <h4 class="text-sm font-bold text-rose-800">Processing Error Encountered</h4>
-          <p class="text-xs text-rose-600 mt-0.5">
-            <%= error %>
-          </p>
+        <p id="gridCount" class="mt-3 text-sm text-slate-500" aria-live="polite"></p>
+      </div>
+
+      <div id="grid" class="grid max-h-[34rem] grid-cols-2 gap-3 overflow-y-auto bg-slate-50/60 p-5 sm:grid-cols-3 xl:grid-cols-4"></div>
+      <div id="gridEmpty" class="hidden px-6 py-14 text-center">
+        <span class="mx-auto grid h-12 w-12 place-items-center rounded-full bg-brand-teal/10 text-brand-teal"><i class="fas fa-search text-lg"></i></span>
+        <p id="emptyTitle" class="mt-4 text-sm font-semibold text-slate-800">No products match</p>
+        <p class="mt-1 text-sm text-slate-500">Check the spelling, try fewer words, or search by barcode.</p>
+        <button type="button" id="emptyClear" class="mt-4 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-brand-teal hover:bg-brand-teal/5">Clear search</button>
+      </div>
+    </section>
+
+    <!-- ============ Ticket ============ -->
+    <form id="orderForm" method="POST" action="/orders/create" novalidate
+      class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white lg:sticky lg:top-24">
+      <div id="ticket" class="h-1 bg-brand-gold"></div>
+
+      <div class="flex items-center justify-between bg-teal-50 px-5 py-4">
+        <h3 class="text-[15px] font-bold text-brand-tealDark">Order ticket</h3>
+        <span id="ticketCount" class="rounded-full bg-brand-teal px-2.5 py-0.5 text-xs font-bold text-white">0 items</span>
+      </div>
+
+      <div class="space-y-3 border-b border-slate-100 p-5">
+        <div>
+          <label for="customer_name" class="mb-1.5 block text-sm font-medium text-slate-700">Customer name</label>
+          <input type="text" id="customer_name" name="customer_name" required autocomplete="off" placeholder="e.g. John Doe" class="<%= field %> px-3.5">
+          <button type="button" id="walkInBtn" class="mt-1.5 text-sm font-medium text-brand-teal hover:text-brand-tealDark">Use "Walk-in customer"</button>
+        </div>
+        <div>
+          <label for="customer_phone" class="mb-1.5 block text-sm font-medium text-slate-700">Phone <span class="font-normal text-slate-400">(optional)</span></label>
+          <input type="text" id="customer_phone" name="customer_phone" inputmode="tel" autocomplete="off" placeholder="e.g. 0712345678" class="<%= field %> px-3.5">
         </div>
       </div>
-      <% } %>
 
-        <div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 non-printable">
-          <a href="/orders"
-            class="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-brand-teal transition duration-150 group">
-            <i class="fas fa-arrow-left text-xs group-hover:-translate-x-0.5 transition-transform duration-150"></i>
-            <span>Cancel & Go Back</span>
-          </a>
+      <div id="ticketEmpty" class="px-6 py-10 text-center">
+        <span class="mx-auto grid h-12 w-12 place-items-center rounded-full bg-brand-teal/10 text-brand-teal"><i class="fas fa-shopping-basket text-lg"></i></span>
+        <p class="mt-3 text-sm font-semibold text-slate-800">Nothing added yet</p>
+        <p class="mx-auto mt-1 max-w-[16rem] text-sm text-slate-500">Tap a product, or scan its barcode, to add it here.</p>
+      </div>
+      <ul id="cart" class="hidden max-h-80 divide-y divide-slate-100 overflow-y-auto"></ul>
 
-          <button type="button" id="downloadTemplateBtn"
-            class="inline-flex items-center gap-1.5 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 py-1.5 px-3 text-xs font-semibold rounded-md shadow-sm transition duration-150 cursor-pointer">
-            <i class="fas fa-download text-emerald-600"></i> Download Upload Template (.xlsx)
-          </button>
-        </div>
-
-        <div class="mb-6">
-          <div class="flex items-center gap-2 text-sm font-medium text-slate-400">
-            <a href="/orders" class="hover:text-brand-teal transition duration-150">Orders</a>
-            <i class="fas fa-chevron-right text-[10px]"></i>
-            <span class="text-slate-600">New Order</span>
+      <div class="border-t border-slate-100 bg-slate-50/60 p-5">
+        <p id="sumWarn" class="mb-3 hidden items-start gap-2 rounded-xl bg-amber-50 px-3.5 py-2.5 text-sm font-medium text-amber-800" role="status"></p>
+        <% if (hasPrices) { %>
+          <div class="flex items-baseline justify-between">
+            <span class="text-sm text-slate-500">Estimated total</span>
+            <span class="tabular-nums text-brand-tealDark"><span class="text-sm font-semibold opacity-70">TSh</span> <span id="sumTotal" class="text-2xl font-extrabold tracking-tight">0</span></span>
           </div>
-          <h1 class="text-2xl font-bold tracking-tight text-slate-800 mt-1">Create Invoice Order</h1>
-          <p class="text-sm text-slate-500 mt-1">Compile client item choices, verify current stock reserves, and queue
-            transaction logs.</p>
+        <% } else { %>
+          <p class="text-sm text-slate-500">Prices are applied when the order is created.</p>
+        <% } %>
+        <button type="submit" id="submitBtn" disabled class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-gold px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-goldHover disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none">
+          <i class="fas fa-receipt text-xs"></i><span>Create order</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Mobile ticket bar -->
+<div id="mobileBar" class="!mt-0 fixed inset-x-0 bottom-0 z-30 hidden items-center justify-between gap-3 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur lg:hidden">
+  <p class="text-sm font-semibold text-brand-tealDark"><span id="mobileCount">0 items</span><% if (hasPrices) { %><span class="ml-2 font-normal text-slate-500">TSh <span id="mobileTotal">0</span></span><% } %></p>
+  <a href="#ticket" class="rounded-xl bg-brand-teal px-4 py-2 text-sm font-semibold text-white">View ticket</a>
+</div>
+
+<!-- ============ Import dialog ============ -->
+<div id="importModal" role="dialog" aria-modal="true" aria-labelledby="importTitle" class="!mt-0 fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+  <div class="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+    <div class="h-1 bg-brand-gold"></div>
+    <div class="flex items-start justify-between gap-4 px-6 pt-5">
+      <div>
+        <h3 id="importTitle" class="text-lg font-bold text-brand-tealDark">Import orders from Excel</h3>
+        <p class="mt-0.5 text-sm text-slate-500">Each row is a customer, a product barcode and a quantity.</p>
+      </div>
+      <button type="button" data-close-import aria-label="Close" class="grid h-9 w-9 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600"><i class="fas fa-times"></i></button>
+    </div>
+
+    <form id="bulkOrderForm" class="flex-1 space-y-5 overflow-y-auto px-6 pb-2 pt-5" novalidate>
+      <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3">
+        <p class="text-sm text-slate-600">Columns:
+          <% ['customer_name', 'customer_phone', 'barcode', 'quantity'].forEach(c => { %><code class="mx-0.5 rounded bg-white px-1.5 py-0.5 font-mono text-xs ring-1 ring-slate-200"><%= c %></code><% }) %>
+        </p>
+        <button type="button" id="templateBtn" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-brand-teal hover:bg-brand-teal/5"><i class="fas fa-download text-xs"></i>Template</button>
+      </div>
+
+      <label id="dropZone" for="bulkOrderFileInput" class="block cursor-pointer rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/60 px-6 py-8 text-center transition-colors hover:border-brand-teal hover:bg-brand-teal/[0.04]">
+        <span class="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-brand-teal/10 text-brand-teal"><i class="fas fa-cloud-upload-alt text-xl"></i></span>
+        <span class="mt-3 block text-sm font-semibold text-slate-800">Drop your file here, or <span class="text-brand-teal underline decoration-brand-gold decoration-2 underline-offset-4">browse</span></span>
+        <span class="mt-1 block text-sm text-slate-500">.xlsx, .xls or .csv</span>
+        <input type="file" id="bulkOrderFileInput" name="excel_file" accept=".xlsx,.xls,.csv" class="sr-only">
+      </label>
+
+      <div id="fileResult" class="hidden space-y-4">
+        <div class="flex items-center gap-3 rounded-xl border border-slate-200 p-3.5">
+          <span class="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-600"><i class="fas fa-file-excel"></i></span>
+          <div class="min-w-0 flex-1"><p id="fileName" class="truncate text-sm font-semibold text-slate-800"></p><p id="fileMeta" class="text-xs text-slate-500"></p></div>
+          <button type="button" id="removeFile" class="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-600">Remove</button>
         </div>
-
-        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-6 max-w-5xl">
-          <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-            <i class="fas fa-file-excel text-emerald-600 text-sm"></i> Bulk Upload Orders via Document
-          </h3>
-
-          <form id="bulkOrderForm" class="flex flex-col sm:flex-row items-center gap-4">
-            <div class="w-full sm:flex-1">
-              <input type="file" id="bulkOrderFileInput" name="excel_file" accept=".xlsx, .xls, .csv" required
-                class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition duration-150 border border-slate-200 rounded-lg p-1 bg-slate-50 focus:outline-none">
-            </div>
-            <button type="submit"
-              class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg transition shadow-sm cursor-pointer">
-              <i class="fas fa-upload text-xs"></i> Process Bulk Import Run
-            </button>
-          </form>
-
-          <p class="text-[11px] text-slate-400 mt-2">
-            * Required header file setup layout format: <span
-              class="font-mono bg-slate-100 px-1 py-0.5 rounded text-slate-600">customer_name</span>, <span
-              class="font-mono bg-slate-100 px-1 py-0.5 rounded text-slate-600">customer_phone</span>, <span
-              class="font-mono bg-slate-100 px-1 py-0.5 rounded text-slate-600">barcode</span>, <span
-              class="font-mono bg-slate-100 px-1 py-0.5 rounded text-slate-600">quantity</span>.
-          </p>
+        <div id="checkMsg" role="status" class="hidden"></div>
+        <div id="previewWrap" class="hidden overflow-hidden rounded-xl border border-slate-200">
+          <div class="overflow-x-auto"><table class="w-full text-left text-sm"><thead><tr id="previewHead" class="bg-slate-50 text-xs font-medium text-slate-500"></tr></thead><tbody id="previewBody" class="divide-y divide-slate-100"></tbody></table></div>
         </div>
+      </div>
+    </form>
 
-        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden max-w-5xl">
+    <div class="flex items-center justify-end gap-2 border-t border-slate-100 px-6 py-4">
+      <button type="button" data-close-import class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
+      <button type="submit" form="bulkOrderForm" id="importBtn" disabled class="inline-flex items-center gap-2 rounded-xl bg-brand-gold px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-goldHover disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none">
+        <i class="fas fa-file-import text-xs"></i><span id="importBtnText">Import orders</span>
+      </button>
+    </div>
+  </div>
+</div>
 
-          <div class="h-1.5 bg-brand-teal w-full"></div>
+<script type="application/json" id="productData"><%- JSON.stringify(data).replace(/</g, '\\u003c') %></script>
 
-          <form method="POST" action="/orders/create" id="invoiceForm" class="p-6 sm:p-8 space-y-6">
+<style>
+  .tile { text-align: left; }
+  .tile:focus-visible { outline: 2px solid #D49A17; outline-offset: 2px; }
+  .tile.pulse { animation: tilePulse .5s ease; }
+  @keyframes tilePulse { 0% { transform: scale(.96); } 60% { transform: scale(1.02); } 100% { transform: scale(1); } }
+  #dropZone.is-over { border-color: #1A6B78; background: rgba(26, 107, 120, .08); }
+  #dropZone:focus-within { outline: 2px solid #D49A17; outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { .tile.pulse { animation: none; } }
+</style>
 
-            <div>
-              <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Customer Details</h3>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<script>
+  (function () {
+    var $ = function (id) { return document.getElementById(id); };
+    var PRODUCTS = JSON.parse($('productData').textContent), HAS_PRICES = <%= hasPrices ? 'true' : 'false' %>, LIMIT = 60;
+    var money = function (v) { return Number(v || 0).toLocaleString('en-US'); };
+    function say(o) { (typeof Dialog !== 'undefined' ? Dialog : Swal).fire(o); }
+    function toast(icon, title) { if (typeof Toast !== 'undefined') Toast.fire({ icon: icon, title: title, timer: 1600 }); }
+    function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; }
 
-                <div>
-                  <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Customer
-                    Name</label>
-                  <input type="text" name="customer_name" required
-                    class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white transition duration-150"
-                    placeholder="e.g., John Doe">
-                </div>
+    /* =====================================================
+       Catalog grid
+       ===================================================== */
+    var scan = $('scanInput'), grid = $('grid'), lines = [], tiles = {}, submitting = false;
 
-                <div>
-                  <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Customer
-                    Phone</label>
-                  <input type="text" name="customer_phone"
-                    class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white transition duration-150"
-                    placeholder="e.g., 0712345678">
-                </div>
+    function find(id) { for (var i = 0; i < lines.length; i++) if (String(lines[i].p.id) === String(id)) return lines[i]; return null; }
+    /* ---- search: every word must match the name or the barcode; best matches come first ---- */
+    function tokens(q) { return q.toLowerCase().split(/\s+/).filter(Boolean); }
+    function rank(p, toks) {
+      var name = p.name.toLowerCase(), code = (p.barcode || '').toLowerCase(), worst = 0;
+      for (var i = 0; i < toks.length; i++) {
+        var t = toks[i], s;
+        if (code === t) s = 0;                          // exact barcode
+        else if (name.indexOf(t) === 0) s = 1;          // name starts with the word
+        else if (name.indexOf(' ' + t) > -1) s = 2;     // a later word starts with it
+        else if (name.indexOf(t) > -1) s = 3;           // appears inside a word
+        else if (code.indexOf(t) > -1) s = 4;           // part of the barcode
+        else return -1;                                 // this word matches nothing
+        if (s > worst) worst = s;
+      }
+      return worst;
+    }
+    function matching() {
+      var toks = tokens(scan.value), only = $('inStockOnly').checked, out = [];
+      PRODUCTS.forEach(function (p) {
+        if (only && p.stock <= 0) return;
+        if (!toks.length) { out.push({ p: p, s: 0 }); return; }
+        var s = rank(p, toks); if (s >= 0) out.push({ p: p, s: s });
+      });
+      if (toks.length) out.sort(function (x, y) { return x.s - y.s || x.p.name.localeCompare(y.p.name); });
+      return out.map(function (r) { return r.p; });
+    }
+    function highlight(parent, text, toks) {
+      if (!toks.length) { parent.textContent = text; return; }
+      var re = new RegExp('(' + toks.map(function (t) { return t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }).join('|') + ')', 'ig');
+      text.split(re).forEach(function (part, i) {
+        if (i % 2) parent.appendChild(el('mark', 'rounded bg-amber-200/70 px-0.5 text-inherit', part));
+        else if (part) parent.appendChild(document.createTextNode(part));
+      });
+    }
+    function badge(tile, qty) { var b = tile.querySelector('[data-badge]'); b.textContent = qty ? '\u00d7' + qty : ''; b.classList.toggle('hidden', !qty); tile.classList.toggle('ring-2', !!qty); tile.classList.toggle('ring-brand-teal', !!qty); }
 
-              </div>
-            </div>
+    function renderGrid() {
+      var q = scan.value.trim(), toks = tokens(q), all = matching(), shown = all.slice(0, LIMIT); grid.textContent = ''; tiles = {};
+      shown.forEach(function (p) {
+        var out = p.stock <= 0, low = !out && p.stock <= p.reorder;
+        var t = el('button', 'tile relative flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-3.5 transition-all hover:-translate-y-0.5 hover:border-brand-teal/50 hover:shadow-md ' + (out ? 'opacity-60' : ''));
+        t.type = 'button'; t.setAttribute('aria-label', 'Add ' + p.name);
+        var b = el('span', 'absolute -right-2 -top-2 hidden rounded-full bg-brand-teal px-2 py-0.5 text-xs font-bold text-white shadow'); b.setAttribute('data-badge', ''); t.appendChild(b);
 
-            <hr class="border-slate-100">
+        var nm = el('span', 'line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-snug text-slate-800'); highlight(nm, p.name, toks); t.appendChild(nm);
+        var codeHit = toks.length && p.barcode && toks.some(function (x) { return p.barcode.toLowerCase().indexOf(x) > -1; });
+        if (codeHit) { var bc = el('span', 'mt-1 block font-mono text-[11px] text-slate-500'); highlight(bc, p.barcode, toks); t.appendChild(bc); }
 
-            <div
-              class="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-6 flex flex-col sm:flex-row items-center gap-4">
-              <div class="bg-brand-teal/10 p-3 rounded-lg text-brand-teal hidden sm:block">
-                <i class="fas fa-barcode text-2xl"></i>
-              </div>
-              <div class="flex-1 w-full">
-                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">Scan Barcode /
-                  SKU</label>
-                <input type="text" id="barcodeScannerInput" autocomplete="off"
-                  class="w-full bg-white border border-slate-300 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal"
-                  placeholder="Click here and scan items with your reader..." autofocus>
-              </div>
-            </div>
+        var foot = el('span', 'mt-3 flex items-center justify-between gap-2');
+        foot.appendChild(el('span', 'text-sm font-bold tabular-nums text-brand-tealDark', HAS_PRICES && p.price !== null ? 'TSh ' + money(p.price) : ''));
+        foot.appendChild(el('span', 'rounded-full px-2 py-0.5 text-[11px] font-semibold ' + (out ? 'bg-rose-50 text-rose-700' : low ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-600'), out ? 'Out' : p.stock + ' left'));
+        t.appendChild(foot);
+        t.addEventListener('click', function () { addLine(p, 1); t.classList.remove('pulse'); void t.offsetWidth; t.classList.add('pulse'); });
+        grid.appendChild(t); tiles[p.id] = t;
+        var l = find(p.id); if (l) badge(t, l.qty);
+      });
 
-            <div>
-              <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Line Items Selection</h3>
+      $('gridEmpty').classList.toggle('hidden', all.length > 0); grid.classList.toggle('hidden', all.length === 0);
+      $('clearSearch').classList.toggle('hidden', !scan.value); $('clearSearch').classList.toggle('grid', !!scan.value);
+      $('slashHint').classList.toggle('hidden', !!scan.value);
+      $('emptyTitle').textContent = q ? 'No products match "' + q + '"' : 'No products to show';
+      $('emptyClear').classList.toggle('hidden', !q && !$('inStockOnly').checked);
 
-              <div id="items" class="space-y-3">
+      var noun = q ? (all.length === 1 ? 'result' : 'results') : (all.length === 1 ? 'product' : 'products');
+      $('gridCount').textContent = (all.length > LIMIT ? 'Showing ' + LIMIT + ' of ' + all.length + ' ' + noun : all.length + ' ' + noun) + (q ? ' for "' + q + '"' : '') + (all.length > LIMIT ? '. Type more to narrow the list.' : '');
+    }
 
-                <div
-                  class="grid grid-cols-12 gap-3 mb-3 items-center item-row bg-slate-50 p-3 rounded-lg border border-slate-100">
+    function resetSearch() { scan.value = ''; $('inStockOnly').checked = false; renderGrid(); scan.focus(); }
+    function focusTile(i) { var t = grid.children[i]; if (t) { t.focus(); t.scrollIntoView({ block: 'nearest' }); } }
 
-                  <div class="col-span-12 md:col-span-6">
-                    <label
-                      class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1 md:hidden">Select
-                      Product</label>
-                    <select name="items[0][product_id]"
-                      class="w-full bg-white border border-slate-300 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal product-select">
-                      <% products.forEach(p=> { %>
-                        <option value="<%= p.id %>" data-barcode="<%= p.barcode %>"
-                          data-stock="<%= p.quantity_in_stock %>" data-reorder="<%= p.reorder_level || 5 %>">
-                          <%= p.name %>
-                            <% if (p.quantity_in_stock <=(p.reorder_level || 5)) { %>
-                              (⚠ LOW STOCK: <%= p.quantity_in_stock %> left)
-                                <% } %>
-                        </option>
-                        <% }) %>
-                    </select>
-                  </div>
+    var raf; scan.addEventListener('input', function () { cancelAnimationFrame(raf); raf = requestAnimationFrame(renderGrid); });
+    $('inStockOnly').addEventListener('change', renderGrid);
+    $('clearSearch').addEventListener('click', function () { scan.value = ''; renderGrid(); scan.focus(); });
+    $('emptyClear').addEventListener('click', resetSearch);
 
-                  <div class="col-span-7 md:col-span-4">
-                    <label
-                      class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1 md:hidden">Quantity</label>
-                    <div class="flex shadow-sm rounded-lg overflow-hidden bg-white">
-                      <button type="button"
-                        class="bg-slate-50 hover:bg-red-50 text-slate-500 hover:text-red-600 font-bold px-3 py-2 text-sm border border-slate-200 transition duration-150"
-                        onclick="changeQty(this, -1)">-</button>
+    scan.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); focusTile(0); return; }
+      if (e.key === 'Escape') { if (scan.value) { scan.value = ''; renderGrid(); } return; }
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      var code = scan.value.trim(); if (!code) return;
+      var exact = PRODUCTS.filter(function (p) { return p.barcode && p.barcode === code; })[0], m = matching();
+      var hit = exact || (m.length === 1 ? m[0] : null);
+      if (hit) { addLine(hit, 1); toast('success', 'Added ' + hit.name); scan.value = ''; renderGrid(); }
+      else if (m.length > 1) { toast('info', m.length + ' products match. Choose one with the arrow keys.'); focusTile(0); }
+      else { toast('error', 'No product found for "' + code + '"'); scan.select(); }
+    });
 
-                      <input type="number" name="items[0][quantity]" value="1" min="1"
-                        class="w-full border-y border-slate-200 text-center text-sm font-semibold text-slate-800 focus:outline-none qty-input">
+    /* arrow keys move between tiles; Enter or Space adds the focused one */
+    grid.addEventListener('keydown', function (e) {
+      var t = e.target.closest('.tile'); if (!t) return;
+      if (e.key === 'Escape') { scan.focus(); return; }
+      var kids = Array.prototype.slice.call(grid.children), i = kids.indexOf(t);
+      var cols = kids.filter(function (k) { return k.offsetTop === kids[0].offsetTop; }).length || 1;
+      var next = { ArrowRight: i + 1, ArrowLeft: i - 1, ArrowDown: i + cols, ArrowUp: i - cols }[e.key];
+      if (next === undefined) return;
+      e.preventDefault();
+      if (next < 0) { scan.focus(); return; }
+      focusTile(Math.min(next, kids.length - 1));
+    });
 
-                      <button type="button"
-                        class="bg-slate-50 hover:bg-emerald-50 text-slate-500 hover:text-emerald-600 font-bold px-3 py-2 text-sm border border-slate-200 transition duration-150"
-                        onclick="changeQty(this, 1)">+</button>
-                    </div>
-                  </div>
+    /* press "/" anywhere to jump to the search box */
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) || document.body.classList.contains('overflow-hidden')) return;
+      e.preventDefault(); scan.focus(); scan.select();
+    });
 
-                  <div class="col-span-5 md:col-span-2 text-right">
-                    <label
-                      class="block text-[10px] font-bold transparent uppercase select-none tracking-wide mb-1 md:hidden">&nbsp;</label>
-                    <button type="button"
-                      class="btn-remove w-full md:w-auto inline-flex items-center justify-center gap-1 bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 font-medium py-2 px-3 text-sm border border-slate-200 hover:border-rose-200 rounded-lg shadow-sm transition duration-150">
-                      <i class="fas fa-trash-alt pointer-events-none text-xs mr-1"></i> Remove
-                    </button>
-                  </div>
+    /* =====================================================
+       Ticket
+       ===================================================== */
+    var cart = $('cart');
+    function stockNote(l) {
+      var p = l.p;
+      if (p.stock <= 0) return { t: 'Out of stock', c: 'text-rose-600', bad: true };
+      if (l.qty > p.stock) return { t: 'Only ' + p.stock + ' in stock', c: 'text-rose-600', bad: true };
+      if (p.stock <= p.reorder) return { t: 'Low stock: ' + p.stock + ' left', c: 'text-amber-600', bad: false };
+      return { t: '', c: '', bad: false };
+    }
+    function updateLine(l) {
+      var n = stockNote(l); l.noteEl.textContent = n.t; l.noteEl.className = 'text-xs font-medium ' + n.c; l.noteEl.classList.toggle('hidden', !n.t);
+      if (l.totalEl) l.totalEl.textContent = 'TSh ' + money((l.p.price || 0) * l.qty);
+      l.qtyEl.value = l.qty;
+      if (tiles[l.p.id]) badge(tiles[l.p.id], l.qty);
+    }
+    function summarise() {
+      var units = 0, total = 0, bad = 0;
+      lines.forEach(function (l, i) {
+        units += l.qty; total += (l.p.price || 0) * l.qty; if (stockNote(l).bad) bad++;
+        l.idEl.name = 'items[' + i + '][product_id]'; l.qtyEl.name = 'items[' + i + '][quantity]';
+      });
+      var label = lines.length + (lines.length === 1 ? ' item' : ' items');
+      $('ticketCount').textContent = label; $('mobileCount').textContent = label + ', ' + units + ' units';
+      if (HAS_PRICES) { $('sumTotal').textContent = money(total); $('mobileTotal').textContent = money(total); }
+      var w = $('sumWarn');
+      if (bad) { w.className = 'mb-3 flex items-start gap-2 rounded-xl bg-amber-50 px-3.5 py-2.5 text-sm font-medium text-amber-800'; w.innerHTML = '<i class="fas fa-exclamation-triangle mt-0.5 text-xs"></i><span></span>'; w.lastChild.textContent = bad + (bad === 1 ? ' item asks' : ' items ask') + ' for more than is in stock.'; }
+      else w.className = 'mb-3 hidden';
+      $('ticketEmpty').classList.toggle('hidden', lines.length > 0); cart.classList.toggle('hidden', !lines.length);
+      $('submitBtn').disabled = !lines.length;
+      var mb = $('mobileBar'); mb.classList.toggle('hidden', !lines.length); mb.classList.toggle('flex', !!lines.length);
+    }
 
-                </div>
+    function addLine(p, qty) {
+      var ex = find(p.id); if (ex) { ex.qty += qty; updateLine(ex); summarise(); return; }
+      var l = { p: p, qty: qty }, li = el('li', 'px-5 py-3.5');
 
-              </div>
-            </div>
+      var top = el('div', 'flex items-start justify-between gap-3');
+      top.appendChild(el('p', 'min-w-0 text-sm font-semibold leading-snug text-slate-800', p.name));
+      var rm = el('button', 'grid h-7 w-7 shrink-0 place-items-center rounded-md text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600'); rm.type = 'button'; rm.setAttribute('aria-label', 'Remove ' + p.name); rm.innerHTML = '<i class="fas fa-times text-xs"></i>';
+      top.appendChild(rm);
 
-            <div class="pt-2">
-              <button type="button" id="addRow"
-                class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold uppercase tracking-wider rounded-lg border border-slate-200/60 shadow-sm transition duration-150">
-                <i class="fas fa-plus text-[10px]"></i> Add Product Line
-              </button>
-            </div>
+      var row = el('div', 'mt-2 flex items-center justify-between gap-3');
+      var step = el('div', 'flex overflow-hidden rounded-lg border border-slate-200 bg-white');
+      var dec = el('button', 'px-2.5 py-1 text-slate-500 hover:bg-slate-100', '\u2212'); dec.type = 'button'; dec.setAttribute('aria-label', 'Fewer ' + p.name);
+      var inc = el('button', 'px-2.5 py-1 text-slate-500 hover:bg-slate-100', '+'); inc.type = 'button'; inc.setAttribute('aria-label', 'More ' + p.name);
+      l.qtyEl = el('input', 'w-12 border-x border-slate-200 text-center text-sm font-semibold tabular-nums focus:bg-brand-teal/5 focus:outline-none'); l.qtyEl.type = 'number'; l.qtyEl.min = 1; l.qtyEl.setAttribute('aria-label', 'Quantity of ' + p.name);
+      step.appendChild(dec); step.appendChild(l.qtyEl); step.appendChild(inc); row.appendChild(step);
+      if (HAS_PRICES) { l.totalEl = el('p', 'text-sm font-bold tabular-nums text-slate-900'); row.appendChild(l.totalEl); }
 
-            <div class="pt-5 border-t border-slate-100 flex items-center justify-end gap-3">
-              <a href="/orders"
-                class="px-4 py-2.5 text-sm font-semibold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg border border-slate-200 shadow-sm transition duration-150">
-                Cancel
-              </a>
-              <button type="submit"
-                class="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-brand-gold hover:bg-brand-goldHover text-white text-sm font-semibold rounded-lg shadow-md shadow-brand-gold/10 transition duration-150">
-                <i class="fas fa-receipt text-xs"></i> Submit Order Invoice
-              </button>
-            </div>
+      l.noteEl = el('p', 'mt-1.5 text-xs'); l.idEl = el('input'); l.idEl.type = 'hidden'; l.idEl.value = p.id;
+      li.appendChild(top); li.appendChild(row); li.appendChild(l.noteEl); li.appendChild(l.idEl);
+      lines.push(l); cart.appendChild(li);
 
-          </form>
-        </div>
+      dec.addEventListener('click', function () { l.qty = Math.max(1, l.qty - 1); updateLine(l); summarise(); });
+      inc.addEventListener('click', function () { l.qty += 1; updateLine(l); summarise(); });
+      l.qtyEl.addEventListener('input', function () { var v = parseInt(l.qtyEl.value, 10); if (v >= 1) { l.qty = v; updateLine(l); summarise(); } });
+      l.qtyEl.addEventListener('blur', function () { l.qtyEl.value = l.qty; });
+      rm.addEventListener('click', function () { lines.splice(lines.indexOf(l), 1); li.remove(); if (tiles[p.id]) badge(tiles[p.id], 0); summarise(); scan.focus(); });
+      updateLine(l); summarise();
+      cart.scrollTop = cart.scrollHeight;
+    }
 
-        <select id="productOptionsTemplate" class="hidden">
-          <% products.forEach(p=> { %>
-            <option value="<%= p.id %>" data-stock="<%= p.quantity_in_stock %>"
-              data-reorder="<%= p.reorder_level || 5 %>" data-barcode="<%= p.barcode %>">
-              <%= p.name %>
-                <% if (p.quantity_in_stock <=(p.reorder_level || 5)) { %>
-                  (⚠ LOW STOCK: <%= p.quantity_in_stock %> left)
-                    <% } %>
-            </option>
-            <% }) %>
-        </select>
+    $('walkInBtn').addEventListener('click', function () { $('customer_name').value = 'Walk-in customer'; $('customer_phone').focus(); });
+    $('orderForm').addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.type === 'number') e.preventDefault(); });
+    $('orderForm').addEventListener('submit', function (e) {
+      if (!lines.length) { e.preventDefault(); toast('warning', 'Add at least one item first'); scan.focus(); return; }
+      var n = $('customer_name'); if (!n.value.trim()) { e.preventDefault(); n.focus(); toast('warning', 'Please enter the customer name'); return; }
+      submitting = true; var b = $('submitBtn'); b.disabled = true; b.innerHTML = '<i class="fas fa-spinner fa-spin text-xs"></i><span>Creating order</span>';
+    });
+    window.addEventListener('beforeunload', function (e) { if (!submitting && lines.length) { e.preventDefault(); e.returnValue = ''; } });
+    renderGrid(); summarise();
 
-        <%- include('../layouts/footer') %>
+    /* =====================================================
+       Import dialog
+       ===================================================== */
+    var modal = $('importModal');
+    function openImport() { modal.classList.remove('hidden'); modal.classList.add('flex'); document.body.classList.add('overflow-hidden'); }
+    function closeImport() { modal.classList.add('hidden'); modal.classList.remove('flex'); document.body.classList.remove('overflow-hidden'); }
+    $('openImport').addEventListener('click', openImport);
+    modal.addEventListener('click', function (e) { if (e.target === modal || e.target.closest('[data-close-import]')) closeImport(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeImport(); });
+    if (location.hash === '#import') openImport();
 
-            <script src="/js/sweetalert2.all.min.js"></script>
+    var REQUIRED = ['customer_name', 'customer_phone', 'barcode', 'quantity'];
+    var input = $('bulkOrderFileInput'), zone = $('dropZone'), importBtn = $('importBtn');
+    var byCode = {}; PRODUCTS.forEach(function (p) { if (p.barcode) byCode[p.barcode] = p; });
 
-          <script>
-            document.addEventListener('DOMContentLoaded', function () {
-              const orderForm = document.getElementById('bulkOrderForm');
+    $('templateBtn').addEventListener('click', function () {
+      if (typeof XLSX === 'undefined') { say({ icon: 'error', title: 'Excel library not loaded', text: 'Please check your connection and try again.' }); return; }
+      var ws = XLSX.utils.json_to_sheet([
+        { customer_name: 'John Doe',   customer_phone: '0712345678', barcode: '690123456789', quantity: 2 },
+        { customer_name: 'Jane Smith', customer_phone: '0789123456', barcode: '690987654321', quantity: 5 }
+      ]);
+      var wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Orders Template'); XLSX.writeFile(wb, 'bulk_order_template.xlsx');
+    });
 
-              if (orderForm) {
-                orderForm.addEventListener('submit', async function (e) {
-                  e.preventDefault();
+    function size(b) { return b < 1048576 ? Math.max(1, Math.round(b / 1024)) + ' KB' : (b / 1048576).toFixed(1) + ' MB'; }
+    function banner(kind, title, items) {
+      var m = $('checkMsg'), c = { ok: 'bg-emerald-50 text-emerald-800', warn: 'bg-amber-50 text-amber-800', err: 'bg-rose-50 text-rose-800' }[kind];
+      var icon = { ok: 'fa-check-circle', warn: 'fa-exclamation-triangle', err: 'fa-times-circle' }[kind];
+      m.className = 'flex items-start gap-3 rounded-xl px-4 py-3 text-sm ' + c; m.textContent = '';
+      m.appendChild(el('i', 'fas ' + icon + ' mt-0.5'));
+      var body = el('div', 'min-w-0'); body.appendChild(el('p', 'font-semibold', title));
+      (items || []).forEach(function (t) { body.appendChild(el('p', 'mt-0.5', t)); });
+      m.appendChild(body);
+    }
+    function resetFile() { input.value = ''; $('fileResult').classList.add('hidden'); $('previewWrap').classList.add('hidden'); importBtn.disabled = true; $('importBtnText').textContent = 'Import orders'; }
 
-                  const fileInput = document.getElementById('bulkOrderFileInput');
-                  if (!fileInput.files || fileInput.files.length === 0) {
-                    Swal.fire({ icon: 'warning', title: 'File Required', text: 'Please choose a spreadsheet file first.' });
-                    return;
-                  }
+    function analyse(file) {
+      $('fileName').textContent = file.name; $('fileMeta').textContent = size(file.size) + ', reading...';
+      $('fileResult').classList.remove('hidden'); $('previewWrap').classList.add('hidden'); importBtn.disabled = true;
+      var reader = new FileReader();
+      reader.onerror = function () { banner('err', 'This file could not be read.', ['Try saving it again from Excel.']); };
+      reader.onload = function (e) {
+        try {
+          var wb = XLSX.read(e.target.result, { type: 'array' });
+          var rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
+          $('fileMeta').textContent = size(file.size) + ', ' + rows.length + (rows.length === 1 ? ' row' : ' rows');
+          if (!rows.length) { banner('err', 'This file has no rows.', ['Add at least one row under the headings.']); return; }
 
-                  const formData = new FormData();
-                  formData.append('excel_file', fileInput.files[0]);
+          var lookup = {}; Object.keys(rows[0]).forEach(function (h) { lookup[String(h).trim().toLowerCase()] = h; });
+          var missing = REQUIRED.filter(function (r) { return !lookup[r]; });
+          if (missing.length) { banner('err', 'Missing columns: ' + missing.join(', '), ['Check the first row of your sheet, or download the template.']); return; }
 
-                  // Show Processing Loader
-                  Swal.fire({
-                    title: 'Processing Bulk Orders...',
-                    text: 'Grouping metrics and adjusting inventory ledger states. Please wait.',
-                    allowOutsideClick: false,
-                    didOpen: () => { Swal.showLoading(); }
-                  });
+          var col = function (n) { return lookup[n]; }, unknown = [], badQty = 0, perCode = {}, customers = {};
+          rows.forEach(function (r) {
+            var code = String(r[col('barcode')]).trim(), q = Number(r[col('quantity')]);
+            customers[String(r[col('customer_name')]).trim().toLowerCase() + '|' + String(r[col('customer_phone')]).trim()] = 1;
+            if (!isFinite(q) || q < 1 || Math.floor(q) !== q) badQty++;
+            if (!byCode[code]) { if (unknown.indexOf(code) < 0) unknown.push(code); } else perCode[code] = (perCode[code] || 0) + (isFinite(q) ? q : 0);
+          });
+          var short = Object.keys(perCode).filter(function (c) { return perCode[c] > byCode[c].stock; });
 
-                  try {
-                    const response = await fetch('/orders/bulk-upload', {
-                      method: 'POST',
-                      body: formData
-                    });
+          var issues = [];
+          if (unknown.length) issues.push(unknown.length + ' barcode' + (unknown.length === 1 ? ' is' : 's are') + ' not registered: ' + unknown.slice(0, 5).join(', ') + (unknown.length > 5 ? ' and more' : ''));
+          if (badQty) issues.push(badQty + (badQty === 1 ? ' row has' : ' rows have') + ' a quantity that is not a whole number of at least 1.');
+          if (short.length) issues.push('Not enough stock for: ' + short.slice(0, 4).map(function (c) { return byCode[c].name + ' (needs ' + perCode[c] + ', has ' + byCode[c].stock + ')'; }).join('; ') + (short.length > 4 ? ' and more' : ''));
 
-                    const result = await response.json();
+          var nCust = Object.keys(customers).length;
+          if (issues.length) banner('warn', 'Check these before importing', issues);
+          else banner('ok', 'Ready to import', [rows.length + (rows.length === 1 ? ' row' : ' rows') + ' for ' + nCust + (nCust === 1 ? ' customer.' : ' customers.')]);
 
-                    if (!response.ok) {
-                      throw new Error(result.message || 'Bulk aggregation procedure aborted.');
-                    }
+          var head = $('previewHead'), body = $('previewBody'); head.textContent = ''; body.textContent = '';
+          REQUIRED.forEach(function (h) { head.appendChild(el('th', 'px-4 py-2.5 whitespace-nowrap', h)); });
+          rows.slice(0, 5).forEach(function (r) {
+            var tr = el('tr'), code = String(r[col('barcode')]).trim();
+            REQUIRED.forEach(function (h, i) { tr.appendChild(el('td', 'px-4 py-2.5 ' + (h === 'barcode' && !byCode[code] ? 'font-mono text-rose-600' : i === 0 ? 'font-medium text-slate-800' : 'text-slate-600'), r[col(h)])); });
+            body.appendChild(tr);
+          });
+          if (rows.length > 5) { var tr = el('tr'), td = el('td', 'px-4 py-2.5 text-xs text-slate-500', 'and ' + (rows.length - 5) + ' more rows'); td.colSpan = REQUIRED.length; tr.appendChild(td); body.appendChild(tr); }
+          $('previewWrap').classList.remove('hidden');
+          importBtn.disabled = false; $('importBtnText').textContent = 'Import ' + nCust + (nCust === 1 ? ' customer' : ' customers');
+        } catch (err) { console.error(err); banner('err', 'This is not a valid spreadsheet.', []); }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+    function accept(file) {
+      if (!file) return;
+      if (!/\.(xlsx|xls|csv)$/i.test(file.name)) { say({ icon: 'warning', iconColor: '#D49A17', title: 'Wrong file type', text: 'Please choose a .xlsx, .xls or .csv file.' }); return; }
+      if (typeof XLSX === 'undefined') { say({ icon: 'error', title: 'Excel library not loaded', text: 'Please refresh the page and try again.' }); return; }
+      analyse(file);
+    }
+    input.addEventListener('change', function () { accept(input.files[0]); });
+    $('removeFile').addEventListener('click', resetFile);
+    ['dragenter', 'dragover'].forEach(function (ev) { zone.addEventListener(ev, function (e) { e.preventDefault(); zone.classList.add('is-over'); }); });
+    ['dragleave', 'drop'].forEach(function (ev) { zone.addEventListener(ev, function (e) { e.preventDefault(); zone.classList.remove('is-over'); }); });
+    zone.addEventListener('drop', function (e) {
+      var f = e.dataTransfer.files[0]; if (!f) return;
+      try { var dt = new DataTransfer(); dt.items.add(f); input.files = dt.files; } catch (x) {}
+      accept(f);
+    });
 
-                    // Success
-                    Swal.fire({
-                      icon: 'success',
-                      title: 'Import Successful',
-                      text: result.message,
-                      confirmButtonColor: '#059669' // bg-emerald-600
-                    }).then(() => {
-                      window.location.href = '/orders';
-                    });
+    $('bulkOrderForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      if (!input.files || !input.files.length) { say({ icon: 'warning', iconColor: '#D49A17', title: 'No file chosen', text: 'Please choose a spreadsheet first.' }); return; }
+      var data = new FormData(); data.append('excel_file', input.files[0]);
+      say({ title: 'Importing orders', text: 'Creating orders and updating stock. Please wait.', allowOutsideClick: false, showConfirmButton: false, didOpen: function () { Swal.showLoading(); } });
+      try {
+        var res = await fetch('/orders/bulk-upload', { method: 'POST', body: data, credentials: 'same-origin' });
+        var result = await res.json().catch(function () { return {}; });
+        if (!res.ok) throw new Error(result.message || 'The import could not be completed.');
+        (typeof Dialog !== 'undefined' ? Dialog : Swal).fire({ icon: 'success', iconColor: '#059669', title: 'Import complete', text: result.message || 'Your orders were created.', confirmButtonText: 'View orders' })
+          .then(function () { window.location.href = '/orders'; });
+      } catch (err) { say({ icon: 'error', iconColor: '#e11d48', title: 'Import failed', text: err.message, confirmButtonText: 'Close' }); }
+    });
+  })();
+</script>
 
-                  } catch (error) {
-                    // Displays the specific validation error details from the controller row tracking
-                    Swal.fire({
-                      icon: 'error',
-                      title: 'Upload Failed',
-                      text: error.message,
-                      confirmButtonColor: '#e11d48' // bg-rose-600
-                    });
-                  }
-                });
-              }
-            });
-          </script>
+<%- include('../layouts/footer') %>

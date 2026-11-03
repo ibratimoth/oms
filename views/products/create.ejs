@@ -1,249 +1,359 @@
 <%- include('../layouts/header') %>
+<script src="/js/xlsx.full.min.js"></script>
+<%
+  const field = 'w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-teal focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-teal/20';
+  const label = 'mb-1.5 block text-sm font-medium text-slate-700';
+%>
 
-  <!-- <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script> -->
-  <script src="/js/xlsx.full.min.js"></script>
+<div class="mx-auto max-w-5xl space-y-6">
 
-  <div class="mb-4">
-    <a href="/products"
-      class="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-brand-teal transition duration-150 group">
-      <i class="fas fa-arrow-left text-xs group-hover:-translate-x-0.5 transition-transform duration-150"></i>
-      <span>Back to Products List</span>
-    </a>
-  </div>
+  <a href="/products" class="group inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition-colors hover:text-brand-teal">
+    <i class="fas fa-arrow-left text-xs transition-transform group-hover:-translate-x-0.5"></i>Back to products
+  </a>
 
-  <div class="mb-6">
-    <h1 class="text-2xl font-bold tracking-tight text-slate-800">Add New Products</h1>
-    <p class="text-sm text-slate-500 mt-1">Choose between adding a single manual catalog item or uploading an Excel
-      sheet to save time.</p>
-  </div>
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div role="alert" class="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4">
+      <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-rose-100 text-rose-600"><i class="fas fa-exclamation-circle"></i></span>
+      <div><h4 class="text-sm font-semibold text-rose-800">The product could not be saved</h4><p class="mt-0.5 text-sm text-rose-700"><%= error %></p></div>
+    </div>
+  <% } %>
 
-  <div class="flex border-b border-slate-200 max-w-4xl mb-6">
-    <button id="tabSingleBtn" onclick="switchMode('single')"
-      class="py-2.5 px-5 text-sm font-semibold border-b-2 border-brand-teal text-brand-teal transition-all duration-150 focus:outline-none">
-      <i class="fas fa-keyboard mr-2"></i>Single Product
+  <!-- ============ Mode switch ============ -->
+  <div role="tablist" aria-label="How do you want to add products?" class="grid gap-3 sm:grid-cols-2">
+    <button type="button" role="tab" id="tabSingle" aria-selected="true" aria-controls="panelSingle" class="mode-tab is-on flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 text-left transition-all">
+      <span class="mode-icon grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-500 transition-colors"><i class="fas fa-keyboard"></i></span>
+      <span><span class="block text-sm font-semibold text-slate-800">Add one product</span><span class="block text-sm text-slate-500">Type the details by hand</span></span>
     </button>
-    <button id="tabBulkBtn" onclick="switchMode('bulk')"
-      class="py-2.5 px-5 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-all duration-150 focus:outline-none">
-      <i class="fas fa-file-excel mr-2"></i>Bulk Excel Import
+    <button type="button" role="tab" id="tabBulk" aria-selected="false" aria-controls="panelBulk" tabindex="-1" class="mode-tab flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 text-left transition-all">
+      <span class="mode-icon grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-500 transition-colors"><i class="fas fa-file-excel"></i></span>
+      <span><span class="block text-sm font-semibold text-slate-800">Import from Excel</span><span class="block text-sm text-slate-500">Add many products at once</span></span>
     </button>
   </div>
 
-  <div id="formSingleMode" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden max-w-4xl">
+  <!-- ============ Single product ============ -->
+  <div id="panelSingle" role="tabpanel" aria-labelledby="tabSingle" class="grid gap-6 lg:grid-cols-3">
 
-    <div class="h-1.5 bg-brand-teal w-full"></div>
+    <form id="singleForm" method="POST" action="/products/create" class="space-y-8 rounded-2xl border border-slate-200/80 bg-white p-6 sm:p-8 lg:col-span-2">
 
-    <form method="POST" action="/products/create" class="p-6 sm:p-8 space-y-6">
-
-      <div>
-        <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Basic Information</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-
-          <div class="md:col-span-2">
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Product Name</label>
-            <input type="text" name="name" required
-              class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white transition duration-150"
-              placeholder="e.g., Enterprise Wireless Router">
-          </div>
-
-          <!-- <div class="md:col-span-2">
-          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Barcode / SKU</label>
-          <input 
-            type="text" 
-            name="barcode" 
-            class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white transition duration-150" 
-            placeholder="Scan barcode or type item SKU (Optional)"
-          >
-        </div> -->
-
+      <section>
+        <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>Product details</h3>
+        <div class="mt-4">
+          <label for="name" class="<%= label %>">Product name</label>
+          <input type="text" id="name" name="name" required autocomplete="off" placeholder="e.g. Bic Evolution Pencil HB" class="<%= field %> px-3.5">
         </div>
-      </div>
+      </section>
 
-      <div class="border-t border-slate-100 my-6"></div>
-
-      <div>
-        <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Pricing & Inventory Management
-        </h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5">
-
+      <section>
+        <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>Pricing</h3>
+        <div class="mt-4 grid gap-5 sm:grid-cols-2">
           <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Cost Price
-              (Buy)</label>
-            <div class="relative shadow-sm rounded-lg">
-              <span
-                class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-xs font-semibold text-slate-400 bg-slate-100/80 border-r border-slate-200/60 rounded-l-lg px-2">
-                TSh
-              </span>
-              <input type="number" step="0.01" name="buy_price" required
-                class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 pl-12 pr-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white transition duration-150"
-                placeholder="0.00">
+            <label for="buy_price" class="<%= label %>">Cost price <span class="font-normal text-slate-400">(what you pay)</span></label>
+            <div class="relative">
+              <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">TSh</span>
+              <input type="number" id="buy_price" name="buy_price" step="0.01" min="0" required inputmode="decimal" placeholder="0" class="<%= field %> pl-11 pr-3.5 tabular-nums">
             </div>
           </div>
-
           <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Selling Price</label>
-            <div class="relative shadow-sm rounded-lg">
-              <span
-                class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-xs font-semibold text-slate-400 bg-slate-100/80 border-r border-slate-200/60 rounded-l-lg px-2">
-                TSh
-              </span>
-              <input type="number" step="0.01" name="sell_price" required
-                class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 pl-12 pr-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white transition duration-150"
-                placeholder="0.00">
+            <label for="sell_price" class="<%= label %>">Selling price <span class="font-normal text-slate-400">(what customers pay)</span></label>
+            <div class="relative">
+              <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">TSh</span>
+              <input type="number" id="sell_price" name="sell_price" step="0.01" min="0" required inputmode="decimal" placeholder="0" class="<%= field %> pl-11 pr-3.5 tabular-nums">
             </div>
           </div>
-
-          <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Initial Stock
-              Qty</label>
-            <input type="number" name="quantity_in_stock" required
-              class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white transition duration-150"
-              placeholder="0">
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Low Stock Limit</label>
-            <input type="number" name="reorder_level"
-              class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white transition duration-150"
-              placeholder="5">
-          </div>
-
         </div>
-      </div>
+        <p id="priceWarning" class="mt-3 hidden items-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-medium" role="status"></p>
+      </section>
 
-      <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
-        <a href="/products"
-          class="px-4 py-2.5 text-sm font-semibold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg border border-slate-200 shadow-sm transition duration-150">
-          Cancel & Exit
-        </a>
-        <button type="submit"
-          class="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-brand-gold hover:bg-brand-goldHover text-white text-sm font-semibold rounded-lg shadow-sm transition duration-150">
-          <i class="fas fa-save text-xs"></i> Save Product
+      <section>
+        <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>Stock</h3>
+        <div class="mt-4 grid gap-5 sm:grid-cols-2">
+          <div>
+            <label for="quantity_in_stock" class="<%= label %>">Quantity in stock now</label>
+            <input type="number" id="quantity_in_stock" name="quantity_in_stock" min="0" required inputmode="numeric" placeholder="0" class="<%= field %> px-3.5 tabular-nums">
+          </div>
+          <div>
+            <label for="reorder_level" class="<%= label %>">Low stock limit</label>
+            <input type="number" id="reorder_level" name="reorder_level" min="0" inputmode="numeric" placeholder="5" class="<%= field %> px-3.5 tabular-nums">
+            <p class="mt-1.5 text-xs text-slate-500">You will see a low stock alert when the quantity reaches this number. Leave it empty to use 5.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="flex flex-col-reverse items-stretch justify-end gap-3 border-t border-slate-100 pt-6 sm:flex-row sm:items-center">
+        <a href="/products" class="rounded-xl border border-slate-200 px-5 py-2.5 text-center text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50">Cancel</a>
+        <button type="submit" id="saveBtn" class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-gold px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-goldHover disabled:cursor-wait disabled:opacity-70">
+          <i class="fas fa-save text-xs"></i><span>Save product</span>
         </button>
       </div>
+    </form>
 
+    <!-- Live summary -->
+    <aside class="lg:col-span-1">
+      <div class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white lg:sticky lg:top-24">
+        <div class="h-1 bg-brand-gold"></div>
+        <div class="bg-teal-50 px-6 py-5">
+          <p class="text-xs font-medium text-brand-teal">Live summary</p>
+          <p id="pvName" class="mt-1 truncate text-lg font-bold text-brand-tealDark">Your new product</p>
+        </div>
+        <dl class="space-y-4 p-6 text-sm">
+          <div class="flex items-center justify-between gap-3"><dt class="text-slate-500">Profit per item</dt><dd id="pvProfit" class="font-bold tabular-nums text-slate-800">-</dd></div>
+          <div>
+            <div class="flex items-center justify-between gap-3"><dt class="text-slate-500">Margin</dt><dd id="pvMargin" class="font-bold tabular-nums text-slate-800">-</dd></div>
+            <div class="mt-2 h-2 overflow-hidden rounded-full bg-slate-100"><div id="pvBar" class="h-full rounded-full bg-emerald-500 transition-all" style="width:0%"></div></div>
+          </div>
+          <div class="border-t border-slate-100 pt-4">
+            <div class="flex items-center justify-between gap-3"><dt class="text-slate-500">Stock value at cost</dt><dd id="pvStockCost" class="font-semibold tabular-nums text-slate-800">-</dd></div>
+            <div class="mt-3 flex items-center justify-between gap-3"><dt class="text-slate-500">Sales value if all sold</dt><dd id="pvStockSales" class="font-semibold tabular-nums text-slate-800">-</dd></div>
+          </div>
+        </dl>
+        <p class="border-t border-slate-100 px-6 py-4 text-xs leading-relaxed text-slate-500">These figures update as you type. They are only a guide and are not saved.</p>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ============ Excel import ============ -->
+  <div id="panelBulk" role="tabpanel" aria-labelledby="tabBulk" class="hidden space-y-6">
+
+    <section class="rounded-2xl border border-slate-200/80 bg-white p-6 sm:p-8">
+      <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>How it works</h3>
+      <ol class="mt-5 grid gap-5 sm:grid-cols-3">
+        <li class="flex gap-3"><span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-teal text-sm font-bold text-white">1</span>
+          <div><p class="text-sm font-semibold text-slate-800">Get the template</p><p class="mt-0.5 text-sm text-slate-500">It already has the right column names.</p>
+          <button type="button" id="templateBtn" class="mt-2 inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-brand-teal transition-colors hover:bg-brand-teal/5"><i class="fas fa-download text-xs"></i>Download template</button></div></li>
+        <li class="flex gap-3"><span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-teal text-sm font-bold text-white">2</span>
+          <div><p class="text-sm font-semibold text-slate-800">Fill in your products</p><p class="mt-0.5 text-sm text-slate-500">One row per product. Keep the first row of headings.</p></div></li>
+        <li class="flex gap-3"><span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-teal text-sm font-bold text-white">3</span>
+          <div><p class="text-sm font-semibold text-slate-800">Upload and check</p><p class="mt-0.5 text-sm text-slate-500">We show a preview before anything is imported.</p></div></li>
+      </ol>
+      <p class="mt-5 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+        Required columns:
+        <code class="mx-0.5 rounded bg-white px-1.5 py-0.5 font-mono text-xs ring-1 ring-slate-200">Product Name</code>
+        <code class="mx-0.5 rounded bg-white px-1.5 py-0.5 font-mono text-xs ring-1 ring-slate-200">Cost Price</code>
+        <code class="mx-0.5 rounded bg-white px-1.5 py-0.5 font-mono text-xs ring-1 ring-slate-200">Selling Price</code>
+        <code class="mx-0.5 rounded bg-white px-1.5 py-0.5 font-mono text-xs ring-1 ring-slate-200">Initial Stock</code>
+      </p>
+    </section>
+
+    <form id="bulkUploadForm" class="space-y-6 rounded-2xl border border-slate-200/80 bg-white p-6 sm:p-8" novalidate>
+
+      <!-- Drop zone -->
+      <label id="dropZone" for="excelFileInput" class="block cursor-pointer rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/60 px-6 py-10 text-center transition-colors hover:border-brand-teal hover:bg-brand-teal/[0.04]">
+        <span class="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-brand-teal/10 text-brand-teal"><i class="fas fa-cloud-upload-alt text-2xl"></i></span>
+        <span class="mt-4 block text-sm font-semibold text-slate-800">Drop your Excel file here, or <span class="text-brand-teal underline decoration-brand-gold decoration-2 underline-offset-4">browse</span></span>
+        <span class="mt-1 block text-sm text-slate-500">.xlsx or .xls files only</span>
+        <input type="file" id="excelFileInput" name="excel_file" accept=".xlsx,.xls" class="sr-only">
+      </label>
+
+      <!-- Selected file + check -->
+      <div id="fileResult" class="hidden space-y-4">
+        <div class="flex items-center gap-3 rounded-xl border border-slate-200 p-3.5">
+          <span class="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-600"><i class="fas fa-file-excel"></i></span>
+          <div class="min-w-0 flex-1"><p id="fileName" class="truncate text-sm font-semibold text-slate-800"></p><p id="fileMeta" class="text-xs text-slate-500"></p></div>
+          <button type="button" id="removeFile" class="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-600">Remove</button>
+        </div>
+
+        <div id="checkMsg" role="status" class="hidden items-start gap-3 rounded-xl px-4 py-3 text-sm"></div>
+
+        <div id="previewWrap" class="hidden overflow-hidden rounded-xl border border-slate-200">
+          <p class="border-b border-slate-100 bg-slate-50 px-4 py-2.5 text-xs font-medium text-slate-500">Preview of the first rows</p>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <thead><tr id="previewHead" class="text-xs font-medium text-slate-500"></tr></thead>
+              <tbody id="previewBody" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-col-reverse items-stretch justify-end gap-3 border-t border-slate-100 pt-6 sm:flex-row sm:items-center">
+        <a href="/products" class="rounded-xl border border-slate-200 px-5 py-2.5 text-center text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50">Cancel</a>
+        <button type="submit" id="importBtn" disabled class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-gold px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-goldHover disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none">
+          <i class="fas fa-file-import text-xs"></i><span id="importBtnText">Import products</span>
+        </button>
+      </div>
     </form>
   </div>
+</div>
 
-  <div id="formBulkMode" class="hidden bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden max-w-4xl">
+<style>
+  .mode-tab:hover { border-color: rgba(26, 107, 120, .4); }
+  .mode-tab.is-on { border-color: #1A6B78; background: rgba(26, 107, 120, .05); box-shadow: 0 0 0 3px rgba(26, 107, 120, .12); }
+  .mode-tab.is-on .mode-icon { background: #1A6B78; color: #fff; }
+  .mode-tab:focus-visible { outline: 2px solid #D49A17; outline-offset: 2px; }
+  #dropZone.is-over { border-color: #1A6B78; background: rgba(26, 107, 120, .08); }
+  #dropZone:focus-within { outline: 2px solid #D49A17; outline-offset: 2px; }
+</style>
 
-    <div class="h-1.5 bg-emerald-500 w-full"></div>
+<script>
+  (function () {
+    var $ = function (id) { return document.getElementById(id); };
+    var money = function (v) { return 'TSh ' + v.toLocaleString('en-US', { maximumFractionDigits: 2 }); };
+    function say(o) { (typeof Dialog !== 'undefined' ? Dialog : Swal).fire(o); }
 
-    <div class="p-6 sm:p-8 space-y-6">
-
-      <div
-        class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-slate-50 border border-slate-200 rounded-xl p-4">
-        <div>
-          <h4 class="text-sm font-bold text-slate-800">Missing an import spreadsheet blueprint?</h4>
-          <p class="text-xs text-slate-500 mt-0.5">Download our pre-structured column pattern template ledger to
-            populate your store inventory easily.</p>
-        </div>
-        <button type="button" onclick="downloadExcelTemplate()"
-          class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-lg shadow-sm transition duration-150 whitespace-nowrap">
-          <i class="fas fa-download text-emerald-600"></i> Download Excel Template
-        </button>
-      </div>
-
-      <form id="bulkUploadForm" class="space-y-6">
-        <div>
-          <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Import Spreadsheet File</h3>
-          <p class="text-xs text-slate-500 mb-4">
-            Your excel sheet columns should include the headers:
-            <code class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-700 font-mono text-[11px]">Product Name</code>,
-            <code class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-700 font-mono text-[11px]">Cost Price</code>,
-            <code class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-700 font-mono text-[11px]">Selling Price</code>,
-            and
-            <code class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-700 font-mono text-[11px]">Initial Stock</code>.
-          </p>
-
-          <div
-            class="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center hover:border-emerald-500 transition duration-150 bg-slate-50/50">
-            <i class="fas fa-cloud-upload-alt text-4xl text-slate-300 mb-3"></i>
-            <label class="block cursor-pointer">
-              <span
-                class="bg-white px-3 py-1.5 border border-slate-200 rounded-lg shadow-sm text-xs font-semibold text-slate-600 hover:bg-slate-50">
-                Choose Excel Document
-              </span>
-              <input type="file" id="excelFileInput" name="excel_file" accept=".xlsx, .xls" required class="hidden"
-                onchange="updateFileNameLabel(this)">
-            </label>
-            <p id="fileNameDisplay" class="text-xs font-medium text-slate-500 mt-2.5">No spreadsheet selected (.xlsx or
-              .xls only)</p>
-          </div>
-        </div>
-
-        <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
-          <a href="/products"
-            class="px-4 py-2.5 text-sm font-semibold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg border border-slate-200 shadow-sm transition duration-150">
-            Cancel
-          </a>
-          <button type="submit"
-            class="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg shadow-sm transition duration-150">
-            <i class="fas fa-file-import text-xs"></i> Run Bulk Import
-          </button>
-        </div>
-      </form>
-
-    </div>
-  </div>
-
-  <%- include('../layouts/footer') %>
-    <script src="/js/sweetalert2.all.min.js"></script>
-
-    <script>
-      document.addEventListener('DOMContentLoaded', function () {
-        const form = document.getElementById('bulkUploadForm');
-
-        if (form) {
-          form.addEventListener('submit', async function (e) {
-            e.preventDefault(); 
-
-            const fileInput = document.getElementById('excelFileInput');
-            if (!fileInput.files || fileInput.files.length === 0) {
-              Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Please select an Excel file first!' });
-              return;
-            }
-
-            const formData = new FormData();
-            formData.append('excel_file', fileInput.files[0]);
-
-            Swal.fire({
-              title: 'Processing Data...',
-              text: 'Please wait while inventory structures are verified and populated.',
-              allowOutsideClick: false,
-              didOpen: () => { Swal.showLoading(); }
-            });
-
-            try {
-              const response = await fetch('/products/bulk-upload', {
-                method: 'POST',
-                body: formData 
-              });
-
-              const result = await response.json();
-
-              if (!response.ok) {
-                throw new Error(result.message || 'Error executing bulk operation.');
-              }
-
-              Swal.fire({
-                icon: 'success',
-                title: 'Import Complete',
-                text: result.message || 'Your products have been cleanly imported.',
-                confirmButtonColor: '#059669' 
-              }).then(() => {
-                window.location.href = '/products'; 
-              });
-
-            } catch (error) {
-              Swal.fire({
-                icon: 'error',
-                title: 'Bulk Import Failed',
-                text: error.message,
-                confirmButtonColor: '#e11d48' 
-              });
-            }
-          });
-        }
+    /* ---------- mode tabs ---------- */
+    var tabs = { single: $('tabSingle'), bulk: $('tabBulk') }, panels = { single: $('panelSingle'), bulk: $('panelBulk') };
+    function setMode(m) {
+      Object.keys(tabs).forEach(function (k) {
+        var on = k === m;
+        tabs[k].classList.toggle('is-on', on); tabs[k].setAttribute('aria-selected', on); tabs[k].tabIndex = on ? 0 : -1;
+        panels[k].classList.toggle('hidden', !on);
       });
+    }
+    tabs.single.addEventListener('click', function () { setMode('single'); });
+    tabs.bulk.addEventListener('click', function () { setMode('bulk'); });
+    [tabs.single, tabs.bulk].forEach(function (t) {
+      t.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { var m = t === tabs.single ? 'bulk' : 'single'; setMode(m); tabs[m].focus(); }
+      });
+    });
+    if (location.hash === '#import') setMode('bulk');
 
-    </script>
+    /* ---------- live summary for the single form ---------- */
+    var f = { name: $('name'), buy: $('buy_price'), sell: $('sell_price'), qty: $('quantity_in_stock') };
+    function num(el) { var v = parseFloat(el.value); return isFinite(v) ? v : null; }
+
+    function updateSummary() {
+      var buy = num(f.buy), sell = num(f.sell), qty = num(f.qty), warn = $('priceWarning');
+      $('pvName').textContent = f.name.value.trim() || 'Your new product';
+
+      var hasPrices = buy !== null && sell !== null;
+      var profit = hasPrices ? sell - buy : null;
+      var margin = (hasPrices && sell > 0) ? (profit / sell) * 100 : null;
+
+      $('pvProfit').textContent = profit === null ? '-' : money(profit);
+      $('pvProfit').className = 'font-bold tabular-nums ' + (profit !== null && profit < 0 ? 'text-rose-600' : 'text-slate-800');
+      $('pvMargin').textContent = margin === null ? '-' : margin.toFixed(1) + '%';
+      $('pvBar').style.width = margin === null ? '0%' : Math.max(0, Math.min(100, margin)) + '%';
+      $('pvBar').className = 'h-full rounded-full transition-all ' + (margin !== null && margin < 0 ? 'bg-rose-500' : 'bg-emerald-500');
+      $('pvStockCost').textContent  = (buy  !== null && qty !== null) ? money(buy * qty)  : '-';
+      $('pvStockSales').textContent = (sell !== null && qty !== null) ? money(sell * qty) : '-';
+
+      if (hasPrices && profit < 0) {
+        warn.className = 'mt-3 flex items-center gap-2 rounded-xl bg-rose-50 px-3.5 py-2.5 text-sm font-medium text-rose-700';
+        warn.innerHTML = '<i class="fas fa-exclamation-triangle text-xs"></i><span></span>';
+        warn.lastChild.textContent = 'You would lose ' + money(Math.abs(profit)) + ' on every item sold.';
+      } else if (hasPrices && profit === 0) {
+        warn.className = 'mt-3 flex items-center gap-2 rounded-xl bg-amber-50 px-3.5 py-2.5 text-sm font-medium text-amber-700';
+        warn.innerHTML = '<i class="fas fa-info-circle text-xs"></i><span>Selling price equals cost price, so there is no profit.</span>';
+      } else { warn.className = 'mt-3 hidden'; }
+    }
+    Object.keys(f).forEach(function (k) { f[k].addEventListener('input', updateSummary); });
+
+    $('singleForm').addEventListener('submit', function () {
+      var b = $('saveBtn'); b.disabled = true; b.innerHTML = '<i class="fas fa-spinner fa-spin text-xs"></i><span>Saving</span>';
+    });
+
+    /* ---------- Excel template ---------- */
+    $('templateBtn').addEventListener('click', function () {
+      if (typeof XLSX === 'undefined') { say({ icon: 'error', title: 'Excel library not loaded', text: 'Please check your connection and try again.' }); return; }
+      var ws = XLSX.utils.json_to_sheet([
+        { 'Product Name': 'Bic Evolution Pencil HB', 'Cost Price': 300,  'Selling Price': 500,  'Initial Stock': 100, 'Low Stock Limit': 10 },
+        { 'Product Name': 'A4 Counter Book 2-Quire', 'Cost Price': 2500, 'Selling Price': 3500, 'Initial Stock': 50,  'Low Stock Limit': 5 }
+      ]);
+      var wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Products Template');
+      XLSX.writeFile(wb, 'products_bulk_import_template.xlsx');
+    });
+
+    /* ---------- Excel import: choose, check, preview ---------- */
+    var input = $('excelFileInput'), zone = $('dropZone'), importBtn = $('importBtn');
+    var REQUIRED = ['Product Name', 'Cost Price', 'Selling Price', 'Initial Stock'];
+
+    function size(b) { return b < 1048576 ? Math.max(1, Math.round(b / 1024)) + ' KB' : (b / 1048576).toFixed(1) + ' MB'; }
+    function banner(kind, html) {
+      var box = $('checkMsg'), c = { ok: 'bg-emerald-50 text-emerald-800', warn: 'bg-amber-50 text-amber-800', err: 'bg-rose-50 text-rose-800' }[kind];
+      var icon = { ok: 'fa-check-circle', warn: 'fa-exclamation-triangle', err: 'fa-times-circle' }[kind];
+      box.className = 'flex items-start gap-3 rounded-xl px-4 py-3 text-sm ' + c;
+      box.innerHTML = '<i class="fas ' + icon + ' mt-0.5"></i><div></div>';
+      box.lastChild.innerHTML = html;
+    }
+    function cell(td, text, cls) { var c = document.createElement(td); c.className = cls; c.textContent = text; return c; }
+
+    function resetFile() {
+      input.value = ''; $('fileResult').classList.add('hidden'); $('previewWrap').classList.add('hidden');
+      importBtn.disabled = true; $('importBtnText').textContent = 'Import products';
+    }
+
+    function analyse(file) {
+      $('fileName').textContent = file.name; $('fileMeta').textContent = size(file.size) + ', reading...';
+      $('fileResult').classList.remove('hidden'); $('previewWrap').classList.add('hidden'); importBtn.disabled = true;
+
+      var reader = new FileReader();
+      reader.onerror = function () { banner('err', 'This file could not be read. Try saving it again from Excel.'); };
+      reader.onload = function (e) {
+        try {
+          var wb = XLSX.read(e.target.result, { type: 'array' });
+          var rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
+          $('fileMeta').textContent = size(file.size) + ', ' + rows.length + (rows.length === 1 ? ' row' : ' rows');
+
+          var heads = rows.length ? Object.keys(rows[0]) : [];
+          var lookup = {}; heads.forEach(function (h) { lookup[String(h).trim().toLowerCase()] = h; });
+          var missing = REQUIRED.filter(function (r) { return !lookup[r.toLowerCase()]; });
+
+          if (!rows.length) { banner('err', 'This spreadsheet has no product rows. Fill in at least one row under the headings.'); return; }
+          if (missing.length) { banner('err', '<strong>Missing columns:</strong> ' + missing.join(', ') + '. Check the first row of your sheet, or download the template.'); return; }
+
+          var col = function (name) { return lookup[name.toLowerCase()]; };
+          var bad = rows.filter(function (r) {
+            return !String(r[col('Product Name')]).trim() || [col('Cost Price'), col('Selling Price'), col('Initial Stock')].some(function (k) { return r[k] === '' || !isFinite(Number(r[k])); });
+          }).length;
+
+          if (bad) banner('warn', '<strong>' + bad + (bad === 1 ? ' row looks' : ' rows look') + ' incomplete</strong> (a missing name, or a price or stock that is not a number). The import may reject them.');
+          else banner('ok', '<strong>Ready to import.</strong> All ' + rows.length + (rows.length === 1 ? ' row looks' : ' rows look') + ' complete.');
+
+          var show = REQUIRED.concat(lookup['low stock limit'] ? ['Low Stock Limit'] : []);
+          var head = $('previewHead'), body = $('previewBody'); head.textContent = ''; body.textContent = '';
+          show.forEach(function (h) { head.appendChild(cell('th', h, 'px-4 py-2.5 whitespace-nowrap')); });
+          rows.slice(0, 5).forEach(function (r) {
+            var tr = document.createElement('tr');
+            show.forEach(function (h, i) { tr.appendChild(cell('td', r[col(h)], 'px-4 py-2.5 ' + (i === 0 ? 'font-medium text-slate-800' : 'tabular-nums text-slate-600'))); });
+            body.appendChild(tr);
+          });
+          if (rows.length > 5) { var tr = document.createElement('tr'), td = cell('td', 'and ' + (rows.length - 5) + ' more rows', 'px-4 py-2.5 text-xs text-slate-500'); td.colSpan = show.length; tr.appendChild(td); body.appendChild(tr); }
+          $('previewWrap').classList.remove('hidden');
+
+          importBtn.disabled = false;
+          $('importBtnText').textContent = 'Import ' + rows.length + (rows.length === 1 ? ' product' : ' products');
+        } catch (err) { console.error(err); banner('err', 'This file is not a valid Excel spreadsheet.'); }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function accept(file) {
+      if (!file) return;
+      if (!/\.(xlsx|xls)$/i.test(file.name)) { say({ icon: 'warning', iconColor: '#D49A17', title: 'Wrong file type', text: 'Please choose an Excel file ending in .xlsx or .xls.' }); return; }
+      if (typeof XLSX === 'undefined') { say({ icon: 'error', title: 'Excel library not loaded', text: 'Please refresh the page and try again.' }); return; }
+      analyse(file);
+    }
+
+    input.addEventListener('change', function () { accept(input.files[0]); });
+    $('removeFile').addEventListener('click', resetFile);
+    ['dragenter', 'dragover'].forEach(function (ev) { zone.addEventListener(ev, function (e) { e.preventDefault(); zone.classList.add('is-over'); }); });
+    ['dragleave', 'drop'].forEach(function (ev) { zone.addEventListener(ev, function (e) { e.preventDefault(); zone.classList.remove('is-over'); }); });
+    zone.addEventListener('drop', function (e) {
+      var file = e.dataTransfer.files[0]; if (!file) return;
+      try { var dt = new DataTransfer(); dt.items.add(file); input.files = dt.files; } catch (x) {}
+      accept(file);
+    });
+
+    /* ---------- upload ---------- */
+    $('bulkUploadForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      if (!input.files || !input.files.length) { say({ icon: 'warning', iconColor: '#D49A17', title: 'No file chosen', text: 'Please choose an Excel file first.' }); return; }
+
+      var data = new FormData(); data.append('excel_file', input.files[0]);
+      say({ title: 'Importing products', text: 'Please wait while your products are checked and saved.', allowOutsideClick: false, showConfirmButton: false, didOpen: function () { Swal.showLoading(); } });
+
+      try {
+        var res = await fetch('/products/bulk-upload', { method: 'POST', body: data, credentials: 'same-origin' });
+        var result = await res.json().catch(function () { return {}; });
+        if (!res.ok) throw new Error(result.message || 'The import could not be completed.');
+        (typeof Dialog !== 'undefined' ? Dialog : Swal).fire({ icon: 'success', iconColor: '#059669', title: 'Import complete', text: result.message || 'Your products were imported.', confirmButtonText: 'View products' })
+          .then(function () { window.location.href = '/products'; });
+      } catch (err) {
+        say({ icon: 'error', iconColor: '#e11d48', title: 'Import failed', text: err.message, confirmButtonText: 'Close' });
+      }
+    });
+  })();
+</script>
+
+<%- include('../layouts/footer') %>

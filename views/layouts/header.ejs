@@ -1,21 +1,103 @@
+<%
+  /* ---------- Data & helpers (server-side) ---------- */
+  const role      = (typeof userRole !== 'undefined' && userRole) ? userRole : '';
+  const roleLabel = role ? role.replace('_', ' ') : 'operator';
+  const name      = (typeof username !== 'undefined' && username) ? username : 'Operator';
+  const path      = (typeof currentPath !== 'undefined' && currentPath) ? currentPath : '';
+  const isAdmin   = role === 'admin' || role === 'superadmin';
+
+  /* Attendance history is for admins only; everyone else gets a single direct link */
+  const attendanceChildren = [{ label: "Today's attendance", href: '/attendance', exact: true }];
+  if (isAdmin) attendanceChildren.push({ label: 'History', href: '/attendance/report' });
+
+  const attendanceItem = attendanceChildren.length > 1
+    ? { label: 'Attendance', id: 'attendance', base: '/attendance', icon: 'fa-user-clock', children: attendanceChildren }
+    : { label: 'Attendance', href: '/attendance', icon: 'fa-user-clock', exact: true };
+
+  const nav = [
+    { title: 'Operations', items: [
+      { label: 'Dashboard', href: '/dashboard', icon: 'fa-home', exact: true },
+      attendanceItem,
+      { label: 'Products', id: 'products', base: '/products', icon: 'fa-box', children: [
+        { label: 'All products', href: '/products', exact: true },
+        { label: 'Add product', href: '/products/create', exact: true }
+      ]},
+      { label: 'Orders', href: '/orders', icon: 'fa-shopping-cart' },
+      { label: 'Merchants & tills', href: '/merchants', icon: 'fa-credit-card' },
+      { label: 'Debts & ledger', href: '/debts', icon: 'fa-file-invoice-dollar' },
+      { label: 'Expenses', href: '/expenses', icon: 'fa-wallet' }
+    ]},
+    { title: 'Insights', items: [
+      { label: 'Performance', href: '/analytics', icon: 'fa-chart-bar', exact: true },
+      { label: 'Sales & stock', href: '/stock', icon: 'fa-box-open' }
+    ]}
+  ];
+
+  if (isAdmin) {
+    const adminItems = [];
+    if (role === 'superadmin') adminItems.push({ label: 'Businesses', href: '/business', icon: 'fa-briefcase' });
+    adminItems.push({ label: 'Operators', href: '/users', icon: 'fa-users', exact: true });
+    nav.splice(1, 0, { title: 'Administration', items: adminItems });
+  }
+
+  const hit = (i) => i.exact ? path === i.href : path.startsWith(i.base || i.href);
+
+  /* Work out the current page title + section for the top bar */
+  let current = { section: 'Workspace', label: 'Delle Ventures' }, bestLen = -1;
+  nav.forEach(g => g.items.forEach(i => {
+    if (i.children) {
+      i.children.forEach(c => { if (hit(c) && c.href.length > bestLen) { bestLen = c.href.length; current = { section: i.label, label: c.label }; } });
+      if (bestLen < 0 && hit(i)) current = { section: g.title, label: i.label };
+    } else if (hit(i) && i.href.length > bestLen) { bestLen = i.href.length; current = { section: g.title, label: i.label }; }
+  }));
+
+  const base  = 'group relative flex items-center gap-3 rounded-xl px-2 py-1.5 text-[13.5px] font-medium transition-colors duration-150';
+  const tile  = (on) => 'grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[13px] transition-colors duration-150 ' +
+                        (on ? 'bg-brand-gold text-white shadow-sm' : 'bg-white/[0.07] text-teal-200 group-hover:bg-white/15 group-hover:text-white');
+  const bar   = '<span class="absolute -left-3 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-brand-gold"></span>';
+
+  const renderLink = (i) => {
+    const on = hit(i);
+    return `<a href="${i.href}" ${on ? 'aria-current="page"' : ''} class="${base} ${on ? 'bg-white/10 text-white' : 'text-teal-50/75 hover:bg-white/5 hover:text-white'}">
+      ${on ? bar : ''}<span class="${tile(on)}"><i class="fas ${i.icon}"></i></span><span class="truncate">${i.label}</span></a>`;
+  };
+
+  const renderGroup = (i) => {
+    const on = hit(i);
+    const kids = i.children.map(c => {
+      const cOn = hit(c);
+      return `<a href="${c.href}" ${cOn ? 'aria-current="page"' : ''} class="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px] transition-colors duration-150 ${cOn ? 'font-semibold text-brand-gold' : 'text-teal-100/70 hover:bg-white/5 hover:text-white'}">
+        <span class="h-1.5 w-1.5 rounded-full ${cOn ? 'bg-brand-gold' : 'bg-white/25'}"></span>${c.label}</a>`;
+    }).join('');
+    return `<div>
+      <button type="button" aria-expanded="${on}" onclick="toggleDropdownMenu('${i.id}Dropdown','${i.id}Chevron')"
+        class="${base} w-full text-left ${on ? 'bg-white/[0.06] text-white' : 'text-teal-50/75 hover:bg-white/5 hover:text-white'}">
+        ${on ? bar : ''}<span class="${tile(on)}"><i class="fas ${i.icon}"></i></span>
+        <span class="flex-1 truncate">${i.label}</span>
+        <i id="${i.id}Chevron" class="fas fa-chevron-right text-[10px] text-teal-300 transition-transform duration-200 ${on ? 'rotate-90' : ''}"></i>
+      </button>
+      <div id="${i.id}Dropdown" class="${on ? '' : 'hidden'} ml-6 mt-1 space-y-0.5 border-l border-white/15 pl-3">${kids}</div>
+    </div>`;
+  };
+%>
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-slate-50">
+<html lang="en" class="h-full bg-[#F3F6F7]">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Delle Ventures</title>
+  <title><%= current.label %> · Delle Ventures</title>
 
   <script src="/js/tailwindcss.js"></script>
-
   <script>
     tailwind.config = {
       theme: {
         extend: {
+          fontFamily: { sans: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'] },
           colors: {
             brand: {
-              teal: '#1A6B78',      /* Deep Teal from logo */
-              tealDark: '#124E58',  /* Deeper shade for hover states */
-              gold: '#D49A17',      /* Rich Gold accent from logo */
+              teal: '#1A6B78',
+              tealDark: '#124E58',
+              gold: '#D49A17',
               goldHover: '#B88211'
             }
           }
@@ -24,231 +106,131 @@
     }
   </script>
 
-  <link rel="stylesheet" href="/css/all.min.css">  
+  <!-- Optional: self-host this font like your other assets for offline use -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+
+  <link rel="stylesheet" href="/css/all.min.css">
   <link rel="stylesheet" href="/css/select2.min.css">
+
+  <style>
+    :focus-visible { outline: 2px solid #D49A17; outline-offset: 2px; }
+    .side-scroll { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent; }
+    .side-scroll::-webkit-scrollbar { width: 6px; }
+    .side-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 999px; }
+    @media (prefers-reduced-motion: reduce) { * { transition-duration: .01ms !important; } }
+  </style>
 </head>
 
-<body class="h-full font-sans antialiased text-slate-900 selection:bg-brand-teal/10 selection:text-brand-teal">
-<div class="min-h-full flex flex-col lg:flex-row">
+<body class="h-full font-sans antialiased text-slate-900 selection:bg-brand-teal/15 selection:text-brand-tealDark">
+<div class="min-h-full flex">
 
-  <header class="lg:hidden h-16 bg-brand-teal text-white flex items-center justify-between px-4 border-b border-brand-tealDark shadow-md z-40">
-    <a href="/dashboard" class="flex items-center gap-2">
-      <img src="/images/delleventures.jpeg" alt="Delle Ventures Logo" class="h-8 w-auto object-contain rounded bg-white p-0.5">
-      <span class="font-bold tracking-wide text-base text-white">Delle <span class="text-brand-gold">Ventures</span></span>
-    </a>
-    
-    <button id="mobileSidebarToggle" class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-white/10 active:bg-white/20 focus:outline-none transition duration-150">
-      <i id="hamburgerIcon" class="fas fa-bars text-xl"></i>
-    </button>
-  </header>
+  <!-- Mobile overlay -->
+  <div id="sidebarOverlay" class="fixed inset-0 z-40 hidden bg-slate-900/50 backdrop-blur-[2px] lg:hidden"></div>
 
-  <aside id="mainSidebar" class="hidden lg:flex fixed lg:sticky top-0 left-0 bottom-0 w-full lg:w-64 bg-brand-teal text-white flex-col border-b lg:border-b-0 lg:border-r border-brand-tealDark shadow-xl z-30 transition-all duration-300">
-    
-    <a href="/dashboard" class="hidden lg:flex items-center gap-3 px-5 py-4 border-b border-white/10 hover:bg-white/5 transition duration-150 group">
-      <img src="/images/delleventures.jpeg" alt="Delle Ventures Logo" class="h-8 w-auto object-contain rounded-md bg-white p-0.5 shadow-sm group-hover:scale-105 transition duration-200">
-      <span class="font-bold tracking-wide text-lg text-white">Delle <span class="text-brand-gold">Ventures</span></span>
-    </a>
+  <!-- Sidebar: slides in on mobile, floating panel on desktop -->
+  <aside id="mainSidebar" aria-label="Main navigation"
+    class="fixed inset-y-0 left-0 z-50 w-[18rem] max-w-[85vw] -translate-x-full transition-transform duration-300 ease-out
+           lg:sticky lg:top-0 lg:z-30 lg:h-screen lg:w-72 lg:shrink-0 lg:translate-x-0 lg:p-3">
+    <div class="flex h-full flex-col rounded-r-2xl bg-brand-teal text-white shadow-2xl shadow-brand-tealDark/30 lg:rounded-2xl">
 
-    <div class="flex-1 px-3 py-4 overflow-y-auto space-y-6 flex flex-col justify-between">
-      
-      <div class="space-y-6">
-        <div class="px-4 py-3 bg-brand-tealDark/40 border border-white/10 rounded-xl flex items-center gap-3">
-          <div class="w-9 h-9 rounded-lg bg-white/10 border border-teal-300/20 flex items-center justify-center text-brand-gold font-bold text-sm">
-            <%= username ? username.charAt(0).toUpperCase() : 'U' %>
-          </div>
-          <div class="min-w-0">
-            <p class="text-xs font-bold tracking-wide text-white truncate"><%= username || 'Operator' %></p>
-            <p class="text-[10px] text-teal-300 font-medium tracking-wider uppercase"><%= typeof userRole !== 'undefined' ? userRole.replace('_', ' ') : 'System Operator' %></p>
-          </div>
-        </div>
-
-        <div>
-          <p class="px-4 text-[10px] font-bold text-teal-300 uppercase tracking-widest mb-2">Core Operations</p>
-          <nav class="space-y-1">
-            
-            <a href="/dashboard" class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg transition duration-150 group <%= currentPath === '/dashboard' ? 'bg-brand-gold text-white shadow-md shadow-black/10' : 'text-teal-100 hover:bg-white/10 hover:text-white' %>">
-              <i class="fas fa-home text-base w-5 text-center <%= currentPath === '/dashboard' ? 'text-white' : 'text-teal-300 group-hover:text-white' %>"></i>
-              <span>Dashboard Overview</span>
-            </a>
-
-            <!-- Attendance Dropdown -->
-            <div class="space-y-1">
-              <button 
-                onclick="toggleDropdownMenu('attendanceDropdown', 'attendanceChevron')"
-                class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium rounded-lg text-teal-100 hover:bg-white/10 hover:text-white transition duration-150 group focus:outline-none <%= currentPath.startsWith('/attendance') ? 'bg-white/5 text-white' : '' %>"
-              >
-                <div class="flex items-center gap-3">
-                  <i class="fas fa-user-clock text-base text-teal-300 group-hover:text-white w-5 text-center"></i>
-                  <span>Attendance</span>
-                </div>
-                <i id="attendanceChevron" class="fas fa-chevron-right text-[10px] transform transition-transform duration-200 <%= currentPath.startsWith('/attendance') ? 'rotate-90' : '' %>"></i>
-              </button>
-              
-              <div id="attendanceDropdown" class="<%= currentPath.startsWith('/attendance') ? 'block' : 'hidden' %> pl-9 pr-2 space-y-1 py-1 bg-brand-tealDark/30 rounded-lg">
-                <a href="/attendance" class="block py-2 px-3 text-xs font-medium rounded-md hover:text-white transition duration-150 <%= currentPath === '/attendance' ? 'text-brand-gold font-bold' : 'text-teal-200 hover:bg-white/5' %>">
-                  <i class="fas fa-calendar-day mr-1.5 opacity-70"></i> Today's Attendance
-                </a>
-                <a href="/attendance/report" class="block py-2 px-3 text-xs font-medium rounded-md hover:text-white transition duration-150 <%= currentPath === '/attendance/report' ? 'text-brand-gold font-bold' : 'text-teal-200 hover:bg-white/5' %>">
-                  <i class="fas fa-history mr-1.5 opacity-70"></i> Attendance History
-                </a>
-              </div>
-            </div>
-
-            <!-- Products Dropdown -->
-            <div class="space-y-1">
-              <button 
-                onclick="toggleDropdownMenu('catalogDropdown', 'catalogChevron')"
-                class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium rounded-lg text-teal-100 hover:bg-white/10 hover:text-white transition duration-150 group focus:outline-none <%= currentPath.startsWith('/products') ? 'bg-white/5 text-white' : '' %>"
-              >
-                <div class="flex items-center gap-3">
-                  <i class="fas fa-box text-base text-teal-300 group-hover:text-white w-5 text-center"></i>
-                  <span>Products Catalog</span>
-                </div>
-                <i id="catalogChevron" class="fas fa-chevron-right text-[10px] transform transition-transform duration-200 <%= currentPath.startsWith('/products') ? 'rotate-90' : '' %>"></i>
-              </button>
-              
-              <div id="catalogDropdown" class="<%= currentPath.startsWith('/products') ? 'block' : 'hidden' %> pl-9 pr-2 space-y-1 py-1 bg-brand-tealDark/30 rounded-lg">
-                <a href="/products" class="block py-2 px-3 text-xs font-medium rounded-md hover:text-white transition duration-150 <%= currentPath === '/products' ? 'text-brand-gold font-bold' : 'text-teal-200 hover:bg-white/5' %>">
-                  <i class="fas fa-list-ul mr-1.5 opacity-70"></i> View All Products
-                </a>
-                <a href="/products/create" class="block py-2 px-3 text-xs font-medium rounded-md hover:text-white transition duration-150 <%= currentPath === '/products/create' ? 'text-brand-gold font-bold' : 'text-teal-200 hover:bg-white/5' %>">
-                  <i class="fas fa-plus mr-1.5 opacity-70"></i> Register New Item
-                </a>
-              </div>
-            </div>
-
-            <!-- Orders Dropdown -->
-            <div class="space-y-1">
-              <button 
-                onclick="toggleDropdownMenu('ordersDropdown', 'ordersChevron')"
-                class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium rounded-lg text-teal-100 hover:bg-white/10 hover:text-white transition duration-150 group focus:outline-none <%= currentPath.startsWith('/orders') ? 'bg-white/5 text-white' : '' %>"
-              >
-                <div class="flex items-center gap-3">
-                  <i class="fas fa-shopping-cart text-base text-teal-300 group-hover:text-white w-5 text-center"></i>
-                  <span>Orders</span>
-                </div>
-                <i id="ordersChevron" class="fas fa-chevron-right text-[10px] transform transition-transform duration-200 <%= currentPath.startsWith('/orders') ? 'rotate-90' : '' %>"></i>
-              </button>
-              
-              <div id="ordersDropdown" class="<%= currentPath.startsWith('/orders') ? 'block' : 'hidden' %> pl-9 pr-2 space-y-1 py-1 bg-brand-tealDark/30 rounded-lg">
-                <a href="/orders" class="block py-2 px-3 text-xs font-medium rounded-md hover:text-white transition duration-150 <%= currentPath === '/orders' ? 'text-brand-gold font-bold' : 'text-teal-200 hover:bg-white/5' %>">
-                  <i class="fas fa-receipt mr-1.5 opacity-70"></i> Manage Orders List
-                </a>
-              </div>
-            </div>
-
-            <!-- Merchants Navigation Link -->
-            <a href="/merchants" class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg transition duration-150 group <%= currentPath.startsWith('/merchants') ? 'bg-brand-gold text-white shadow-md shadow-black/10' : 'text-teal-100 hover:bg-white/10 hover:text-white' %>">
-              <i class="fas fa-credit-card text-base w-5 text-center <%= currentPath.startsWith('/merchants') ? 'text-white' : 'text-teal-300 group-hover:text-white' %>"></i>
-              <span>Merchants & Tills</span>
-            </a>
-
-            <!-- Debts & Ledger -->
-            <a href="/debts" class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg transition duration-150 group <%= currentPath.startsWith('/debts') ? 'bg-brand-gold text-white shadow-md shadow-black/10' : 'text-teal-100 hover:bg-white/10 hover:text-white' %>">
-              <i class="fas fa-file-invoice-dollar text-base w-5 text-center <%= currentPath.startsWith('/debts') ? 'text-white' : 'text-teal-300 group-hover:text-white' %>"></i>
-              <span>Debts & Ledger</span>
-            </a>
-
-            <!-- Expenses -->
-            <a href="/expenses" class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg transition duration-150 group <%= currentPath.startsWith('/expenses') ? 'bg-brand-gold text-white shadow-md shadow-black/10' : 'text-teal-100 hover:bg-white/10 hover:text-white' %>">
-              <i class="fas fa-wallet text-base w-5 text-center <%= currentPath.startsWith('/expenses') ? 'text-white' : 'text-teal-300 group-hover:text-white' %>"></i>
-              <span>Expenses</span>
-            </a>
-
-          </nav>
-        </div>
-
-        <% if (typeof userRole !== 'undefined' && (userRole === 'admin' || userRole === 'superadmin')) { %>
-        <div>
-          <p class="px-4 text-[10px] font-bold text-teal-300 uppercase tracking-widest mb-2">System Infrastructure</p>
-          <nav class="space-y-1">
-            
-            <% if (typeof userRole !== 'undefined' && (userRole === 'superadmin')) { %>
-            <a href="/business" class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg transition duration-150 group <%= currentPath.startsWith('/business') ? 'bg-brand-gold text-white shadow-md shadow-black/10' : 'text-teal-100 hover:bg-white/10 hover:text-white' %>">
-              <i class="fas fa-briefcase text-base w-5 text-center <%= currentPath.startsWith('/business') ? 'text-white' : 'text-teal-300 group-hover:text-white' %>"></i>
-              <span>Manage Businesses</span>
-            </a>
-            <% } %>
-
-            <a href="/users" class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg transition duration-150 group <%= currentPath === '/users' ? 'bg-brand-gold text-white shadow-md shadow-black/10' : 'text-teal-100 hover:bg-white/10 hover:text-white' %>">
-              <i class="fas fa-users text-base w-5 text-center <%= currentPath === '/users' ? 'text-white' : 'text-teal-300 group-hover:text-white' %>"></i>
-              <span>System Operators</span>
-            </a>
-
-          </nav>
-        </div>
-        <% } %>
-
-        <div>
-          <p class="px-4 text-[10px] font-bold text-teal-300 uppercase tracking-widest mb-2">Business Insights</p>
-          <nav class="space-y-1">
-            
-            <a href="/analytics" class="flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg transition duration-150 group <%= currentPath === '/analytics' ? 'bg-brand-gold text-white shadow-md shadow-black/10' : 'text-teal-100 hover:bg-white/10 hover:text-white' %>">
-              <i class="fas fa-chart-bar text-base w-5 text-center <%= currentPath === '/analytics' ? 'text-white' : 'text-teal-300 group-hover:text-white' %>"></i>
-              <span>Performance Intel</span>
-            </a>
-
-            <div class="space-y-1">
-              <button 
-                onclick="toggleDropdownMenu('stockDropdown', 'stockChevron')"
-                class="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium rounded-lg text-teal-100 hover:bg-white/10 hover:text-white transition duration-150 group focus:outline-none <%= currentPath.startsWith('/stock') ? 'bg-white/5 text-white' : '' %>"
-              >
-                <div class="flex items-center gap-3">
-                  <i class="fas fa-box-open text-base text-teal-300 group-hover:text-white w-5 text-center"></i>
-                  <span>Sales & Stock Flow Logs</span>
-                </div>
-                <i id="stockChevron" class="fas fa-chevron-right text-[10px] transform transition-transform duration-200 <%= currentPath.startsWith('/stock') ? 'rotate-90' : '' %>"></i>
-              </button>
-              
-              <div id="stockDropdown" class="<%= currentPath.startsWith('/stock') ? 'block' : 'hidden' %> pl-9 pr-2 space-y-1 py-1 bg-brand-tealDark/30 rounded-lg">
-                <a href="/stock" class="block py-2 px-3 text-xs font-medium rounded-md hover:text-white transition duration-150 <%= currentPath === '/stock' ? 'text-brand-gold font-bold' : 'text-teal-200 hover:bg-white/5' %>">
-                  <i class="fas fa-warehouse mr-1.5 opacity-70"></i> Sales & Inventory Balance
-                </a>
-              </div>
-            </div>
-
-          </nav>
-        </div>
+      <!-- Brand -->
+      <div class="flex items-center justify-between px-5 pb-4 pt-5">
+        <a href="/dashboard" class="flex items-center gap-3">
+          <img src="/images/delleventures.jpeg" alt="Delle Ventures logo" class="h-10 w-10 rounded-xl bg-white object-contain p-1 shadow-sm">
+          <span class="text-[17px] font-bold leading-tight tracking-tight">Delle <span class="text-brand-gold">Ventures</span></span>
+        </a>
+        <button id="sidebarClose" type="button" aria-label="Close menu"
+          class="grid h-9 w-9 place-items-center rounded-lg text-teal-100 hover:bg-white/10 lg:hidden">
+          <i class="fas fa-times"></i>
+        </button>
       </div>
 
-      <div class="lg:hidden pt-4 mt-6 border-t border-white/10">
-        <a 
-          href="/logout" 
-          class="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-rose-200 bg-rose-950/20 hover:bg-rose-900/40 rounded-xl border border-rose-500/20 transition duration-150 group"
-        >
-          <i class="fas fa-sign-out-alt text-base w-5 text-center text-rose-400 group-hover:text-rose-300"></i>
-          <span>Logout System</span>
+      <!-- Navigation -->
+      <nav class="side-scroll flex-1 space-y-6 overflow-y-auto px-6 pb-4 pt-2">
+        <% nav.forEach(group => { %>
+          <section>
+            <h2 class="mb-2 px-2 text-xs font-semibold text-teal-300/90"><%= group.title %></h2>
+            <div class="space-y-1">
+              <% group.items.forEach(item => { %>
+                <%- item.children ? renderGroup(item) : renderLink(item) %>
+              <% }) %>
+            </div>
+          </section>
+        <% }) %>
+      </nav>
+
+      <!-- Account -->
+      <div class="m-3 flex items-center gap-3 rounded-xl bg-brand-tealDark/60 p-3 ring-1 ring-white/10">
+        <div class="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-brand-gold text-sm font-bold text-white">
+          <%= name.charAt(0).toUpperCase() %>
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="truncate text-sm font-semibold"><%= name %></p>
+          <p class="truncate text-xs capitalize text-teal-200"><%= roleLabel %></p>
+        </div>
+        <a href="/logout" title="Log out" aria-label="Log out"
+          class="grid h-9 w-9 place-items-center rounded-lg text-teal-100 transition-colors hover:bg-rose-500/20 hover:text-rose-200">
+          <i class="fas fa-sign-out-alt"></i>
         </a>
       </div>
-
     </div>
   </aside>
 
-  <div class="flex-1 flex flex-col min-w-0">
-    
-    <nav class="hidden lg:flex h-16 bg-white border-b border-slate-200 shadow-sm items-center justify-between px-6 z-20">
-      <div class="flex items-center">
-        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 bg-slate-100 px-2.5 py-1 rounded">
-          Enterprise Resource & Order Management
-        </span>
+  <!-- Content column -->
+  <div class="flex min-w-0 flex-1 flex-col">
+
+    <header class="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-slate-200/70 bg-white/80 px-4 backdrop-blur-md sm:px-8">
+      <button id="mobileSidebarToggle" type="button" aria-label="Open menu" aria-controls="mainSidebar" aria-expanded="false"
+        class="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 text-brand-teal transition-colors hover:bg-brand-teal/5 lg:hidden">
+        <i class="fas fa-bars"></i>
+      </button>
+
+      <div class="min-w-0 flex-1">
+        <p class="truncate text-xs text-slate-500"><%= current.section %></p>
+        <h1 class="truncate text-lg font-bold leading-tight tracking-tight text-brand-tealDark"><%= current.label %></h1>
       </div>
 
-      <div class="flex items-center gap-4">
-        <div class="flex items-center gap-2.5 border-r border-slate-200 pr-4">
-          <div class="w-7 h-7 rounded bg-brand-teal/10 text-brand-teal font-bold text-xs flex items-center justify-center shadow-inner">
-            <%= username ? username.charAt(0).toUpperCase() : 'U' %>
-          </div>
-          <span class="text-sm font-semibold text-slate-700">
-            <%= username || 'System Operator' %>
-          </span>
-        </div>
-
-        <a href="/logout" class="flex items-center gap-2 px-3 py-1.5 border border-transparent text-sm font-medium rounded-lg text-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500/20 transition duration-150">
-          <i class="fas fa-sign-out-alt text-xs"></i>
-          <span>Logout System</span>
-        </a>
+      <div class="hidden items-center gap-2 rounded-full bg-brand-teal/[0.07] px-3.5 py-1.5 text-sm font-medium text-brand-tealDark sm:flex">
+        <i class="far fa-calendar text-brand-gold"></i>
+        <span id="todayLabel"></span>
       </div>
-    </nav>
+    </header>
+
+<script>
+  /* Accordion groups (kept under the same name for existing pages) */
+  function toggleDropdownMenu(menuId, chevronId) {
+    var menu = document.getElementById(menuId), chev = document.getElementById(chevronId);
+    if (!menu) return;
+    var open = menu.classList.toggle('hidden') === false;
+    if (chev) chev.classList.toggle('rotate-90', open);
+    if (menu.previousElementSibling) menu.previousElementSibling.setAttribute('aria-expanded', open);
+  }
+
+  /* Mobile drawer */
+  (function () {
+    var sidebar = document.getElementById('mainSidebar'),
+        overlay = document.getElementById('sidebarOverlay'),
+        toggle  = document.getElementById('mobileSidebarToggle'),
+        close   = document.getElementById('sidebarClose');
+    function setOpen(open) {
+      sidebar.classList.toggle('-translate-x-full', !open);
+      overlay.classList.toggle('hidden', !open);
+      document.body.classList.toggle('overflow-hidden', open);
+      toggle.setAttribute('aria-expanded', open);
+    }
+    toggle.addEventListener('click', function () { setOpen(true); });
+    close.addEventListener('click', function () { setOpen(false); });
+    overlay.addEventListener('click', function () { setOpen(false); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setOpen(false); });
+    sidebar.querySelectorAll('a').forEach(function (a) { a.addEventListener('click', function () { setOpen(false); }); });
+  })();
+
+  /* Today's date in the top bar */
+  document.getElementById('todayLabel').textContent =
+    new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+</script>
 
     <main class="flex-1 overflow-y-auto">
-      <div class="p-6 sm:p-8 max-w-[1600px] mx-auto space-y-6">
+      <div class="mx-auto max-w-[1600px] space-y-6 p-4 sm:p-8">

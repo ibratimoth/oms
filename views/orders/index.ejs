@@ -1,350 +1,273 @@
 <%- include('../layouts/header') %>
+<%
+  /* ---------- state & helpers ---------- */
+  const q       = (typeof query !== 'undefined' && query) ? query : {};
+  const rows    = (typeof orders !== 'undefined' && orders) ? orders : [];
+  const accts   = (typeof merchants !== 'undefined' && merchants) ? merchants : [];
+  const cur     = Number(typeof currentPage !== 'undefined' ? currentPage : 1) || 1;
+  const pages   = Number(typeof totalPages  !== 'undefined' ? totalPages  : 1) || 1;
+  const status  = q.status || '';
+  const money   = (v) => Number(v || 0).toLocaleString('en-US');
+  const KEYS    = ['orderNo', 'customer', 'maxAmount', 'status'];
 
-<!-- TOP ACTION HEADER -->
-<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-  <div>
-    <h1 class="text-2xl font-bold tracking-tight text-slate-800">Order Management</h1>
-    <p class="text-sm text-slate-500 mt-1">Track customer purchase invoices, execution states, and financial transactions.</p>
-  </div>
-  <div>
-    <a 
-      href="/orders/create" 
-      class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-teal hover:bg-brand-tealDark text-white text-sm font-semibold rounded-lg shadow-sm shadow-brand-teal/10 transition duration-150 whitespace-nowrap"
-    >
-      <i class="fas fa-plus text-xs"></i> New Order
+  const build = (overrides, page) => {
+    const p = new URLSearchParams();
+    KEYS.forEach(k => {
+      const v = (k in overrides) ? overrides[k] : q[k];
+      if (v) p.set(k, v);
+    });
+    if (page > 1) p.set('page', page);
+    const s = p.toString();
+    return '/orders' + (s ? '?' + s : '');
+  };
+
+  const chips = [];
+  if (q.orderNo)    chips.push({ key: 'orderNo',   text: 'Order #' + q.orderNo });
+  if (q.customer)   chips.push({ key: 'customer',  text: 'Customer: ' + q.customer });
+  if (q.maxAmount)  chips.push({ key: 'maxAmount', text: 'Up to TSh ' + money(q.maxAmount) });
+
+  const pageList = [...new Set([1, pages, cur - 1, cur, cur + 1])].filter(n => n >= 1 && n <= pages).sort((a, b) => a - b);
+  const filtered = chips.length > 0 || status !== '';
+
+  const merchantLabel = (m) => {
+    const extra = [m.provider, m.account_number].filter(Boolean).join(' - ');
+    return extra ? m.name + ' (' + extra + ')' : m.name;
+  };
+  const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const pill = (s) => {
+    s = esc(s);
+    if (s === 'completed') return '<span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold capitalize text-emerald-700 ring-1 ring-inset ring-emerald-600/15"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>' + s + '</span>';
+    if (s === 'pending')   return '<span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold capitalize text-amber-700 ring-1 ring-inset ring-amber-600/20"><span class="relative flex h-1.5 w-1.5"><span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75"></span><span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-amber-500"></span></span>' + s + '</span>';
+    return '<span class="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold capitalize text-sky-700 ring-1 ring-inset ring-sky-600/15"><span class="h-1.5 w-1.5 rounded-full bg-sky-500"></span>' + (s || 'unknown') + '</span>';
+  };
+  const field = 'w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-brand-teal focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-teal/20';
+%>
+
+<div class="space-y-6">
+
+  <!-- ============ Actions ============ -->
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <p class="text-sm text-slate-500">Follow customer orders from creation to payment.</p>
+    <a href="/orders/create" class="inline-flex items-center gap-2 rounded-xl bg-brand-gold px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-goldHover">
+      <i class="fas fa-plus text-xs"></i>New order
     </a>
   </div>
-</div>
 
-<!-- QUERY FILTERS PANEL CONTAINER -->
-<div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-6">
-  <form method="GET" action="/orders" class="flex flex-col md:flex-row flex-wrap items-end gap-4">
-    
-    <!-- Order ID Short Input Field -->
-    <div class="w-full sm:flex-1 md:w-32 min-w-[120px]">
-      <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Order No</label>
-      <div class="relative">
-        <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400 text-xs">
-          #
-        </span>
-        <input 
-          type="text" 
-          name="orderNo" 
-          value="<%= typeof query !== 'undefined' && query.orderNo ? query.orderNo : '' %>"
-          placeholder="e.g., 1001"
-          class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg pl-7 pr-3 py-1.5 text-sm focus:outline-none focus:border-brand-teal transition duration-150"
-        >
+  <section class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
+
+    <!-- Status tabs -->
+    <div class="flex flex-wrap items-center justify-between gap-3 px-5 pt-5 sm:px-6">
+      <div role="tablist" aria-label="Filter by status" class="inline-flex rounded-xl bg-slate-100 p-1">
+        <% [['', 'All orders'], ['pending', 'Pending'], ['completed', 'Completed']].forEach(t => { const on = status === t[0]; %>
+          <a href="<%= build({ status: t[0] }, 1) %>" role="tab" aria-selected="<%= on %>"
+            class="rounded-lg px-4 py-1.5 text-sm font-medium transition-colors <%= on ? 'bg-white text-brand-tealDark shadow-sm' : 'text-slate-600 hover:text-brand-teal' %>"><%= t[1] %></a>
+        <% }) %>
       </div>
+      <p class="text-sm text-slate-500"><%= rows.length %> shown<%= pages > 1 ? ', page ' + cur + ' of ' + pages : '' %></p>
     </div>
 
-    <!-- Customer Profile String Input Field -->
-    <div class="w-full md:flex-1 min-w-[200px]">
-      <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Customer Details</label>
-      <div class="relative">
-        <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
-          <i class="fas fa-user text-xs"></i>
-        </span>
-        <input 
-          type="text" 
-          name="customer" 
-          value="<%= typeof query !== 'undefined' && query.customer ? query.customer : '' %>"
-          placeholder="Search name or phone..."
-          class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg pl-9 pr-3 py-1.5 text-sm focus:outline-none focus:border-brand-teal transition duration-150"
-        >
-      </div>
-    </div>
-
-    <!-- Financial Amount Cap Ceiling Field -->
-    <div class="w-full sm:flex-1 md:w-48 min-w-[150px]">
-      <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Max Amount (TSh)</label>
-      <div class="relative">
-        <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-xs font-semibold text-slate-400">
-          TSh
-        </span>
-        <input 
-          type="number" 
-          name="maxAmount" 
-          value="<%= typeof query !== 'undefined' && query.maxAmount ? query.maxAmount : '' %>"
-          placeholder="Max limit ceiling"
-          class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg pl-10 pr-3 py-1.5 text-sm focus:outline-none focus:border-brand-teal transition duration-150"
-        >
-      </div>
-    </div>
-
-    <!-- State Dropdown Controller Filter -->
-    <div class="w-full sm:flex-1 md:w-48 min-w-[150px]">
-      <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Fulfillment Status</label>
-      <select 
-        name="status" 
-        class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-brand-teal transition duration-150"
-      >
-        <% let selectedStatus = (typeof query !== 'undefined' && query.status) ? query.status : '' %>
-        <option value="" <%= selectedStatus === '' ? 'selected' : '' %>>All Statuses</option>
-        <option value="pending" <%= selectedStatus === 'pending' ? 'selected' : '' %>>Pending</option>
-        <option value="completed" <%= selectedStatus === 'completed' ? 'selected' : '' %>>Completed</option>
-      </select>
-    </div>
-
-    <!-- Filter Execution Actions Trigger Buttons Row -->
-    <div class="w-full md:w-auto flex items-center gap-2 shrink-0 pt-2 md:pt-0">
-      <button 
-        type="submit"
-        class="flex-1 md:flex-none inline-flex items-center justify-center gap-2 px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold rounded-lg transition duration-150 shadow-sm"
-      >
-        <i class="fas fa-sliders-h text-xs text-slate-400"></i> Apply Filters
-      </button>
-
-      <a 
-        href="/orders" 
-        class="inline-flex items-center justify-center px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 text-sm font-semibold rounded-lg border border-slate-200 transition duration-150"
-      >
-        Clear
-      </a>
-    </div>
-
-  </form>
-</div>
-
-<!-- ORDERS DATA TABLE DISPLAY CARD CONTAINER -->
-<div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-  <div class="overflow-x-auto">
-    <table class="w-full text-left border-collapse whitespace-nowrap">
-      
-      <thead>
-        <tr class="bg-slate-50 border-b border-slate-200 text-slate-400 text-xs font-bold uppercase tracking-wider">
-          <th class="py-3.5 px-6">Order No</th>
-          <th class="py-3.5 px-6">Customer Details</th>
-          <th class="py-3.5 px-6">Total Amount</th>
-          <th class="py-3.5 px-6">Discount</th>
-          <th class="py-3.5 px-6">Final Amount</th>
-          <th class="py-3.5 px-6">Fulfillment Status</th>
-          <th class="py-3.5 px-6 text-right">Actions</th>
-        </tr>
-      </thead>
-
-      <tbody class="text-sm divide-y divide-slate-100">
-        <% if (orders && orders.length > 0) { %>
-          <% orders.forEach(o => { %>
-            <tr class="hover:bg-slate-50/70 transition duration-150 group">
-              
-              <!-- Order Core Branding Number Identification -->
-              <td class="py-4 px-6 font-semibold text-slate-700">
-                #<%= o.order_number %>
-              </td>
-
-              <!-- Customer Details Column Block -->
-              <td class="py-4 px-6">
-                <div class="font-medium text-slate-800"><%= o.customer_name || 'Walk-in Customer' %></div>
-                <% if (o.customer_phone) { %>
-                  <div class="text-xs text-slate-400 font-mono mt-0.5"><%= o.customer_phone %></div>
-                <% } else { %>
-                  <div class="text-xs text-slate-400 italic mt-0.5">No phone provided</div>
-                <% } %>
-              </td>
-              
-              <!-- Aggregated Price Total Field -->
-              <td class="py-4 px-6 font-bold text-slate-900 font-mono text-xs">
-                TSh <%= Number(o.total_amount).toLocaleString() %>
-              </td>
-
-              <td class="py-4 px-6 font-mono text-xs">
-                <% if (Number(o.discount) > 0) { %>
-                  <span class="inline-flex items-center text-amber-600 font-semibold bg-amber-50 px-2 py-0.5 rounded border border-amber-100">
-                    -TSh <%= Number(o.discount).toLocaleString() %>
-                  </span>
-                <% } else { %>
-                  <span class="text-slate-400">—</span>
-                <% } %>
-              </td>
-
-              <td class="py-4 px-6 font-bold text-slate-900 font-mono text-xs">
-                TSh <%= Number(o.final_amount || o.total_amount).toLocaleString() %>
-              </td>
-              <!-- Color Coordinated Context Status Badge Row -->
-              <td class="py-4 px-6">
-                <% if (o.status === 'completed') { %>
-                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
-                    <%= o.status %>
-                  </span>
-                <% } else if (o.status === 'pending') { %>
-                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-100">
-                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5 animate-pulse"></span>
-                    <%= o.status %>
-                  </span>
-                <% } else { %>
-                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
-                    <span class="w-1.5 h-1.5 rounded-full bg-blue-500 mr-1.5"></span>
-                    <%= o.status %>
-                  </span>
-                <% } %>
-              </td>
-              
-              <!-- ACTIVE INTERACTIVE CONTROLS CONTEXT ACTIONS BLOCK -->
-              <td class="py-4 px-6 text-right">
-                <div class="inline-flex items-center gap-2 opacity-90 group-hover:opacity-100 transition duration-150">
-                  
-                  <!-- Read-Only Profile View (Always Active) -->
-                  <a 
-                    href="/orders/view/<%= o.id %>" 
-                    class="inline-flex items-center gap-1.5 bg-white hover:bg-slate-50 text-slate-600 hover:text-brand-teal py-1.5 px-3 text-xs font-semibold border border-slate-200 rounded-md shadow-sm transition duration-150"
-                  >
-                    <i class="fas fa-eye text-[10px]"></i> View
-                  </a>
-
-                  <!-- Conditional Logic Check: Hide Edit & Complete if Status is Completed -->
-                  <% if (o.status !== 'completed') { %>
-                    <a 
-                      href="/orders/edit/<%= o.id %>" 
-                      class="inline-flex items-center gap-1.5 bg-white hover:bg-slate-50 text-slate-600 hover:text-brand-teal py-1.5 px-3 text-xs font-semibold border border-slate-200 rounded-md shadow-sm transition duration-150"
-                    >
-                      <i class="fas fa-edit text-[10px]"></i> Edit
-                    </a>
-
-                    <!-- Trigger Complete Modal Pop-up -->
-                    <button 
-                      type="button" 
-                      onclick="openCompleteModal('<%= o.id %>', '<%= o.order_number %>')"
-                      class="inline-flex items-center gap-1.5 bg-white hover:bg-emerald-50 text-emerald-600 border border-slate-200 hover:border-emerald-200 py-1.5 px-3 text-xs font-semibold rounded-md shadow-sm transition duration-150 cursor-pointer"
-                    >
-                      <i class="fas fa-check text-[10px]"></i> Complete
-                    </button>
-                  <% } %>
-
-                </div>
-              </td>
-
-            </tr>
-          <% }) %>
-        <% } else { %>
-          <!-- FALLBACK EMPTY RESPONSE CANVAS VIEW -->
-          <tr>
-            <td colspan="5" class="py-12 text-center">
-              <div class="text-slate-300 mb-2">
-                <i class="fas fa-receipt text-4xl"></i>
-              </div>
-              <p class="text-sm text-slate-400 italic">No registered sales orders match your filter parameters.</p>
-              <a href="/orders" class="mt-3 inline-flex items-center gap-1 text-xs font-bold text-brand-teal hover:underline">
-                Reset all order filter parameters &rarr;
-              </a>
-            </td>
-          </tr>
-        <% } %>
-      </tbody>
-
-    </table>
-  </div>
-
-  <!-- PAGINATION TRACK STEPPER CONTAINER BLOCK -->
-  <% if (typeof totalPages !== 'undefined' && totalPages > 1) { %>
-    <% 
-      // Safe utility to stitch URL variables together during page shifting jumps
-      function getOrderPageUrl(targetPage) {
-        let params = new URLSearchParams();
-        if (query.orderNo) params.set('orderNo', query.orderNo);
-        if (query.customer) params.set('customer', query.customer);
-        if (query.maxAmount) params.set('maxAmount', query.maxAmount);
-        if (query.status) params.set('status', query.status);
-        params.set('page', targetPage);
-        return '/orders?' + params.toString();
-      }
-    %>
-    <div class="bg-slate-50 border-t border-slate-200 px-6 py-4 flex items-center justify-between">
-      <div class="text-xs font-medium text-slate-500">
-        Showing Page <span class="text-slate-800 font-bold"><%= currentPage %></span> of <span class="text-slate-800 font-bold"><%= totalPages %></span> pages
-      </div>
-      
-      <div class="inline-flex items-center gap-1">
-        <% if (currentPage > 1) { %>
-          <a href="<%= getOrderPageUrl(currentPage - 1) %>" class="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-xs font-semibold transition duration-150">
-            <i class="fas fa-chevron-left"></i>
-          </a>
-        <% } else { %>
-          <span class="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 bg-slate-100 text-slate-300 text-xs cursor-not-allowed">
-            <i class="fas fa-chevron-left"></i>
-          </span>
-        <% } %>
-
-        <% for(let i = 1; i <= totalPages; i++) { %>
-          <% if (i === currentPage) { %>
-            <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-brand-teal text-white text-xs font-bold shadow-sm shadow-brand-teal/10">
-              <%= i %>
-            </span>
-          <% } else { %>
-            <a href="<%= getOrderPageUrl(i) %>" class="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-xs font-medium transition duration-150">
-              <%= i %>
-            </a>
-          <% } %>
-        <% } %>
-
-        <% if (currentPage < totalPages) { %>
-          <a href="<%= getOrderPageUrl(currentPage + 1) %>" class="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-xs font-semibold transition duration-150">
-            <i class="fas fa-chevron-right"></i>
-          </a>
-        <% } else { %>
-          <span class="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 bg-slate-100 text-slate-300 text-xs cursor-not-allowed">
-            <i class="fas fa-chevron-right"></i>
-          </span>
-        <% } %>
-      </div>
-    </div>
-  <% } %>
-</div>
-
-<!-- COMPLETION MODAL POPUP -->
-<!-- COMPLETION MODAL POPUP -->
-<div id="completeOrderModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
-  <div class="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md p-6">
-    <div class="flex justify-between items-center pb-3 border-b border-slate-100">
-      <h3 class="text-base font-bold text-slate-800" id="modalTitle">Complete Order</h3>
-      <button type="button" onclick="closeCompleteModal()" class="text-slate-400 hover:text-slate-600 transition duration-150">
-        <i class="fas fa-times"></i>
-      </button>
-    </div>
-
-    <form id="completeOrderForm" method="POST" class="mt-4 space-y-4">
-      
-      <!-- 1. PAYMENT METHOD FIRST (ENUM MATCHER) -->
+    <!-- Search row -->
+    <form method="GET" action="/orders" class="grid gap-3 px-5 py-4 sm:px-6 md:grid-cols-[8rem_1fr_13rem_auto] md:items-end">
+      <input type="hidden" name="status" value="<%= status %>">
       <div>
-        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Payment Method</label>
-        <select 
-          id="paymentMethodSelect" 
-          name="payment_method" 
-          onchange="toggleMerchantField()" 
-          class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-teal transition duration-150" 
-          required
-        >
-          <option value="CASH" selected>Cash</option>
-          <option value="LIPA_NUMBER">Lipa Number (Mobile Money / Till / QR)</option>
-          <option value="CREDIT">Credit</option>
-        </select>
+        <label for="orderNo" class="mb-1.5 block text-sm font-medium text-slate-700">Order no.</label>
+        <div class="relative">
+          <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-slate-400">#</span>
+          <input id="orderNo" type="text" name="orderNo" value="<%= q.orderNo || '' %>" placeholder="1001" class="<%= field %> pl-8 pr-3">
+        </div>
       </div>
-
-      <!-- 2. MERCHANT DROPDOWN (HIDDEN FOR CASH) -->
-      <div id="merchantContainer" class="hidden">
-        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Merchant / Account</label>
-        <select 
-          id="merchantSelect" 
-          name="merchant_id" 
-          class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-teal transition duration-150"
-        >
-          <option value="">Select Merchant Account</option>
-          <% if (typeof merchants !== 'undefined' && merchants.length > 0) { %>
-            <% merchants.forEach(m => { %>
-              <option value="<%= m.id %>">
-                <%= m.name %> <%= m.provider ? `(${m.provider}` : '' %><%= m.account_number ? ` - ${m.account_number})` : ')' %>
-              </option>
-            <% }) %>
-          <% } %>
-        </select>
+      <div>
+        <label for="customer" class="mb-1.5 block text-sm font-medium text-slate-700">Customer</label>
+        <div class="relative">
+          <i class="fas fa-search pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
+          <input id="customer" type="text" name="customer" value="<%= q.customer || '' %>" placeholder="Name or phone number" class="<%= field %> pl-10 pr-3">
+        </div>
       </div>
-
-      <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 mt-5">
-        <button type="button" onclick="closeCompleteModal()" class="px-4 py-2 bg-slate-100 text-slate-600 text-xs font-semibold rounded-lg hover:bg-slate-200 transition duration-150">
-          Cancel
+      <div>
+        <label for="maxAmount" class="mb-1.5 block text-sm font-medium text-slate-700">Highest amount</label>
+        <div class="relative">
+          <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">TSh</span>
+          <input id="maxAmount" type="number" min="0" name="maxAmount" value="<%= q.maxAmount || '' %>" placeholder="No limit" class="<%= field %> pl-11 pr-3">
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button type="submit" class="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-brand-teal px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-tealDark md:flex-none">
+          <i class="fas fa-search text-xs"></i>Search
         </button>
-        <button type="submit" class="px-4 py-2 bg-emerald-600 text-white text-xs font-semibold rounded-lg hover:bg-emerald-700 shadow-sm transition duration-150">
-          Confirm & Complete
+        <% if (filtered) { %><a href="/orders" class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50">Clear</a><% } %>
+      </div>
+    </form>
+
+    <% if (chips.length) { %>
+      <div class="flex flex-wrap items-center gap-2 px-5 pb-4 sm:px-6">
+        <span class="text-sm text-slate-500">Filtering by</span>
+        <% chips.forEach(c => { %>
+          <a href="<%= build({ [c.key]: '' }, 1) %>" aria-label="Remove filter <%= c.text %>" class="group inline-flex items-center gap-2 rounded-full bg-brand-teal/10 px-3 py-1 text-sm font-medium text-brand-tealDark transition-colors hover:bg-rose-50 hover:text-rose-700">
+            <%= c.text %><i class="fas fa-times text-[10px] opacity-60 group-hover:opacity-100"></i>
+          </a>
+        <% }) %>
+      </div>
+    <% } %>
+
+    <!-- Orders table -->
+    <div class="overflow-x-auto border-t border-slate-100">
+      <table class="w-full text-left text-sm">
+        <thead>
+          <tr class="text-xs font-medium text-slate-500">
+            <th scope="col" class="px-5 py-3 sm:px-6">Order</th>
+            <th scope="col" class="hidden px-3 py-3 sm:table-cell">Customer</th>
+            <th scope="col" class="px-3 py-3">Amount to pay</th>
+            <th scope="col" class="hidden px-3 py-3 md:table-cell">Status</th>
+            <th scope="col" class="py-3 pl-3 pr-5 text-right sm:pr-6">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <% if (rows.length) { %>
+            <% rows.forEach(o => {
+                 const total = Number(o.total_amount || 0), disc = Number(o.discount || 0), final = Number(o.final_amount || o.total_amount || 0);
+                 const done = o.status === 'completed';
+            %>
+              <tr class="transition-colors hover:bg-brand-teal/[0.03]">
+                <td class="px-5 py-3.5 sm:px-6">
+                  <p class="font-semibold text-slate-800">#<%= o.order_number %></p>
+                  <p class="mt-0.5 truncate text-xs text-slate-500 sm:hidden"><%= o.customer_name || 'Walk-in customer' %></p>
+                </td>
+
+                <td class="hidden px-3 py-3.5 sm:table-cell">
+                  <p class="font-medium text-slate-800"><%= o.customer_name || 'Walk-in customer' %></p>
+                  <p class="mt-0.5 text-xs <%= o.customer_phone ? 'font-mono text-slate-500' : 'italic text-slate-400' %>"><%= o.customer_phone || 'No phone number' %></p>
+                </td>
+
+                <td class="px-3 py-3.5">
+                  <p class="font-bold tabular-nums text-slate-900">TSh <%= money(final) %></p>
+                  <% if (disc > 0) { %>
+                    <p class="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs tabular-nums">
+                      <span class="text-slate-400 line-through">TSh <%= money(total) %></span>
+                      <span class="rounded bg-amber-50 px-1.5 py-0.5 font-semibold text-amber-700">-TSh <%= money(disc) %></span>
+                    </p>
+                  <% } %>
+                  <div class="mt-1.5 md:hidden"><%- pill(o.status) %></div>
+                </td>
+
+                <td class="hidden px-3 py-3.5 md:table-cell"><%- pill(o.status) %></td>
+
+                <td class="py-3.5 pl-3 pr-5 text-right sm:pr-6">
+                  <div class="inline-flex items-center gap-1">
+                    <% if (!done) { %>
+                      <button type="button" data-complete data-id="<%= o.id %>" data-number="<%= o.order_number %>" data-customer="<%= o.customer_name || 'Walk-in customer' %>" data-amount="TSh <%= money(final) %>"
+                        class="mr-1 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700">
+                        <i class="fas fa-check text-[10px]"></i>Complete
+                      </button>
+                    <% } %>
+                    <a href="/orders/view/<%= o.id %>" title="View" aria-label="View order <%= o.order_number %>" class="grid h-9 w-9 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-brand-teal/10 hover:text-brand-teal"><i class="fas fa-eye text-sm"></i></a>
+                    <% if (!done) { %>
+                      <a href="/orders/edit/<%= o.id %>" title="Edit" aria-label="Edit order <%= o.order_number %>" class="grid h-9 w-9 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-brand-gold/10 hover:text-brand-goldHover"><i class="fas fa-edit text-sm"></i></a>
+                    <% } %>
+                  </div>
+                </td>
+              </tr>
+            <% }) %>
+          <% } else { %>
+            <tr><td colspan="5" class="px-6 py-14 text-center">
+              <span class="mx-auto grid h-12 w-12 place-items-center rounded-full bg-brand-teal/10 text-brand-teal"><i class="fas fa-receipt text-lg"></i></span>
+              <% if (filtered) { %>
+                <p class="mt-4 text-sm font-semibold text-slate-800">No orders match your search</p>
+                <p class="mt-1 text-sm text-slate-500">Try a different order number, name or status.</p>
+                <a href="/orders" class="mt-4 inline-flex rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-brand-teal hover:bg-brand-teal/5">Clear all filters</a>
+              <% } else { %>
+                <p class="mt-4 text-sm font-semibold text-slate-800">No orders yet</p>
+                <p class="mt-1 text-sm text-slate-500">Create your first order to start selling.</p>
+                <a href="/orders/create" class="mt-4 inline-flex rounded-xl bg-brand-gold px-4 py-2 text-sm font-semibold text-white hover:bg-brand-goldHover">New order</a>
+              <% } %>
+            </td></tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+
+    <% if (pages > 1) { %>
+      <nav aria-label="Pagination" class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-5 py-4 sm:px-6">
+        <p class="text-sm text-slate-500">Page <span class="font-semibold text-slate-800"><%= cur %></span> of <span class="font-semibold text-slate-800"><%= pages %></span></p>
+        <div class="inline-flex items-center gap-1">
+          <% if (cur > 1) { %>
+            <a href="<%= build({}, cur - 1) %>" aria-label="Previous page" class="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"><i class="fas fa-chevron-left text-xs"></i></a>
+          <% } else { %>
+            <span class="grid h-9 w-9 cursor-not-allowed place-items-center rounded-lg border border-slate-100 text-slate-300"><i class="fas fa-chevron-left text-xs"></i></span>
+          <% } %>
+          <% pageList.forEach((n, i) => { %>
+            <% if (i > 0 && n - pageList[i - 1] > 1) { %><span class="px-1 text-slate-400">&hellip;</span><% } %>
+            <% if (n === cur) { %>
+              <span aria-current="page" class="grid h-9 min-w-[2.25rem] place-items-center rounded-lg bg-brand-teal px-2 text-sm font-bold text-white"><%= n %></span>
+            <% } else { %>
+              <a href="<%= build({}, n) %>" class="grid h-9 min-w-[2.25rem] place-items-center rounded-lg border border-slate-200 px-2 text-sm font-medium text-slate-600 hover:bg-slate-50"><%= n %></a>
+            <% } %>
+          <% }) %>
+          <% if (cur < pages) { %>
+            <a href="<%= build({}, cur + 1) %>" aria-label="Next page" class="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"><i class="fas fa-chevron-right text-xs"></i></a>
+          <% } else { %>
+            <span class="grid h-9 w-9 cursor-not-allowed place-items-center rounded-lg border border-slate-100 text-slate-300"><i class="fas fa-chevron-right text-xs"></i></span>
+          <% } %>
+        </div>
+      </nav>
+    <% } %>
+  </section>
+</div>
+
+<!-- ============ Complete order modal ============ -->
+<div id="completeModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"
+  class="!mt-0 fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+  <div class="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
+    <div class="h-1 bg-brand-gold"></div>
+    <div class="flex items-start justify-between gap-4 px-6 pt-5">
+      <div>
+        <h3 id="modalTitle" class="text-lg font-bold text-brand-tealDark">Complete order</h3>
+        <p id="modalCustomer" class="mt-0.5 text-sm text-slate-500"></p>
+      </div>
+      <button type="button" data-close aria-label="Close" class="grid h-9 w-9 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600"><i class="fas fa-times"></i></button>
+    </div>
+
+    <form id="completeForm" method="POST" class="px-6 pb-6 pt-4">
+      <div class="rounded-xl bg-teal-50 px-4 py-3">
+        <p class="text-xs font-medium text-brand-teal">Amount to collect</p>
+        <p id="modalAmount" class="mt-0.5 text-2xl font-extrabold tabular-nums text-brand-tealDark"></p>
+      </div>
+
+      <fieldset class="mt-5">
+        <legend class="mb-2 text-sm font-medium text-slate-700">How was it paid?</legend>
+        <div class="grid gap-2">
+          <% [['CASH', 'fa-money-bill-wave', 'Cash', 'Paid in hand'],
+              ['LIPA_NUMBER', 'fa-mobile-alt', 'Lipa number', 'Mobile money, till or QR'],
+              ['CREDIT', 'fa-file-invoice-dollar', 'Credit', 'Customer pays later']].forEach((m, i) => { %>
+            <label class="cursor-pointer">
+              <input type="radio" name="payment_method" value="<%= m[0] %>" class="peer sr-only" <%= i === 0 ? 'checked' : '' %>>
+              <span class="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 transition-all peer-checked:border-brand-teal peer-checked:bg-brand-teal/5 peer-checked:ring-2 peer-checked:ring-brand-teal/15 peer-focus-visible:ring-2 peer-focus-visible:ring-brand-gold">
+                <span class="grid h-9 w-9 place-items-center rounded-lg bg-slate-100 text-slate-500"><i class="fas <%= m[1] %> text-sm"></i></span>
+                <span><span class="block text-sm font-semibold text-slate-800"><%= m[2] %></span><span class="block text-xs text-slate-500"><%= m[3] %></span></span>
+              </span>
+            </label>
+          <% }) %>
+        </div>
+      </fieldset>
+
+      <div id="merchantBox" class="mt-4 hidden">
+        <label for="merchantSelect" class="mb-1.5 block text-sm font-medium text-slate-700">Merchant account</label>
+        <% if (accts.length) { %>
+          <select id="merchantSelect" name="merchant_id" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 focus:border-brand-teal focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-teal/20">
+            <option value="">Select a merchant account</option>
+            <% accts.forEach(m => { %><option value="<%= m.id %>"><%= merchantLabel(m) %></option><% }) %>
+          </select>
+        <% } else { %>
+          <p class="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            You have no merchant accounts yet. <a href="/merchants" class="font-semibold underline">Add one</a> before using this payment method.
+          </p>
+          <input type="hidden" id="merchantSelect" name="merchant_id" value="">
+        <% } %>
+      </div>
+
+      <div class="mt-6 flex items-center justify-end gap-2">
+        <button type="button" data-close class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50">Cancel</button>
+        <button type="submit" id="confirmBtn" class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60">
+          <i class="fas fa-check text-xs"></i><span>Confirm and complete</span>
         </button>
       </div>
     </form>
@@ -352,35 +275,45 @@
 </div>
 
 <script>
-  function openCompleteModal(orderId, orderNum) {
-    document.getElementById('modalTitle').innerText = 'Complete Order #' + orderNum;
-    document.getElementById('completeOrderForm').action = '/orders/complete/' + orderId;
-    
-    // Reset selections on open to default CASH
-    document.getElementById('paymentMethodSelect').value = 'CASH';
-    toggleMerchantField();
-    
-    document.getElementById('completeOrderModal').classList.remove('hidden');
-  }
+  (function () {
+    var modal = document.getElementById('completeModal'), form = document.getElementById('completeForm'),
+        box = document.getElementById('merchantBox'), select = document.getElementById('merchantSelect');
 
-  function closeCompleteModal() {
-    document.getElementById('completeOrderModal').classList.add('hidden');
-  }
-
-  function toggleMerchantField() {
-    const paymentMethod = document.getElementById('paymentMethodSelect').value;
-    const merchantContainer = document.getElementById('merchantContainer');
-    const merchantSelect = document.getElementById('merchantSelect');
-
-    if (paymentMethod === 'CASH') {
-      merchantContainer.classList.add('hidden');
-      merchantSelect.removeAttribute('required');
-      merchantSelect.value = ''; // Clear merchant ID for Cash
-    } else {
-      merchantContainer.classList.remove('hidden');
-      merchantSelect.setAttribute('required', 'required');
+    function syncMerchant() {
+      var method = form.querySelector('input[name="payment_method"]:checked').value, needs = method !== 'CASH';
+      box.classList.toggle('hidden', !needs);
+      if (needs) select.setAttribute('required', 'required');
+      else { select.removeAttribute('required'); select.value = ''; }   // cash: no merchant account
+      document.getElementById('confirmBtn').disabled = needs && select.type === 'hidden'; // no accounts to pick from
     }
-  }
+
+    function open(btn) {
+      document.getElementById('modalTitle').textContent = 'Complete order #' + btn.dataset.number;
+      document.getElementById('modalCustomer').textContent = btn.dataset.customer;
+      document.getElementById('modalAmount').textContent = btn.dataset.amount;
+      form.action = '/orders/complete/' + btn.dataset.id;
+      form.querySelector('input[value="CASH"]').checked = true;
+      document.getElementById('confirmBtn').querySelector('span').textContent = 'Confirm and complete';
+      syncMerchant();
+      modal.classList.remove('hidden'); modal.classList.add('flex');
+      document.body.classList.add('overflow-hidden');
+      form.querySelector('input[name="payment_method"]:checked').focus();
+    }
+    function close() {
+      modal.classList.add('hidden'); modal.classList.remove('flex');
+      document.body.classList.remove('overflow-hidden');
+    }
+
+    document.addEventListener('click', function (e) {
+      var o = e.target.closest('[data-complete]'); if (o) { open(o); return; }
+      if (e.target.closest('[data-close]') || e.target === modal) close();
+    });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+    form.addEventListener('change', function (e) { if (e.target.name === 'payment_method') syncMerchant(); });
+    form.addEventListener('submit', function () {
+      var b = document.getElementById('confirmBtn'); b.disabled = true; b.querySelector('span').textContent = 'Saving';
+    });
+  })();
 </script>
 
 <%- include('../layouts/footer') %>

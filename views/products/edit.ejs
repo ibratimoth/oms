@@ -1,108 +1,213 @@
 <%- include('../layouts/header') %>
+<%
+  const fmt     = (v) => Number(v || 0).toLocaleString('en-US', { maximumFractionDigits: 2 });
+  const qty     = Number(product.quantity_in_stock || 0);
+  const reorder = product.reorder_level || 5;
+  const out     = qty <= 0, low = !out && qty <= reorder;
+  const field   = 'w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-teal focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-teal/20';
+  const label   = 'mb-1.5 block text-sm font-medium text-slate-700';
+  const initial = String(product.name || '?').trim().charAt(0).toUpperCase();
+%>
 
-  <div class="mb-4">
-    <a href="/products"
-      class="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-brand-teal transition duration-150 group">
-      <i class="fas fa-arrow-left text-xs group-hover:-translate-x-0.5 transition-transform duration-150"></i>
-      <span>Cancel & Go Back</span>
+<div class="mx-auto max-w-5xl space-y-6">
+
+  <nav aria-label="Breadcrumb" class="flex items-center gap-2 text-sm text-slate-500">
+    <a href="/products" class="group inline-flex items-center gap-2 font-medium transition-colors hover:text-brand-teal">
+      <i class="fas fa-arrow-left text-xs transition-transform group-hover:-translate-x-0.5"></i>Products
     </a>
-  </div>
+    <i class="fas fa-chevron-right text-[10px] text-slate-300"></i>
+    <span class="text-slate-700">Edit</span>
+  </nav>
 
-  <div class="mb-6">
-    <div class="flex items-center gap-2 text-sm font-medium text-slate-400">
-      <a href="/products" class="hover:text-brand-teal transition duration-150">Products</a>
-      <i class="fas fa-chevron-right text-[10px]"></i>
-      <span class="text-slate-600">Edit Item</span>
+  <!-- ============ Identity header ============ -->
+  <div class="flex items-center gap-4">
+    <span class="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-brand-teal text-xl font-bold text-white"><span id="avatarLetter"><%= initial %></span></span>
+    <div class="min-w-0">
+      <h2 id="liveName" class="truncate text-2xl font-bold tracking-tight text-brand-tealDark"><%= product.name %></h2>
+      <p class="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500">
+        <span>Update the name and prices for this product.</span>
+        <% if (product.barcode) { %><span class="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-600"><i class="fas fa-barcode mr-1.5 text-brand-teal"></i><%= product.barcode %></span><% } %>
+      </p>
     </div>
-    <h1 class="text-2xl font-bold tracking-tight text-slate-800 mt-1">Edit Product: <%= product.name %>
-    </h1>
-    <p class="text-sm text-slate-500 mt-1">Modify inventory records, pricing matrices, and current stock tallies.</p>
   </div>
 
-  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden max-w-4xl">
+  <div class="grid gap-6 lg:grid-cols-3">
 
-    <div class="h-1.5 bg-brand-teal w-full"></div>
+    <!-- ============ Form ============ -->
+    <form id="editForm" method="POST" action="/products/edit/<%= product.id %>" class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white lg:col-span-2">
+      <div class="space-y-8 p-6 sm:p-8">
 
-    <form method="POST" action="/products/edit/<%= product.id %>" class="p-6 sm:p-8 space-y-6">
-
-      <div>
-        <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Product Identity</h3>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-
-          <div class="md:col-span-2">
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Product Name</label>
-            <input type="text" name="name" value="<%= product.name %>" required
-              class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white transition duration-150"
-              placeholder="Product Name">
+        <section>
+          <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>Product details</h3>
+          <div class="mt-4">
+            <label for="name" class="<%= label %>">Product name</label>
+            <input type="text" id="name" name="name" value="<%= product.name %>" data-original="<%= product.name %>" required autocomplete="off" placeholder="Product name" class="<%= field %> px-3.5">
           </div>
+        </section>
 
-        </div>
-      </div>
-
-      <div class="border-t border-slate-100 my-6"></div>
-
-      <div>
-        <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Financials & Inventory</h3>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
-
-          <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Cost Price
-              (Buy)</label>
-            <div class="relative shadow-sm rounded-lg">
-              <span
-                class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-xs font-semibold text-slate-400 bg-slate-100/80 border-r border-slate-200/60 rounded-l-lg px-2">
-                TSh
-              </span>
-              <input type="number" step="0.01" name="buy_price" value="<%= product.buy_price %>" required
-                class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 pl-12 pr-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white transition duration-150"
-                placeholder="0.00">
+        <section>
+          <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>Pricing</h3>
+          <div class="mt-4 grid gap-5 sm:grid-cols-2">
+            <div>
+              <label for="buy_price" class="<%= label %>">Cost price <span class="font-normal text-slate-400">(what you pay)</span></label>
+              <div class="relative">
+                <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">TSh</span>
+                <input type="number" id="buy_price" name="buy_price" step="0.01" min="0" value="<%= product.buy_price %>" data-original="<%= product.buy_price %>" required inputmode="decimal" placeholder="0" class="<%= field %> pl-11 pr-3.5 tabular-nums">
+              </div>
+            </div>
+            <div>
+              <label for="sell_price" class="<%= label %>">Selling price <span class="font-normal text-slate-400">(what customers pay)</span></label>
+              <div class="relative">
+                <span class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400">TSh</span>
+                <input type="number" id="sell_price" name="sell_price" step="0.01" min="0" value="<%= product.sell_price %>" data-original="<%= product.sell_price %>" required inputmode="decimal" placeholder="0" class="<%= field %> pl-11 pr-3.5 tabular-nums">
+              </div>
             </div>
           </div>
+          <p id="priceWarning" class="mt-3 hidden" role="status"></p>
+        </section>
 
-          <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Selling Price</label>
-            <div class="relative shadow-sm rounded-lg">
-              <span
-                class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-xs font-semibold text-slate-400 bg-slate-100/80 border-r border-slate-200/60 rounded-l-lg px-2">
-                TSh
-              </span>
-              <input type="number" step="0.01" name="sell_price" value="<%= product.sell_price %>" required
-                class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 pl-12 pr-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white transition duration-150"
-                placeholder="0.00">
-            </div>
-          </div>
+        <!-- What will change -->
+        <section id="changesBox" class="hidden rounded-xl border border-brand-gold/30 bg-amber-50/60 p-4">
+          <h4 class="flex items-center gap-2 text-sm font-semibold text-amber-800"><i class="fas fa-pen text-xs"></i>What will change</h4>
+          <ul id="changeList" class="mt-2 space-y-1.5 text-sm text-slate-700"></ul>
+        </section>
+      </div>
 
-          <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Current Stock
-              Level</label>
-            <!-- <input 
-            type="number" 
-            name="quantity_in_stock" 
-            value="<%= product.quantity_in_stock %>"
-            required 
-            class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white transition duration-150" 
-            placeholder="0"
-          > -->
-            <input type="number" name="quantity_in_stock" value="<%= product.quantity_in_stock %>" disabled
-              class="w-full bg-slate-100 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-400 cursor-not-allowed select-none transition duration-150"
-              placeholder="0">
-          </div>
-
+      <!-- Action bar -->
+      <div class="flex flex-col gap-3 border-t border-slate-100 bg-slate-50/60 px-6 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+        <p id="dirtyNote" class="flex items-center gap-2 text-sm text-slate-500">
+          <span id="dirtyDot" class="h-2 w-2 rounded-full bg-slate-300"></span><span id="dirtyText">No changes yet</span>
+        </p>
+        <div class="flex flex-col-reverse gap-3 sm:flex-row sm:items-center">
+          <button type="button" id="discardBtn" disabled class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">Discard changes</button>
+          <a href="/products" class="rounded-xl px-4 py-2.5 text-center text-sm font-medium text-slate-500 transition-colors hover:bg-slate-100">Back to products</a>
+          <button type="submit" id="saveBtn" disabled class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-gold px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-goldHover disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none">
+            <i class="fas fa-check text-xs"></i><span>Save changes</span>
+          </button>
         </div>
       </div>
-
-      <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
-        <a href="/products"
-          class="px-4 py-2.5 text-sm font-semibold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg border border-slate-200 shadow-sm transition duration-150">
-          Cancel Changes
-        </a>
-        <button type="submit"
-          class="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-brand-gold hover:bg-brand-goldHover text-white text-sm font-semibold rounded-lg shadow-sm shadow-brand-gold/10 transition duration-150">
-          <i class="fas fa-sync-alt text-xs"></i> Update Product
-        </button>
-      </div>
-
     </form>
-  </div>
 
-  <%- include('../layouts/footer') %>
+    <!-- ============ Side panels ============ -->
+    <aside class="space-y-6">
+
+      <section class="rounded-2xl border border-slate-200/80 bg-white p-6">
+        <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>Stock</h3>
+        <div class="mt-4 flex items-center justify-between gap-3">
+          <p class="text-4xl font-extrabold tabular-nums tracking-tight <%= out ? 'text-rose-600' : low ? 'text-amber-600' : 'text-brand-tealDark' %>" id="stockQty" data-qty="<%= qty %>"><%= qty %></p>
+          <% if (out) { %>
+            <span class="rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700 ring-1 ring-inset ring-rose-600/15">Out of stock</span>
+          <% } else if (low) { %>
+            <span class="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 ring-1 ring-inset ring-amber-600/20">Low stock</span>
+          <% } else { %>
+            <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/15">In stock</span>
+          <% } %>
+        </div>
+        <p class="mt-4 flex items-start gap-2 rounded-xl bg-slate-50 px-3.5 py-3 text-sm text-slate-600">
+          <i class="fas fa-lock mt-0.5 text-xs text-slate-400"></i>
+          <span>The quantity in stock cannot be changed on this page.</span>
+        </p>
+      </section>
+
+      <section class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
+        <div class="h-1 bg-brand-gold"></div>
+        <div class="bg-teal-50 px-6 py-4">
+          <p class="text-xs font-medium text-brand-teal">Live summary</p>
+          <p class="mt-0.5 text-sm text-slate-600">Updates as you edit the prices.</p>
+        </div>
+        <dl class="space-y-4 p-6 text-sm">
+          <div class="flex items-center justify-between gap-3"><dt class="text-slate-500">Profit per item</dt><dd id="pvProfit" class="font-bold tabular-nums text-slate-800">-</dd></div>
+          <div>
+            <div class="flex items-center justify-between gap-3"><dt class="text-slate-500">Margin</dt><dd id="pvMargin" class="font-bold tabular-nums text-slate-800">-</dd></div>
+            <div class="mt-2 h-2 overflow-hidden rounded-full bg-slate-100"><div id="pvBar" class="h-full rounded-full bg-emerald-500 transition-all" style="width:0%"></div></div>
+          </div>
+          <div class="space-y-3 border-t border-slate-100 pt-4">
+            <div class="flex items-center justify-between gap-3"><dt class="text-slate-500">Stock value at cost</dt><dd id="pvStockCost" class="font-semibold tabular-nums text-slate-800">-</dd></div>
+            <div class="flex items-center justify-between gap-3"><dt class="text-slate-500">Sales value if all sold</dt><dd id="pvStockSales" class="font-semibold tabular-nums text-slate-800">-</dd></div>
+          </div>
+        </dl>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var $ = function (id) { return document.getElementById(id); };
+    var money = function (v) { return 'TSh ' + v.toLocaleString('en-US', { maximumFractionDigits: 2 }); };
+    var form = $('editForm'), qty = Number($('stockQty').getAttribute('data-qty')) || 0, submitting = false;
+    var inputs = [
+      { el: $('name'),       label: 'Name',          text: true },
+      { el: $('buy_price'),  label: 'Cost price',    text: false },
+      { el: $('sell_price'), label: 'Selling price', text: false }
+    ];
+
+    function num(el) { var v = parseFloat(el.value); return isFinite(v) ? v : null; }
+    function changed(i) {
+      var now = i.el.value.trim(), was = (i.el.getAttribute('data-original') || '').trim();
+      if (i.text) return now !== was;
+      return Number(now) !== Number(was);
+    }
+    function show(i, v) { return i.text ? v : money(Number(v) || 0); }
+
+    function refresh() {
+      /* live name */
+      var nm = $('name').value.trim() || 'Untitled product';
+      $('liveName').textContent = nm; $('avatarLetter').textContent = nm.charAt(0).toUpperCase();
+
+      /* live money summary */
+      var buy = num($('buy_price')), sell = num($('sell_price')), warn = $('priceWarning');
+      var ok = buy !== null && sell !== null, profit = ok ? sell - buy : null, margin = (ok && sell > 0) ? (profit / sell) * 100 : null;
+      $('pvProfit').textContent = profit === null ? '-' : money(profit);
+      $('pvProfit').className = 'font-bold tabular-nums ' + (profit !== null && profit < 0 ? 'text-rose-600' : 'text-slate-800');
+      $('pvMargin').textContent = margin === null ? '-' : margin.toFixed(1) + '%';
+      $('pvBar').style.width = margin === null ? '0%' : Math.max(0, Math.min(100, margin)) + '%';
+      $('pvBar').className = 'h-full rounded-full transition-all ' + (margin !== null && margin < 0 ? 'bg-rose-500' : 'bg-emerald-500');
+      $('pvStockCost').textContent  = buy  !== null ? money(buy * qty)  : '-';
+      $('pvStockSales').textContent = sell !== null ? money(sell * qty) : '-';
+
+      if (ok && profit < 0) {
+        warn.className = 'mt-3 flex items-center gap-2 rounded-xl bg-rose-50 px-3.5 py-2.5 text-sm font-medium text-rose-700';
+        warn.innerHTML = '<i class="fas fa-exclamation-triangle text-xs"></i><span></span>';
+        warn.lastChild.textContent = 'You would lose ' + money(Math.abs(profit)) + ' on every item sold.';
+      } else if (ok && profit === 0) {
+        warn.className = 'mt-3 flex items-center gap-2 rounded-xl bg-amber-50 px-3.5 py-2.5 text-sm font-medium text-amber-700';
+        warn.innerHTML = '<i class="fas fa-info-circle text-xs"></i><span>Selling price equals cost price, so there is no profit.</span>';
+      } else { warn.className = 'mt-3 hidden'; }
+
+      /* what will change */
+      var list = $('changeList'); list.textContent = '';
+      var dirty = inputs.filter(changed);
+      dirty.forEach(function (i) {
+        var li = document.createElement('li'); li.className = 'flex flex-wrap items-center gap-x-2';
+        var l = document.createElement('span'); l.className = 'font-medium'; l.textContent = i.label + ':';
+        var a = document.createElement('span'); a.className = 'text-slate-500 line-through'; a.textContent = show(i, i.el.getAttribute('data-original'));
+        var arrow = document.createElement('i'); arrow.className = 'fas fa-arrow-right text-[10px] text-slate-400';
+        var b = document.createElement('span'); b.className = 'font-semibold text-brand-tealDark'; b.textContent = show(i, i.el.value);
+        [l, a, arrow, b].forEach(function (n) { li.appendChild(n); }); list.appendChild(li);
+      });
+      $('changesBox').classList.toggle('hidden', !dirty.length);
+
+      var isDirty = dirty.length > 0;
+      $('saveBtn').disabled = !isDirty; $('discardBtn').disabled = !isDirty;
+      $('dirtyDot').className = 'h-2 w-2 rounded-full ' + (isDirty ? 'bg-brand-gold' : 'bg-slate-300');
+      $('dirtyText').textContent = isDirty ? dirty.length + (dirty.length === 1 ? ' unsaved change' : ' unsaved changes') : 'No changes yet';
+      return isDirty;
+    }
+
+    inputs.forEach(function (i) { i.el.addEventListener('input', refresh); });
+    $('discardBtn').addEventListener('click', function () {
+      inputs.forEach(function (i) { i.el.value = i.el.getAttribute('data-original'); }); refresh();
+    });
+    form.addEventListener('submit', function () {
+      submitting = true; var b = $('saveBtn'); b.disabled = true;
+      b.innerHTML = '<i class="fas fa-spinner fa-spin text-xs"></i><span>Saving</span>';
+    });
+    window.addEventListener('beforeunload', function (e) {
+      if (!submitting && inputs.some(changed)) { e.preventDefault(); e.returnValue = ''; }
+    });
+    refresh();
+  })();
+</script>
+
+<%- include('../layouts/footer') %>

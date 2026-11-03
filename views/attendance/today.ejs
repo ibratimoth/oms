@@ -1,112 +1,252 @@
 <%- include('../layouts/header') %>
+<%
+  /* ---------- state & derived data ---------- */
+  const signedIn  = typeof hasSignedInToday  !== 'undefined' && !!hasSignedInToday;
+  const signedOut = typeof hasSignedOutToday !== 'undefined' && !!hasSignedOutToday;
+  const isAdmin   = typeof userRole !== 'undefined' && (userRole === 'admin' || userRole === 'superadmin');
+  const state     = !signedIn ? 'idle' : (signedOut ? 'done' : 'active');
 
-<% if (typeof error !== 'undefined' && error) { %>
-  <div class="mb-6 max-w-5xl bg-rose-50 border border-rose-200 rounded-xl p-4 flex items-start gap-3 shadow-sm animate-fade-in">
-    <div class="bg-rose-100 text-rose-600 p-1.5 rounded-lg shrink-0">
-      <i class="fas fa-exclamation-circle text-lg"></i>
+  const iso = (v) => { const d = new Date(v); return isNaN(d) ? '' : d.toISOString(); };
+  const dur = (m) => m === null ? '' : Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
+
+  const list = (typeof attendances !== 'undefined' && attendances) ? attendances : [];
+  const rows = list.map(a => {
+    const u = a.User || {};
+    const name = u.full_name || 'Unknown user';
+    const inMs = new Date(a.sign_in).getTime();
+    const outMs = a.sign_out ? new Date(a.sign_out).getTime() : null;
+    return {
+      name, initial: name.charAt(0).toUpperCase(),
+      username: u.username || '',
+      role: (u.role || 'n/a').replace('_', ' '),
+      inIso: iso(a.sign_in), outIso: a.sign_out ? iso(a.sign_out) : '',
+      active: !a.sign_out,
+      mins: (outMs && inMs) ? Math.max(0, Math.round((outMs - inMs) / 60000)) : null
+    };
+  });
+  const onShift  = rows.filter(r => r.active).length;
+  const finished = rows.length - onShift;
+
+  /* Times are written as ISO and formatted in the viewer's own time zone by the script below */
+  const timeHtml = (v, empty) => v
+    ? `<time data-time datetime="${v}">${v.substr(11, 5)}</time>`
+    : `<span class="text-slate-400">${empty}</span>`;
+  const lengthHtml = (r) => r.active
+    ? `<span data-since="${r.inIso}" class="font-medium text-emerald-700">In progress</span>`
+    : `<span>${dur(r.mins) || '-'}</span>`;
+  const pillHtml = (r) => r.active
+    ? '<span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20"><span class="relative flex h-1.5 w-1.5"><span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span></span>On shift</span>'
+    : '<span class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600"><i class="fas fa-check text-[9px]"></i>Finished</span>';
+  const avatar = (r) => `<span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-teal/10 text-sm font-bold text-brand-teal">${r.initial}</span>`;
+%>
+
+<div class="mx-auto max-w-5xl space-y-6">
+
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div role="alert" class="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4">
+      <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-rose-100 text-rose-600"><i class="fas fa-exclamation-circle"></i></span>
+      <div class="min-w-0">
+        <h4 class="text-sm font-semibold text-rose-800">We could not record your attendance</h4>
+        <p class="mt-0.5 text-sm text-rose-700"><%= error %></p>
+      </div>
     </div>
-    <div class="flex-1">
-      <h4 class="text-sm font-bold text-rose-800">Processing Error Encountered</h4>
-      <p class="text-xs text-rose-600 mt-0.5"><%= error %></p>
-    </div>
-  </div>
-<% } %>
+  <% } %>
 
-<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-  <div>
-    <h1 class="text-2xl font-bold tracking-tight text-slate-800">Today's Attendance</h1>
-    <p class="text-sm text-slate-500 mt-1">Track staff arrivals, departures, and active shift logs for today.</p>
-  </div>
-  <div class="flex items-center gap-3">
-    <!-- Sign In Button -->
-    <form action="/attendance/sign-in" method="POST">
-      <button type="submit"
-        <%= (typeof hasSignedInToday !== 'undefined' && hasSignedInToday) ? 'disabled' : '' %>
-        class="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-lg shadow-sm transition duration-150 whitespace-nowrap <%= (typeof hasSignedInToday !== 'undefined' && hasSignedInToday) ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : 'bg-brand-teal hover:bg-brand-tealDark text-white' %>">
-        <i class="fas fa-sign-in-alt text-xs"></i> 
-        <%= (typeof hasSignedInToday !== 'undefined' && hasSignedInToday) ? 'Signed In Today' : 'Sign In' %>
-      </button>
-    </form>
+  <!-- ============ Shift panel ============ -->
+  <section class="overflow-hidden rounded-2xl bg-brand-tealDark text-white shadow-lg shadow-brand-tealDark/15">
+    <div class="h-1 bg-brand-gold"></div>
+    <div class="flex flex-col gap-6 p-6 sm:p-8 md:flex-row md:items-center md:justify-between">
 
-    <!-- Sign Out Button -->
-    <form action="/attendance/sign-out" method="POST">
-      <button type="submit"
-        <%= (typeof hasSignedInToday === 'undefined' || !hasSignedInToday || hasSignedOutToday) ? 'disabled' : '' %>
-        class="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-lg shadow-sm transition duration-150 whitespace-nowrap <%= (typeof hasSignedInToday === 'undefined' || !hasSignedInToday || hasSignedOutToday) ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed shadow-none' : 'bg-white hover:bg-rose-50 text-rose-600 border border-rose-200' %>">
-        <i class="fas fa-sign-out-alt text-xs"></i> 
-        <%= (typeof hasSignedOutToday !== 'undefined' && hasSignedOutToday) ? 'Signed Out Today' : 'Sign Out' %>
-      </button>
-    </form>
+      <div>
+        <p id="todayDate" class="text-sm font-medium text-teal-200">Today</p>
+        <p id="liveClock" class="mt-2 text-5xl font-extrabold tabular-nums tracking-tight sm:text-6xl" aria-live="off">--:--:--</p>
 
-    <!-- Link to Report View -->
-    <% if (typeof userRole !== 'undefined' && (userRole === 'admin' || userRole === 'superadmin')) { %>
-      <a href="/attendance/report"
-        class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-lg transition duration-150 whitespace-nowrap">
-        <i class="fas fa-calendar-alt text-xs"></i> View History
-      </a>
-    <% } %>
-  </div>
-</div>
+        <p class="mt-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-sm font-medium">
+          <% if (state === 'idle') { %>
+            <span class="h-2 w-2 rounded-full bg-brand-gold"></span>You have not signed in yet
+          <% } else if (state === 'active') { %>
+            <span class="h-2 w-2 rounded-full bg-emerald-400"></span>You are on shift
+          <% } else { %>
+            <i class="fas fa-check-circle text-emerald-300"></i>Your shift is complete for today
+          <% } %>
+        </p>
+      </div>
 
-<div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden max-w-5xl">
-  <div class="overflow-x-auto">
-    <table class="w-full text-left border-collapse whitespace-nowrap">
-      <thead>
-        <tr class="bg-slate-50 border-b border-slate-200 text-slate-400 text-xs font-bold uppercase tracking-wider">
-          <th class="py-3.5 px-6">Staff Member</th>
-          <th class="py-3.5 px-6">Role</th>
-          <th class="py-3.5 px-6">Sign In Time</th>
-          <th class="py-3.5 px-6">Sign Out Time</th>
-          <th class="py-3.5 px-6 text-right">Status</th>
-        </tr>
-      </thead>
-      <tbody class="text-sm divide-y divide-slate-100">
-        <% if (typeof attendances !== 'undefined' && attendances.length > 0) { %>
-          <% attendances.forEach(att => { %>
-            <tr class="hover:bg-slate-50/70 transition duration-150 group">
-              <td class="py-4 px-6 font-semibold text-slate-800">
-                <%= att.User ? att.User.full_name : 'Unknown User' %>
-                <span class="block font-normal text-xs text-slate-400">
-                  <%= att.User ? att.User.username : '' %>
-                </span>
-              </td>
-              <td class="py-4 px-6 text-slate-600 capitalize text-xs">
-                <span class="px-2 py-1 bg-slate-100 rounded-md font-medium">
-                  <%= att.User ? att.User.role : 'N/A' %>
-                </span>
-              </td>
-              <td class="py-4 px-6 text-slate-600 text-xs">
-                <i class="far fa-clock text-slate-400 mr-1"></i>
-                <%= new Date(att.sign_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %>
-              </td>
-              <td class="py-4 px-6 text-slate-600 text-xs">
-                <% if (att.sign_out) { %>
-                  <i class="far fa-clock text-slate-400 mr-1"></i>
-                  <%= new Date(att.sign_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %>
-                <% } else { %>
-                  <span class="text-slate-400 italic">Not signed out</span>
-                <% } %>
-              </td>
-              <td class="py-4 px-6 text-right">
-                <% if (att.sign_out) { %>
-                  <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">Completed</span>
-                <% } else { %>
-                  <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600 border border-emerald-200">Active Shift</span>
-                <% } %>
-              </td>
-            </tr>
-          <% }) %>
+      <div class="md:w-64">
+        <% if (state === 'idle') { %>
+          <form action="/attendance/sign-in" method="POST" id="signInForm">
+            <button type="submit"
+              class="flex w-full items-center justify-center gap-2.5 rounded-2xl bg-brand-gold px-6 py-4 text-base font-bold text-white shadow-lg shadow-black/10 transition-colors hover:bg-brand-goldHover focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-tealDark">
+              <i class="fas fa-sign-in-alt"></i>Sign in
+            </button>
+          </form>
+          <p class="mt-3 text-center text-xs text-teal-200/80">Your arrival time is saved when you tap.</p>
+
+        <% } else if (state === 'active') { %>
+          <form action="/attendance/sign-out" method="POST" id="signOutForm">
+            <button type="submit"
+              class="flex w-full items-center justify-center gap-2.5 rounded-2xl bg-white px-6 py-4 text-base font-bold text-rose-600 shadow-lg shadow-black/10 transition-colors hover:bg-rose-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2 focus-visible:ring-offset-brand-tealDark">
+              <i class="fas fa-sign-out-alt"></i>Sign out
+            </button>
+          </form>
+          <p class="mt-3 text-center text-xs text-teal-200/80">You can sign out once per day.</p>
+
         <% } else { %>
-          <tr>
-            <td colspan="5" class="py-12 text-center">
-              <div class="text-slate-300 mb-2"><i class="fas fa-clipboard-user text-4xl"></i></div>
-              <p class="text-sm text-slate-400 italic">No attendance records found for today.</p>
-            </td>
-          </tr>
+          <div class="rounded-2xl border border-white/15 bg-white/5 px-5 py-4 text-center">
+            <span class="mx-auto grid h-10 w-10 place-items-center rounded-full bg-emerald-400/20 text-emerald-300"><i class="fas fa-check"></i></span>
+            <p class="mt-2 text-sm font-semibold">Signed in and out</p>
+            <p class="mt-0.5 text-xs text-teal-200/80">See you at your next shift.</p>
+          </div>
         <% } %>
-      </tbody>
-    </table>
-  </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Staff log ============ -->
+  <section class="rounded-2xl border border-slate-200/80 bg-white">
+    <div class="flex flex-wrap items-center justify-between gap-3 px-5 pt-5 sm:px-6">
+      <div>
+        <h3 class="text-[15px] font-semibold text-slate-800">Today's staff log</h3>
+        <p class="mt-0.5 text-sm text-slate-500">Who has arrived and who has left.</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2 text-sm">
+        <span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 font-medium text-emerald-700"><span class="h-2 w-2 rounded-full bg-emerald-500"></span><%= onShift %> on shift</span>
+        <span class="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-600"><span class="h-2 w-2 rounded-full bg-slate-400"></span><%= finished %> finished</span>
+        <% if (isAdmin) { %>
+          <a href="/attendance/report"
+            class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3.5 py-1.5 font-medium text-brand-teal transition-colors hover:border-brand-teal/40 hover:bg-brand-teal/5">
+            <i class="fas fa-history text-xs"></i>History
+          </a>
+        <% } %>
+      </div>
+    </div>
+
+    <% if (rows.length > 0) { %>
+
+      <!-- Desktop table -->
+      <div class="mt-4 hidden overflow-x-auto border-t border-slate-100 md:block">
+        <table class="w-full text-left text-sm">
+          <thead>
+            <tr class="text-xs font-medium text-slate-500">
+              <th scope="col" class="px-6 py-3">Staff member</th>
+              <th scope="col" class="px-4 py-3">Role</th>
+              <th scope="col" class="px-4 py-3">Signed in</th>
+              <th scope="col" class="px-4 py-3">Signed out</th>
+              <th scope="col" class="px-4 py-3">Time on shift</th>
+              <th scope="col" class="px-6 py-3 text-right">Status</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            <% rows.forEach(r => { %>
+              <tr class="transition-colors hover:bg-brand-teal/[0.03]">
+                <td class="px-6 py-3.5">
+                  <div class="flex items-center gap-3">
+                    <%- avatar(r) %>
+                    <div class="min-w-0">
+                      <p class="truncate font-semibold text-slate-800"><%= r.name %></p>
+                      <% if (r.username) { %><p class="truncate text-xs text-slate-500"><%= r.username %></p><% } %>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-4 py-3.5"><span class="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium capitalize text-slate-600"><%= r.role %></span></td>
+                <td class="px-4 py-3.5 font-medium tabular-nums text-slate-700"><%- timeHtml(r.inIso, '-') %></td>
+                <td class="px-4 py-3.5 font-medium tabular-nums text-slate-700"><%- timeHtml(r.outIso, 'Not yet') %></td>
+                <td class="px-4 py-3.5 tabular-nums text-slate-600"><%- lengthHtml(r) %></td>
+                <td class="px-6 py-3.5 text-right"><%- pillHtml(r) %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Mobile cards -->
+      <ul class="mt-4 divide-y divide-slate-100 border-t border-slate-100 md:hidden">
+        <% rows.forEach(r => { %>
+          <li class="px-5 py-4">
+            <div class="flex items-center justify-between gap-3">
+              <div class="flex min-w-0 items-center gap-3">
+                <%- avatar(r) %>
+                <div class="min-w-0">
+                  <p class="truncate font-semibold text-slate-800"><%= r.name %></p>
+                  <p class="truncate text-xs capitalize text-slate-500"><%= r.role %></p>
+                </div>
+              </div>
+              <%- pillHtml(r) %>
+            </div>
+            <dl class="mt-3 grid grid-cols-3 gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-xs">
+              <div><dt class="text-slate-500">In</dt><dd class="mt-0.5 font-semibold tabular-nums text-slate-800"><%- timeHtml(r.inIso, '-') %></dd></div>
+              <div><dt class="text-slate-500">Out</dt><dd class="mt-0.5 font-semibold tabular-nums text-slate-800"><%- timeHtml(r.outIso, 'Not yet') %></dd></div>
+              <div><dt class="text-slate-500">On shift</dt><dd class="mt-0.5 font-semibold tabular-nums text-slate-800"><%- lengthHtml(r) %></dd></div>
+            </dl>
+          </li>
+        <% }) %>
+      </ul>
+
+    <% } else { %>
+      <div class="mt-4 border-t border-slate-100 px-6 py-14 text-center">
+        <span class="mx-auto grid h-12 w-12 place-items-center rounded-full bg-brand-teal/10 text-brand-teal"><i class="fas fa-user-clock text-lg"></i></span>
+        <p class="mt-4 text-sm font-semibold text-slate-800">Nobody has signed in yet today</p>
+        <p class="mx-auto mt-1 max-w-xs text-sm text-slate-500">
+          <%= state === 'idle' ? 'Use the Sign in button above to start your shift.' : 'Arrivals will appear here as staff sign in.' %>
+        </p>
+      </div>
+    <% } %>
+  </section>
 </div>
+
+<script>
+  (function () {
+    /* Live clock + date */
+    var clock = document.getElementById('liveClock'), dateEl = document.getElementById('todayDate');
+    function tick() {
+      var now = new Date();
+      clock.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      dateEl.textContent = now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    }
+    tick(); setInterval(tick, 1000);
+
+    /* Show times in the viewer's own time zone (the server may run in UTC) */
+    document.querySelectorAll('time[data-time]').forEach(function (t) {
+      var d = new Date(t.getAttribute('datetime'));
+      if (!isNaN(d)) t.textContent = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    });
+
+    /* Running length for people still on shift */
+    function updateLengths() {
+      document.querySelectorAll('[data-since]').forEach(function (el) {
+        var since = new Date(el.getAttribute('data-since'));
+        if (isNaN(since)) return;
+        var m = Math.max(0, Math.floor((Date.now() - since) / 60000));
+        el.textContent = Math.floor(m / 60) + 'h ' + (m % 60) + 'm so far';
+      });
+    }
+    updateLengths(); setInterval(updateLengths, 60000);
+
+    /* Prevent double submits; confirm before signing out */
+    function lock(form) {
+      var b = form.querySelector('button');
+      b.disabled = true; b.classList.add('opacity-70', 'cursor-wait');
+      b.innerHTML = '<i class="fas fa-spinner fa-spin"></i>Please wait';
+    }
+
+    var inForm = document.getElementById('signInForm');
+    if (inForm) inForm.addEventListener('submit', function () { lock(inForm); });
+
+    var outForm = document.getElementById('signOutForm');
+    if (outForm) outForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (typeof Dialog === 'undefined') { lock(outForm); outForm.submit(); return; } // Dialog comes from the footer
+      Dialog.fire({
+        title: 'Sign out for today?',
+        text: 'You can only sign out once per day, so make sure your shift is finished.',
+        icon: 'question',
+        iconColor: '#1A6B78',
+        showCancelButton: true,
+        confirmButtonText: 'Sign out',
+        cancelButtonText: 'Stay on shift'
+      }).then(function (r) { if (r.isConfirmed) { lock(outForm); outForm.submit(); } });
+    });
+  })();
+</script>
 
 <%- include('../layouts/footer') %>
