@@ -142,6 +142,8 @@ exports.index = async (req, res) => {
       return sum + (buyPrice * quantitySold);
     }, 0);
     // 5. Render View with All Financial Data
+
+    console.log('Dashboard Metrics:', {totalSales, netFinancialPosition, });
     return res.render('dashboard/index', {
       totalProducts,
       totalOrders,
