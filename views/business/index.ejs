@@ -1,84 +1,185 @@
 <%- include('../layouts/header') %>
+<%
+  const list = (typeof businesses !== 'undefined' && businesses) ? businesses : [];
+  const items = list.map(b => {
+    const d = b.createdAt ? new Date(b.createdAt) : null;
+    return { id: String(b.id), name: b.name, iso: (d && !isNaN(d)) ? d.toISOString() : '' };
+  });
+  const initial = (n) => String(n || '?').trim().charAt(0).toUpperCase();
+%>
+
+<div class="space-y-6">
 
   <% if (typeof error !== 'undefined' && error) { %>
-    <div class="mb-6 max-w-5xl bg-rose-50 border border-rose-200 rounded-xl p-4 flex items-start gap-3 shadow-sm animate-fade-in">
-      <div class="bg-rose-100 text-rose-600 p-1.5 rounded-lg shrink-0">
-        <i class="fas fa-exclamation-circle text-lg"></i>
-      </div>
-      <div class="flex-1">
-        <h4 class="text-sm font-bold text-rose-800">Processing Error Encountered</h4>
-        <p class="text-xs text-rose-600 mt-0.5"><%= error %></p>
-      </div>
+    <div role="alert" class="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4">
+      <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-rose-100 text-rose-600"><i class="fas fa-exclamation-circle"></i></span>
+      <div class="min-w-0"><h4 class="text-sm font-semibold text-rose-800">Something went wrong</h4><p class="mt-0.5 text-sm text-rose-700"><%= error %></p></div>
     </div>
   <% } %>
 
-  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-    <div>
-      <h1 class="text-2xl font-bold tracking-tight text-slate-800">Registered Businesses</h1>
-      <p class="text-sm text-slate-500 mt-1">Manage tenant profiles, enterprise hubs, and core business associations.</p>
-    </div>
-    <div>
-      <a href="/business/create"
-        class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-teal hover:bg-brand-tealDark text-white text-sm font-semibold rounded-lg shadow-sm shadow-brand-teal/10 transition duration-150 whitespace-nowrap">
-        <i class="fas fa-plus text-xs"></i> Register New Shop
-      </a>
-    </div>
+  <!-- ============ Intro + action ============ -->
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <p class="max-w-xl text-sm text-slate-500">Every shop registered on this system. Each shop keeps its own products, orders, debts and expenses.</p>
+    <a href="/business/create" class="inline-flex items-center gap-2 rounded-xl bg-brand-gold px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-goldHover">
+      <i class="fas fa-plus text-xs"></i>Register new shop
+    </a>
   </div>
 
-  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden max-w-5xl">
-    <div class="overflow-x-auto">
-      <table class="w-full text-left border-collapse whitespace-nowrap">
-        <thead>
-          <tr class="bg-slate-50 border-b border-slate-200 text-slate-400 text-xs font-bold uppercase tracking-wider">
-            <th class="py-3.5 px-6">Business UUID</th>
-            <th class="py-3.5 px-6">Business Name</th>
-            <th class="py-3.5 px-6">Registered On</th>
-            <th class="py-3.5 px-6 text-right">Actions</th>
-          </tr>
-        </thead>
-        <tbody class="text-sm divide-y divide-slate-100">
-          <% if (typeof businesses !== 'undefined' && businesses.length > 0) { %>
-            <% businesses.forEach(b => { %>
-              <tr class="hover:bg-slate-50/70 transition duration-150 group">
-                <td class="py-4 px-6 font-mono text-xs text-slate-400">
-                  <%= b.id %>
-                </td>
-                <td class="py-4 px-6 font-semibold text-slate-800">
-                  <%= b.name %>
-                </td>
-                <td class="py-4 px-6 text-slate-500 text-xs">
-                  <%= new Date(b.createdAt).toLocaleDateString('en-GB') %>
-                </td>
-                <td class="py-4 px-6 text-right">
-                  <div class="inline-flex items-center gap-2">
-                    <a href="/business/view/<%= b.id %>"
-                      class="inline-flex items-center gap-1.5 bg-white hover:bg-teal-50 text-slate-600 hover:text-brand-teal py-1.5 px-3 text-xs font-semibold border border-slate-200 hover:border-teal-200 rounded-md shadow-sm transition duration-150">
-                      <i class="fas fa-eye text-[10px]"></i> View Info
-                    </a>
-                    <a href="/business/edit/<%= b.id %>"
-                      class="inline-flex items-center gap-1.5 bg-white hover:bg-brand-gold/10 text-slate-600 hover:text-brand-goldHover py-1.5 px-3 text-xs font-semibold border border-slate-200 hover:border-brand-gold/30 rounded-md shadow-sm transition duration-150">
-                      <i class="fas fa-edit text-[10px]"></i> Rename
-                    </a>
-                    <a href="/business/delete/<%= b.id %>"
-                      class="inline-flex items-center gap-1.5 bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 py-1.5 px-3 text-xs font-semibold border border-slate-200 hover:border-rose-200 rounded-md shadow-sm transition duration-150"
-                      onclick="return confirm('Deleting this business will remove its ownership references. Proceed?')">
-                      <i class="fas fa-trash-alt text-[10px]"></i> Remove
-                    </a>
-                  </div>
-                </td>
-              </tr>
-            <% }) %>
-          <% } else { %>
-            <tr>
-              <td colspan="4" class="py-12 text-center">
-                <div class="text-slate-300 mb-2"><i class="fas fa-building text-4xl"></i></div>
-                <p class="text-sm text-slate-400 italic">No business entities registered on this server environment.</p>
-              </td>
-            </tr>
-          <% } %>
-        </tbody>
-      </table>
+  <% if (items.length) { %>
+
+    <!-- ============ Search + sort ============ -->
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div class="relative w-full sm:w-80">
+        <i class="fas fa-search pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
+        <input type="search" id="shopSearch" autocomplete="off" aria-label="Search shops" placeholder="Search by shop name or ID"
+          class="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-brand-teal focus:outline-none focus:ring-2 focus:ring-brand-teal/20">
+      </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <p id="shopCount" class="text-sm text-slate-500" aria-live="polite"></p>
+        <div role="group" aria-label="Sort shops" class="inline-flex rounded-xl bg-slate-100 p-1">
+          <% [['name', 'Name'], ['newest', 'Newest'], ['oldest', 'Oldest']].forEach((o, i) => { %>
+            <button type="button" data-sort="<%= o[0] %>" aria-pressed="<%= i === 0 %>" class="sort-btn rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors <%= i === 0 ? 'bg-white text-brand-tealDark shadow-sm' : 'text-slate-600 hover:text-brand-teal' %>"><%= o[1] %></button>
+          <% }) %>
+        </div>
+      </div>
     </div>
-  </div>
+
+    <!-- ============ Shop cards ============ -->
+    <div id="shopGrid" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <% items.forEach(b => { %>
+        <article class="shop-card group flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white transition-all hover:border-brand-teal/40 hover:shadow-md"
+          data-id="<%= b.id %>" data-name="<%= b.name %>" data-search="<%= (b.name + ' ' + b.id).toLowerCase() %>" data-time="<%= b.iso ? Date.parse(b.iso) : 0 %>">
+          <div class="flex-1 p-5">
+            <div class="flex items-start gap-4">
+              <span class="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-brand-teal text-xl font-extrabold text-white"><%= initial(b.name) %></span>
+              <div class="min-w-0 pt-0.5">
+                <h3 class="truncate text-base font-bold text-slate-900" title="<%= b.name %>"><span data-hl="<%= b.name %>"><%= b.name %></span></h3>
+                <p class="mt-1 flex items-center gap-1.5 text-sm text-slate-500"><i class="far fa-calendar text-xs text-brand-gold"></i>
+                  <% if (b.iso) { %>Registered <time data-d datetime="<%= b.iso %>"><%= b.iso.substr(0, 10) %></time><% } else { %>Registration date unknown<% } %></p>
+              </div>
+            </div>
+
+            <div class="mt-4 flex items-center justify-between gap-2 rounded-xl bg-slate-50 px-3.5 py-2.5">
+              <div class="min-w-0">
+                <p class="text-xs text-slate-500">Shop ID</p>
+                <p class="truncate font-mono text-sm font-semibold text-slate-700" title="<%= b.id %>"><%= b.id.length > 13 ? b.id.slice(0, 8) + '\u2026' + b.id.slice(-4) : b.id %></p>
+              </div>
+              <button type="button" data-copy="<%= b.id %>" aria-label="Copy the ID of <%= b.name %>" title="Copy full ID"
+                class="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-white hover:text-brand-teal"><i class="far fa-copy"></i></button>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between border-t border-slate-100 bg-slate-50/50 px-4 py-2.5">
+            <a href="/business/view/<%= b.id %>" class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold text-brand-teal transition-colors hover:bg-brand-teal/10"><i class="fas fa-eye text-xs"></i>View</a>
+            <div class="flex items-center gap-1">
+              <a href="/business/edit/<%= b.id %>" class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-brand-gold/10 hover:text-brand-goldHover"><i class="fas fa-edit text-xs"></i>Rename</a>
+              <button type="button" data-delete data-url="/business/delete/<%= b.id %>" class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600"><i class="fas fa-trash-alt text-xs"></i>Remove</button>
+            </div>
+          </div>
+        </article>
+      <% }) %>
+    </div>
+
+    <div id="noMatch" class="hidden rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center">
+      <span class="mx-auto grid h-12 w-12 place-items-center rounded-full bg-brand-teal/10 text-brand-teal"><i class="fas fa-search text-lg"></i></span>
+      <p class="mt-4 text-sm font-semibold text-slate-800">No shops match your search</p>
+      <p class="mt-1 text-sm text-slate-500">Check the spelling, or search with part of the ID.</p>
+      <button type="button" id="clearSearch" class="mt-4 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-brand-teal hover:bg-brand-teal/5">Clear search</button>
+    </div>
+
+  <% } else { %>
+
+    <div class="rounded-2xl border border-slate-200/80 bg-white px-6 py-16 text-center">
+      <span class="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-brand-teal/10 text-brand-teal"><i class="fas fa-store text-2xl"></i></span>
+      <h3 class="mt-5 text-base font-bold text-slate-900">No shops registered yet</h3>
+      <p class="mx-auto mt-1 max-w-sm text-sm text-slate-500">Register your first shop to start adding products, orders and expenses to it.</p>
+      <a href="/business/create" class="mt-6 inline-flex items-center gap-2 rounded-xl bg-brand-gold px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-goldHover"><i class="fas fa-plus text-xs"></i>Register your first shop</a>
+    </div>
+
+  <% } %>
+</div>
+
+<script>
+  /* Wrapped in a function so it cannot clash with the footer's Toast and Dialog */
+  (function () {
+    var grid = document.getElementById('shopGrid'); if (!grid) return;
+    var input = document.getElementById('shopSearch'), cards = Array.prototype.slice.call(grid.querySelectorAll('.shop-card')), sort = 'name', toks = [];
+    function toast(icon, title) { if (typeof Toast !== 'undefined') Toast.fire({ icon: icon, title: title, timer: 1600 }); }
+
+    /* Registration dates in the viewer's own time zone */
+    document.querySelectorAll('time[data-d]').forEach(function (t) {
+      var d = new Date(t.getAttribute('datetime')); if (!isNaN(d)) t.textContent = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    });
+
+    /* Search: every word must appear in the name or the ID. Matching letters in the name are highlighted. */
+    function highlight(el) {
+      var text = el.getAttribute('data-hl'); el.textContent = '';
+      if (!toks.length) { el.textContent = text; return; }
+      var re = new RegExp('(' + toks.map(function (t) { return t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }).join('|') + ')', 'ig');
+      text.split(re).forEach(function (part, i) {
+        if (i % 2) { var m = document.createElement('mark'); m.className = 'rounded bg-amber-200/70 px-0.5 text-inherit'; m.textContent = part; el.appendChild(m); }
+        else if (part) el.appendChild(document.createTextNode(part));
+      });
+    }
+    var sorters = {
+      name:   function (a, b) { return a.dataset.name.localeCompare(b.dataset.name); },
+      newest: function (a, b) { return b.dataset.time - a.dataset.time; },
+      oldest: function (a, b) { return a.dataset.time - b.dataset.time; }
+    };
+    function render() {
+      var shown = 0;
+      cards.sort(sorters[sort]).forEach(function (c) {
+        var ok = toks.every(function (t) { return c.dataset.search.indexOf(t) > -1; });
+        c.classList.toggle('hidden', !ok); if (ok) shown++;
+        highlight(c.querySelector('[data-hl]')); grid.appendChild(c);
+      });
+      document.getElementById('noMatch').classList.toggle('hidden', shown > 0); grid.classList.toggle('hidden', shown === 0);
+      document.getElementById('shopCount').textContent = toks.length ? shown + ' of ' + cards.length + ' shops' : cards.length + (cards.length === 1 ? ' shop' : ' shops');
+    }
+    input.addEventListener('input', function () { toks = input.value.toLowerCase().split(/\s+/).filter(Boolean); render(); });
+    input.addEventListener('keydown', function (e) { if (e.key === 'Escape' && input.value) { input.value = ''; toks = []; render(); } });
+    document.getElementById('clearSearch').addEventListener('click', function () { input.value = ''; toks = []; render(); input.focus(); });
+    document.querySelectorAll('.sort-btn').forEach(function (b) {
+      b.addEventListener('click', function () {
+        sort = b.dataset.sort;
+        document.querySelectorAll('.sort-btn').forEach(function (x) {
+          var on = x === b; x.setAttribute('aria-pressed', on);
+          x.classList.toggle('bg-white', on); x.classList.toggle('text-brand-tealDark', on); x.classList.toggle('shadow-sm', on); x.classList.toggle('text-slate-600', !on);
+        });
+        render();
+      });
+    });
+
+    /* Copy the full ID */
+    function copy(text) {
+      var done = function () { toast('success', 'ID copied'); };
+      if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(text).then(done, function () { toast('error', 'Could not copy'); }); return; }
+      var t = document.createElement('textarea'); t.value = text; t.style.position = 'fixed'; t.style.opacity = '0'; document.body.appendChild(t); t.select();
+      try { document.execCommand('copy'); done(); } catch (e) { toast('error', 'Could not copy'); } t.remove();
+    }
+
+    /* Remove with a clear warning */
+    var DANGER = {
+      popup: 'rounded-2xl border border-slate-200 shadow-2xl p-6', title: 'text-lg font-bold text-slate-800', htmlContainer: 'text-sm text-slate-500', actions: 'gap-2 mt-4',
+      confirmButton: 'rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-400',
+      cancelButton: 'rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50'
+    };
+    grid.addEventListener('click', function (e) {
+      var card = e.target.closest('.shop-card'); if (!card) return;
+      var cp = e.target.closest('[data-copy]'), del = e.target.closest('[data-delete]');
+      if (cp) copy(cp.dataset.copy);
+      if (del) {
+        var url = del.dataset.url;
+        Swal.fire({
+          icon: 'warning', iconColor: '#e11d48', showCancelButton: true, reverseButtons: true, buttonsStyling: false, customClass: DANGER,
+          title: 'Remove "' + card.dataset.name + '"?', text: 'Removing this shop also removes its ownership references. This cannot be undone.',
+          confirmButtonText: 'Yes, remove it', cancelButtonText: 'Keep it'
+        }).then(function (r) { if (r.isConfirmed) window.location.href = url; });
+      }
+    });
+
+    render();
+  })();
+</script>
 
 <%- include('../layouts/footer') %>
