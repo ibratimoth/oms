@@ -1,207 +1,214 @@
 <%- include('../layouts/header') %>
+<%
+  const list   = (typeof merchants !== 'undefined' && merchants) ? merchants : [];
+  const active = list.filter(m => m.is_active).length;
+  const initial = (m) => String(m.provider || m.name || '?').trim().charAt(0).toUpperCase();
+%>
 
-    <% if (typeof error !=='undefined' && error) { %>
-        <div
-            class="mb-6 max-w-5xl bg-rose-50 border border-rose-200 rounded-xl p-4 flex items-start gap-3 shadow-sm animate-fade-in">
-            <div class="bg-rose-100 text-rose-600 p-1.5 rounded-lg shrink-0">
-                <i class="fas fa-exclamation-circle text-lg"></i>
-            </div>
-            <div class="flex-1">
-                <h4 class="text-sm font-bold text-rose-800">Processing Error Encountered</h4>
-                <p class="text-xs text-rose-600 mt-0.5">
-                    <%= error %>
-                </p>
-            </div>
-        </div>
-        <% } %>
+<div class="space-y-6">
 
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-                <div>
-                    <h1 class="text-2xl font-bold tracking-tight text-slate-800">Merchant Payment Channels</h1>
-                    <p class="text-sm text-slate-500 mt-1">Manage Lipa numbers, till accounts, and electronic payment
-                        options for sales processing.</p>
-                </div>
-                <div>
-                    <a href="/merchants/create"
-                        class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-teal hover:bg-brand-tealDark text-white text-sm font-semibold rounded-lg shadow-sm shadow-brand-teal/10 transition duration-150 whitespace-nowrap">
-                        <i class="fas fa-plus text-xs"></i> Register Merchant
-                    </a>
-                </div>
-            </div>
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div role="alert" class="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4">
+      <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-rose-100 text-rose-600"><i class="fas fa-exclamation-circle"></i></span>
+      <div class="min-w-0"><h4 class="text-sm font-semibold text-rose-800">Something went wrong</h4><p class="mt-0.5 text-sm text-rose-700"><%= error %></p></div>
+    </div>
+  <% } %>
 
-            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden max-w-5xl">
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse whitespace-nowrap">
-                        <thead>
-                            <tr
-                                class="bg-slate-50 border-b border-slate-200 text-slate-400 text-xs font-bold uppercase tracking-wider">
-                                <th class="py-3.5 px-6">Merchant Name</th>
-                                <th class="py-3.5 px-6">Provider / Network</th>
-                                <th class="py-3.5 px-6">Account / Till Number</th>
-                                <th class="py-3.5 px-6">Status</th>
-                                <th class="py-3.5 px-6 text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody class="text-sm divide-y divide-slate-100">
-                            <% if (typeof merchants !=='undefined' && merchants.length> 0) { %>
-                                <% merchants.forEach(m=> { %>
-                                    <tr class="hover:bg-slate-50/70 transition duration-150 group">
-                                        <td class="py-4 px-6 font-semibold text-slate-800">
-                                            <div class="flex items-center gap-2.5">
-                                                <div
-                                                    class="w-8 h-8 rounded-lg bg-teal-50 border border-teal-100 flex items-center justify-center text-brand-teal text-xs font-bold">
-                                                    <i class="fas fa-credit-card"></i>
-                                                </div>
-                                                <span>
-                                                    <%= m.name %>
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <td class="py-4 px-6 text-slate-600 text-xs font-medium">
-                                            <%= m.provider || 'N/A' %>
-                                        </td>
-                                        <td class="py-4 px-6 font-mono text-xs text-slate-700">
-                                            <%= m.account_number || '—' %>
-                                        </td>
-                                        <td class="py-4 px-6">
-                                            <% if (m.is_active) { %>
-                                                <span
-                                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Active
-                                                </span>
-                                                <% } else { %>
-                                                    <span
-                                                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-500 border border-slate-200">
-                                                        <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-                                                        Inactive
-                                                    </span>
-                                                    <% } %>
-                                        </td>
-                                        <td class="py-4 px-6 text-right">
-                                            <div class="inline-flex items-center gap-2">
-                                                <button onclick="toggleMerchant('<%= m.id %>')"
-                                                    class="inline-flex items-center gap-1.5 bg-white hover:bg-slate-50 text-slate-600 py-1.5 px-3 text-xs font-semibold border border-slate-200 rounded-md shadow-sm transition duration-150">
-                                                    <i class="fas fa-power-off text-[10px]"></i> Toggle
-                                                </button>
-                                                <a href="/merchants/edit/<%= m.id %>"
-                                                    class="inline-flex items-center gap-1.5 bg-white hover:bg-brand-gold/10 text-slate-600 hover:text-brand-goldHover py-1.5 px-3 text-xs font-semibold border border-slate-200 hover:border-brand-gold/30 rounded-md shadow-sm transition duration-150">
-                                                    <i class="fas fa-edit text-[10px]"></i> Edit
-                                                </a>
-                                                <button onclick="deleteMerchant('<%= m.id %>', '<%= m.name %>')"
-                                                    class="inline-flex items-center gap-1.5 bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 py-1.5 px-3 text-xs font-semibold border border-slate-200 hover:border-rose-200 rounded-md shadow-sm transition duration-150">
-                                                    <i class="fas fa-trash-alt text-[10px]"></i> Remove
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    <% }) %>
-                                        <% } else { %>
-                                            <tr>
-                                                <td colspan="5" class="py-12 text-center">
-                                                    <div class="text-slate-300 mb-2"><i
-                                                            class="fas fa-cash-register text-4xl"></i></div>
-                                                    <p class="text-sm text-slate-400 italic">No payment merchants
-                                                        registered yet.</p>
-                                                </td>
-                                            </tr>
-                                            <% } %>
-                        </tbody>
-                    </table>
-                </div>
+  <!-- ============ Intro + action ============ -->
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <p class="max-w-xl text-sm text-slate-500">Your Lipa numbers, tills and mobile money accounts. Active accounts can be chosen when you complete an order paid by Lipa number.</p>
+    <a href="/merchants/create" class="inline-flex items-center gap-2 rounded-xl bg-brand-gold px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-goldHover">
+      <i class="fas fa-plus text-xs"></i>Register merchant
+    </a>
+  </div>
+
+  <% if (list.length) { %>
+
+    <!-- ============ Filters ============ -->
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div role="tablist" aria-label="Filter by status" class="inline-flex rounded-xl bg-slate-100 p-1">
+        <% [['all', 'All', list.length], ['active', 'Active', active], ['inactive', 'Inactive', list.length - active]].forEach((t, i) => { %>
+          <button type="button" role="tab" data-filter="<%= t[0] %>" aria-selected="<%= i === 0 %>"
+            class="filter-tab rounded-lg px-4 py-1.5 text-sm font-medium transition-colors <%= i === 0 ? 'bg-white text-brand-tealDark shadow-sm' : 'text-slate-600 hover:text-brand-teal' %>">
+            <%= t[1] %> <span data-count="<%= t[0] %>" class="ml-1 tabular-nums text-slate-400"><%= t[2] %></span>
+          </button>
+        <% }) %>
+      </div>
+      <div class="relative w-full sm:w-72">
+        <i class="fas fa-search pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
+        <input type="search" id="merchantSearch" autocomplete="off" aria-label="Search merchants" placeholder="Search name, provider or number"
+          class="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-800 placeholder:text-slate-400 focus:border-brand-teal focus:outline-none focus:ring-2 focus:ring-brand-teal/20">
+      </div>
+    </div>
+
+    <!-- ============ Cards ============ -->
+    <div id="merchantGrid" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <% list.forEach(m => { %>
+        <article class="merchant-card group flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white transition-all hover:border-brand-teal/40 hover:shadow-md"
+          data-id="<%= m.id %>" data-name="<%= m.name %>" data-active="<%= m.is_active ? '1' : '0' %>"
+          data-search="<%= [m.name, m.provider, m.account_number].filter(Boolean).join(' ').toLowerCase() %>">
+
+          <div class="card-body flex-1 p-5 transition-opacity <%= m.is_active ? '' : 'opacity-60' %>">
+            <div class="flex items-start justify-between gap-3">
+              <span class="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-brand-teal text-lg font-extrabold text-white"><%= initial(m) %></span>
+              <button type="button" role="switch" data-switch aria-checked="<%= m.is_active ? 'true' : 'false' %>" aria-label="Active status of <%= m.name %>" title="Switch on or off"
+                class="sw relative mt-1 h-6 w-11 shrink-0 rounded-full bg-slate-300 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60">
+                <span class="knob absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform"></span>
+              </button>
             </div>
 
-            <!-- SweetAlert2 Library -->
-            <script src="/js/sweetalert2.all.min.js"></script>
+            <h3 class="mt-4 truncate text-base font-bold text-slate-900"><%= m.name %></h3>
+            <p class="mt-0.5 truncate text-sm text-slate-500"><%= m.provider || 'Provider not set' %></p>
 
-            <script>
-                // Toast configuration
-                const Toast = Swal.mixin({
-                    toast: true,
-                    position: 'top-end',
-                    showConfirmButton: false,
-                    timer: 1500,
-                    timerProgressBar: true,
-                    heightAuto: false
-                });
+            <div class="mt-4 flex items-center justify-between gap-2 rounded-xl bg-slate-50 px-3.5 py-2.5">
+              <div class="min-w-0">
+                <p class="text-xs text-slate-500">Account or till number</p>
+                <p class="truncate font-mono text-sm font-semibold <%= m.account_number ? 'text-slate-800' : 'text-slate-400' %>"><%= m.account_number || 'Not set' %></p>
+              </div>
+              <% if (m.account_number) { %>
+                <button type="button" data-copy="<%= m.account_number %>" aria-label="Copy number for <%= m.name %>" title="Copy number"
+                  class="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-white hover:text-brand-teal"><i class="far fa-copy"></i></button>
+              <% } %>
+            </div>
+          </div>
 
-                async function toggleMerchant(id) {
-                    try {
-                        const res = await fetch(`/merchants/${id}/toggle`, { method: 'PATCH' });
-                        const data = await res.json();
+          <div class="flex items-center justify-between border-t border-slate-100 bg-slate-50/50 px-5 py-3">
+            <span data-pill class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold <%= m.is_active ? 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/15' : 'bg-slate-100 text-slate-500 ring-1 ring-inset ring-slate-400/20' %>">
+              <span data-dot class="h-1.5 w-1.5 rounded-full <%= m.is_active ? 'bg-emerald-500' : 'bg-slate-400' %>"></span><span data-pilltext><%= m.is_active ? 'Active' : 'Inactive' %></span>
+            </span>
+            <div class="flex items-center gap-1">
+              <a href="/merchants/edit/<%= m.id %>" class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-brand-gold/10 hover:text-brand-goldHover"><i class="fas fa-edit text-xs"></i>Edit</a>
+              <button type="button" data-delete class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600"><i class="fas fa-trash-alt text-xs"></i>Remove</button>
+            </div>
+          </div>
+        </article>
+      <% }) %>
+    </div>
 
-                        if (data.success) {
-                            await Toast.fire({
-                                icon: 'success',
-                                title: data.message || 'Status updated successfully'
-                            });
-                            window.location.reload();
-                        } else {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Action Failed',
-                                text: data.message || 'Failed to update merchant status',
-                                confirmButtonColor: '#1A6B78',
-                                heightAuto: false
-                            });
-                        }
-                    } catch (err) {
-                        console.error(err);
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Network Error',
-                            text: 'Unable to communicate with the server.',
-                            confirmButtonColor: '#1A6B78',
-                            heightAuto: false
-                        });
-                    }
-                }
+    <div id="noMatch" class="hidden rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center">
+      <span class="mx-auto grid h-12 w-12 place-items-center rounded-full bg-brand-teal/10 text-brand-teal"><i class="fas fa-search text-lg"></i></span>
+      <p class="mt-4 text-sm font-semibold text-slate-800">No merchants match</p>
+      <p class="mt-1 text-sm text-slate-500">Try another word, or choose a different status.</p>
+      <button type="button" id="resetFilters" class="mt-4 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-brand-teal hover:bg-brand-teal/5">Show all merchants</button>
+    </div>
 
-                async function deleteMerchant(id, merchantName) {
-                    const confirmResult = await Swal.fire({
-                        title: 'Remove Merchant Account?',
-                        text: `Are you sure you want to delete "${merchantName}"? This action cannot be undone.`,
-                        icon: 'warning',
-                        showCancelButton: true,
-                        confirmButtonColor: '#e11d48',
-                        cancelButtonColor: '#64748b',
-                        confirmButtonText: 'Yes, remove it',
-                        cancelButtonText: 'Cancel',
-                        reverseButtons: true,
-                        heightAuto: false // <--- Keeps your flexbox layout intact
-                    });
+  <% } else { %>
 
-                    if (!confirmResult.isConfirmed) return;
+    <div class="rounded-2xl border border-slate-200/80 bg-white px-6 py-16 text-center">
+      <span class="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-brand-teal/10 text-brand-teal"><i class="fas fa-cash-register text-2xl"></i></span>
+      <h3 class="mt-5 text-base font-bold text-slate-900">No payment accounts yet</h3>
+      <p class="mx-auto mt-1 max-w-sm text-sm text-slate-500">Register your Lipa number or till so you can record mobile money payments when you complete orders.</p>
+      <a href="/merchants/create" class="mt-6 inline-flex items-center gap-2 rounded-xl bg-brand-gold px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-goldHover"><i class="fas fa-plus text-xs"></i>Register your first merchant</a>
+    </div>
 
-                    try {
-                        const res = await fetch(`/merchants/${id}`, { method: 'DELETE' });
-                        const data = await res.json();
+  <% } %>
+</div>
 
-                        if (data.success) {
-                            await Toast.fire({
-                                icon: 'success',
-                                title: 'Merchant deleted'
-                            });
-                            window.location.reload();
-                        } else {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Delete Failed',
-                                text: data.message || 'Failed to delete merchant channel',
-                                confirmButtonColor: '#1A6B78',
-                                heightAuto: false
-                            });
-                        }
-                    } catch (err) {
-                        console.error(err);
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Network Error',
-                            text: 'Unable to process request.',
-                            confirmButtonColor: '#1A6B78',
-                            heightAuto: false
-                        });
-                    }
-                }
-            </script>
+<style>
+  .sw[aria-checked="true"] { background: #1A6B78; }
+  .sw[aria-checked="true"] .knob { transform: translateX(1.25rem); }
+  .merchant-card.leaving { opacity: 0; transform: scale(.96); transition: all .25s ease; }
+  @media (prefers-reduced-motion: reduce) { .merchant-card.leaving { transition: none; } }
+</style>
 
-            <%- include('../layouts/footer') %>
+<script>
+  /* Wrapped in a function on purpose: the footer already defines Toast and Dialog, and declaring them again here would break it */
+  (function () {
+    var grid = document.getElementById('merchantGrid'); if (!grid) return;
+    var filter = 'all', query = '';
+
+    function toast(icon, title) { if (typeof Toast !== 'undefined') Toast.fire({ icon: icon, title: title, timer: 1600 }); }
+    function say(o) { (typeof Dialog !== 'undefined' ? Dialog : Swal).fire(o); }
+    function cards() { return Array.prototype.slice.call(grid.querySelectorAll('.merchant-card')); }
+
+    /* ---------- filtering ---------- */
+    function apply() {
+      var shown = 0, a = 0, i = 0;
+      cards().forEach(function (c) {
+        var on = c.dataset.active === '1'; on ? a++ : i++;
+        var ok = (filter === 'all' || (filter === 'active') === on) && (!query || c.dataset.search.indexOf(query) > -1);
+        c.classList.toggle('hidden', !ok); if (ok) shown++;
+      });
+      document.querySelector('[data-count="all"]').textContent = a + i;
+      document.querySelector('[data-count="active"]').textContent = a;
+      document.querySelector('[data-count="inactive"]').textContent = i;
+      document.getElementById('noMatch').classList.toggle('hidden', shown > 0);
+    }
+    document.querySelectorAll('.filter-tab').forEach(function (t) {
+      t.addEventListener('click', function () {
+        filter = t.dataset.filter;
+        document.querySelectorAll('.filter-tab').forEach(function (x) {
+          var on = x === t; x.setAttribute('aria-selected', on);
+          x.classList.toggle('bg-white', on); x.classList.toggle('text-brand-tealDark', on); x.classList.toggle('shadow-sm', on);
+          x.classList.toggle('text-slate-600', !on);
+        });
+        apply();
+      });
+    });
+    document.getElementById('merchantSearch').addEventListener('input', function (e) { query = e.target.value.trim().toLowerCase(); apply(); });
+    document.getElementById('resetFilters').addEventListener('click', function () {
+      query = ''; document.getElementById('merchantSearch').value = ''; document.querySelector('.filter-tab[data-filter="all"]').click();
+    });
+
+    /* ---------- showing a card as active or inactive ---------- */
+    function setActive(card, on) {
+      card.dataset.active = on ? '1' : '0';
+      card.querySelector('[data-switch]').setAttribute('aria-checked', on ? 'true' : 'false');
+      card.querySelector('.card-body').classList.toggle('opacity-60', !on);
+      var pill = card.querySelector('[data-pill]'), dot = card.querySelector('[data-dot]');
+      pill.className = 'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ' + (on ? 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/15' : 'bg-slate-100 text-slate-500 ring-1 ring-inset ring-slate-400/20');
+      dot.className = 'h-1.5 w-1.5 rounded-full ' + (on ? 'bg-emerald-500' : 'bg-slate-400');
+      card.querySelector('[data-pilltext]').textContent = on ? 'Active' : 'Inactive';
+      apply();
+    }
+
+    /* ---------- actions ---------- */
+    async function toggle(card, sw) {
+      var was = card.dataset.active === '1'; sw.disabled = true;
+      try {
+        var res = await fetch('/merchants/' + encodeURIComponent(card.dataset.id) + '/toggle', { method: 'PATCH', credentials: 'same-origin' });
+        var data = await res.json().catch(function () { return {}; });
+        if (!res.ok || !data.success) throw new Error(data.message || 'Could not update the merchant status.');
+        setActive(card, !was); toast('success', data.message || (was ? 'Merchant switched off' : 'Merchant switched on'));
+      } catch (err) {
+        console.error(err); say({ icon: 'error', iconColor: '#e11d48', title: 'Action failed', text: err.message, confirmButtonText: 'Close' });
+      } finally { sw.disabled = false; }
+    }
+
+    var DANGER = {
+      popup: 'rounded-2xl border border-slate-200 shadow-2xl p-6', title: 'text-lg font-bold text-slate-800', htmlContainer: 'text-sm text-slate-500', actions: 'gap-2 mt-4',
+      confirmButton: 'rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-400',
+      cancelButton: 'rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50'
+    };
+    async function remove(card) {
+      var r = await Swal.fire({ title: 'Remove this merchant?', text: '"' + card.dataset.name + '" will be deleted. This cannot be undone.', icon: 'warning', iconColor: '#e11d48',
+        showCancelButton: true, reverseButtons: true, buttonsStyling: false, confirmButtonText: 'Yes, remove', cancelButtonText: 'Keep it', customClass: DANGER });
+      if (!r.isConfirmed) return;
+      try {
+        var res = await fetch('/merchants/' + encodeURIComponent(card.dataset.id), { method: 'DELETE', credentials: 'same-origin' });
+        var data = await res.json().catch(function () { return {}; });
+        if (!res.ok || !data.success) throw new Error(data.message || 'Could not remove the merchant.');
+        toast('success', 'Merchant removed');
+        card.classList.add('leaving');
+        setTimeout(function () { card.remove(); if (!cards().length) window.location.reload(); else apply(); }, 250);
+      } catch (err) {
+        console.error(err); say({ icon: 'error', iconColor: '#e11d48', title: 'Remove failed', text: err.message, confirmButtonText: 'Close' });
+      }
+    }
+
+    function copy(text) {
+      var done = function () { toast('success', 'Number copied'); };
+      if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(text).then(done, function () { toast('error', 'Could not copy'); }); return; }
+      var t = document.createElement('textarea'); t.value = text; t.style.position = 'fixed'; t.style.opacity = '0'; document.body.appendChild(t); t.select();
+      try { document.execCommand('copy'); done(); } catch (e) { toast('error', 'Could not copy'); } t.remove();
+    }
+
+    grid.addEventListener('click', function (e) {
+      var card = e.target.closest('.merchant-card'); if (!card) return;
+      var sw = e.target.closest('[data-switch]'), del = e.target.closest('[data-delete]'), cp = e.target.closest('[data-copy]');
+      if (sw) toggle(card, sw); else if (del) remove(card); else if (cp) copy(cp.dataset.copy);
+    });
+  })();
+</script>
+
+<%- include('../layouts/footer') %>

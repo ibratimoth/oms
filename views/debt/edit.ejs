@@ -1,76 +1,259 @@
 <%- include('../layouts/header') %>
+<%
+  const shops = (typeof businesses !== 'undefined' && businesses) ? businesses : [];
+  const field = 'w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-teal focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-teal/20';
+  const label = 'mb-1.5 block text-sm font-medium text-slate-700';
+  const types = [
+    { v: 'CUSTOMER_DEBT',   icon: 'fa-arrow-down', title: 'Customer debt',   text: 'A customer owes the shop' },
+    { v: 'SUPPLIER_DEBT',   icon: 'fa-arrow-up',   title: 'Supplier debt',   text: 'The shop owes a supplier' },
+    { v: 'CUSTOMER_CREDIT', icon: 'fa-wallet',     title: 'Customer credit', text: 'A customer has credit with the shop' }
+  ];
+  const statuses = [
+    { v: 'PENDING', icon: 'fa-hourglass-half', title: 'Pending', text: 'Still to be settled' },
+    { v: 'CLEARED', icon: 'fa-check-circle',   title: 'Cleared', text: 'Settled in full' }
+  ];
+  const initial = String(debt.person_name || '?').trim().charAt(0).toUpperCase();
+%>
 
-<div class="mb-4">
-  <a href="/debts" class="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-brand-teal transition group">
-    <i class="fas fa-arrow-left text-xs group-hover:-translate-x-0.5 transition-transform"></i>
-    <span>Go Back</span>
-  </a>
+<div class="mx-auto max-w-5xl space-y-6">
+
+  <nav aria-label="Breadcrumb" class="flex items-center gap-2 text-sm text-slate-500">
+    <a href="/debts" class="group inline-flex items-center gap-2 font-medium transition-colors hover:text-brand-teal"><i class="fas fa-arrow-left text-xs transition-transform group-hover:-translate-x-0.5"></i>Debts and ledger</a>
+    <i class="fas fa-chevron-right text-[10px] text-slate-300"></i><span class="text-slate-700">Edit entry</span>
+  </nav>
+
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div role="alert" class="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4">
+      <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-rose-100 text-rose-600"><i class="fas fa-exclamation-circle"></i></span>
+      <div class="min-w-0"><h4 class="text-sm font-semibold text-rose-800">The changes could not be saved</h4><p class="mt-0.5 text-sm text-rose-700"><%= error %></p></div>
+    </div>
+  <% } %>
+
+  <!-- ============ Identity header ============ -->
+  <div class="flex items-center gap-4">
+    <span id="avatar" class="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-brand-teal text-xl font-bold text-white"><%= initial %></span>
+    <div class="min-w-0">
+      <div class="flex flex-wrap items-center gap-3">
+        <h2 id="liveName" class="truncate text-2xl font-bold tracking-tight text-brand-tealDark"><%= debt.person_name %></h2>
+        <span id="hdrPill" class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold"></span>
+      </div>
+      <p class="mt-0.5 text-sm text-slate-500">Update the details or the status of this entry.</p>
+    </div>
+  </div>
+
+  <div class="grid items-start gap-6 lg:grid-cols-3">
+
+    <!-- ============ Form ============ -->
+    <form id="debtForm" method="POST" action="/debts/edit/<%= debt.id %>" data-type="<%= debt.type %>" data-status="<%= debt.status %>" class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white lg:col-span-2">
+      <div class="space-y-8 p-6 sm:p-8">
+
+        <fieldset>
+          <legend class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>Type of entry</legend>
+          <div class="mt-4 grid gap-3 sm:grid-cols-3">
+            <% types.forEach(t => { %>
+              <label class="cursor-pointer">
+                <input type="radio" name="type" value="<%= t.v %>" required class="peer sr-only" <%= debt.type === t.v ? 'checked' : '' %>>
+                <span class="flex h-full flex-col gap-3 rounded-xl border border-slate-200 p-4 transition-all peer-checked:border-brand-teal peer-checked:bg-brand-teal/5 peer-checked:ring-2 peer-checked:ring-brand-teal/15 peer-focus-visible:ring-2 peer-focus-visible:ring-brand-gold">
+                  <span class="grid h-9 w-9 place-items-center rounded-lg bg-slate-100 text-slate-500"><i class="fas <%= t.icon %> text-sm"></i></span>
+                  <span><span class="block text-sm font-semibold text-slate-800"><%= t.title %></span><span class="mt-0.5 block text-xs leading-snug text-slate-500"><%= t.text %></span></span>
+                </span>
+              </label>
+            <% }) %>
+          </div>
+          <p id="typeWarn" class="mt-3 hidden items-start gap-2 rounded-xl bg-amber-50 px-3.5 py-2.5 text-sm font-medium text-amber-800" role="status"><i class="fas fa-exclamation-triangle mt-0.5 text-xs"></i><span>Changing the type moves this amount to a different total, for example from "owed to you" to "you owe".</span></p>
+        </fieldset>
+
+        <section>
+          <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span><span id="personHeading">Person</span></h3>
+          <div class="mt-4 grid gap-5 sm:grid-cols-2">
+            <div>
+              <label for="person_name" class="<%= label %>"><span id="personLabel">Name</span></label>
+              <input type="text" id="person_name" name="person_name" value="<%= debt.person_name %>" data-original="<%= debt.person_name %>" required autocomplete="off" class="<%= field %> px-3.5">
+            </div>
+            <div>
+              <label for="phone_number" class="<%= label %>">Phone <span class="font-normal text-slate-400">(optional)</span></label>
+              <input type="text" id="phone_number" name="phone_number" value="<%= debt.phone_number || '' %>" data-original="<%= debt.phone_number || '' %>" inputmode="tel" autocomplete="off" placeholder="07xxxxxxxx" class="<%= field %> px-3.5">
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>Amount</h3>
+          <div class="mt-4">
+            <label for="amount" class="<%= label %>">Amount in TSh</label>
+            <div class="relative">
+              <span class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">TSh</span>
+              <input type="number" id="amount" name="amount" step="0.01" min="0.01" value="<%= debt.amount %>" data-original="<%= debt.amount %>" required inputmode="decimal" class="<%= field %> py-3.5 pl-14 pr-4 text-xl font-bold tabular-nums">
+            </div>
+            <p id="amountWords" class="mt-1.5 h-5 text-sm font-medium text-brand-teal"></p>
+          </div>
+        </section>
+
+        <fieldset>
+          <legend class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>Status</legend>
+          <div class="mt-4 grid gap-3 sm:grid-cols-2">
+            <% statuses.forEach(s => { %>
+              <label class="cursor-pointer">
+                <input type="radio" name="status" value="<%= s.v %>" class="peer sr-only" <%= debt.status === s.v ? 'checked' : '' %>>
+                <span class="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3.5 transition-all peer-checked:border-brand-teal peer-checked:bg-brand-teal/5 peer-checked:ring-2 peer-checked:ring-brand-teal/15 peer-focus-visible:ring-2 peer-focus-visible:ring-brand-gold">
+                  <span class="grid h-9 w-9 place-items-center rounded-lg bg-slate-100 text-slate-500"><i class="fas <%= s.icon %>"></i></span>
+                  <span><span class="block text-sm font-semibold text-slate-800"><%= s.title %></span><span class="block text-xs text-slate-500"><%= s.text %></span></span>
+                </span>
+              </label>
+            <% }) %>
+          </div>
+        </fieldset>
+
+        <section>
+          <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>Details</h3>
+          <div class="mt-4 space-y-5">
+            <div>
+              <label for="notes" class="<%= label %>">Notes <span class="font-normal text-slate-400">(optional)</span></label>
+              <textarea id="notes" name="notes" rows="3" maxlength="500" data-original="<%= debt.notes || '' %>" placeholder="What is this for? Any agreement or due date worth remembering?" class="<%= field %> px-3.5"><%= debt.notes || '' %></textarea>
+              <p class="mt-1 text-right text-xs text-slate-400"><span id="notesCount">0</span>/500</p>
+            </div>
+            <div>
+              <label for="business_id" class="<%= label %>">Shop</label>
+              <% if (shops.length === 1) { %>
+                <p class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-100 px-3.5 py-2.5 text-sm font-medium text-slate-700"><i class="fas fa-store text-xs text-brand-teal"></i><%= shops[0].name %></p>
+                <input type="hidden" id="business_id" name="business_id" value="<%= shops[0].id %>" data-original="<%= shops[0].id %>" data-name="<%= shops[0].name %>">
+              <% } else { %>
+                <select id="business_id" name="business_id" data-original="<%= debt.business_id %>" class="<%= field %> px-3.5">
+                  <% shops.forEach(b => { %><option value="<%= b.id %>" <%= String(debt.business_id) === String(b.id) ? 'selected' : '' %>><%= b.name %></option><% }) %>
+                </select>
+              <% } %>
+            </div>
+          </div>
+        </section>
+
+        <section id="changesBox" class="hidden rounded-xl border border-brand-gold/30 bg-amber-50/60 p-4">
+          <h4 class="flex items-center gap-2 text-sm font-semibold text-amber-800"><i class="fas fa-pen text-xs"></i>What will change</h4>
+          <ul id="changeList" class="mt-2 space-y-1.5 text-sm text-slate-700"></ul>
+        </section>
+      </div>
+
+      <div class="flex flex-col gap-3 border-t border-slate-100 bg-slate-50/60 px-6 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+        <p class="flex items-center gap-2 text-sm text-slate-500"><span id="dirtyDot" class="h-2 w-2 rounded-full bg-slate-300"></span><span id="dirtyText">No changes yet</span></p>
+        <div class="flex flex-col-reverse gap-3 sm:flex-row sm:items-center">
+          <button type="button" id="discardBtn" disabled class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">Discard changes</button>
+          <a href="/debts" class="rounded-xl px-4 py-2.5 text-center text-sm font-medium text-slate-500 transition-colors hover:bg-slate-100">Back to ledger</a>
+          <button type="submit" id="saveBtn" disabled class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-gold px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-goldHover disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none">
+            <i class="fas fa-check text-xs"></i><span>Save changes</span>
+          </button>
+        </div>
+      </div>
+    </form>
+
+    <!-- ============ Summary ============ -->
+    <aside class="lg:sticky lg:top-24">
+      <section class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
+        <div class="h-1 bg-brand-gold"></div>
+        <div class="bg-teal-50 px-6 py-4"><p class="text-xs font-medium text-brand-teal">Summary</p><p class="mt-0.5 text-sm text-slate-600">Updates as you edit.</p></div>
+        <div class="p-6">
+          <div class="flex items-start gap-3">
+            <span id="sumIcon" class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-teal/10 text-brand-teal"><i id="sumIconI" class="fas fa-arrow-down"></i></span>
+            <div class="min-w-0">
+              <p id="sumKind" class="text-sm font-semibold text-brand-tealDark"></p>
+              <p id="sumSentence" class="mt-1 text-sm font-medium leading-relaxed text-slate-800"></p>
+            </div>
+          </div>
+          <p id="sumBefore" class="mt-4 hidden rounded-xl bg-slate-50 px-3.5 py-2.5 text-xs leading-relaxed text-slate-500"></p>
+          <dl class="mt-5 space-y-3 border-t border-slate-100 pt-4 text-sm">
+            <div class="flex items-center justify-between gap-3"><dt class="text-slate-500">Amount</dt><dd id="sumAmount" class="font-bold tabular-nums text-slate-800">-</dd></div>
+            <div class="flex items-center justify-between gap-3"><dt class="text-slate-500">Phone</dt><dd id="sumPhone" class="truncate font-mono text-slate-700">-</dd></div>
+            <div class="flex items-center justify-between gap-3"><dt class="text-slate-500">Status</dt><dd id="sumStatus"></dd></div>
+          </dl>
+        </div>
+      </section>
+    </aside>
+  </div>
 </div>
 
-<div class="mb-6">
-  <h1 class="text-2xl font-bold tracking-tight text-slate-800">Edit Debt Record</h1>
-  <p class="text-sm text-slate-500 mt-1">Update record entries and status.</p>
-</div>
+<script>
+  (function () {
+    var $ = function (id) { return document.getElementById(id); };
+    var form = $('debtForm'), nameEl = $('person_name'), phoneEl = $('phone_number'), amountEl = $('amount'), notes = $('notes'), shopEl = $('business_id');
+    var ORIG_TYPE = form.dataset.type, ORIG_STATUS = form.dataset.status, submitting = false;
+    function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; }
 
-<div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden max-w-xl">
-  <div class="h-1.5 bg-brand-teal w-full"></div>
-  
-  <form method="POST" action="/debts/edit/<%= debt.id %>" class="p-6 space-y-4">
-    <div>
-      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Person Name</label>
-      <input type="text" name="person_name" value="<%= debt.person_name %>" required class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white outline-none">
-    </div>
+    var KINDS = {
+      CUSTOMER_DEBT:   { title: 'Customer debt',   icon: 'fa-arrow-down', person: 'Customer', tile: 'bg-brand-teal/10 text-brand-teal', say: function (n, a) { return n + ' owes the shop ' + a + '.'; } },
+      SUPPLIER_DEBT:   { title: 'Supplier debt',   icon: 'fa-arrow-up',   person: 'Supplier', tile: 'bg-amber-50 text-amber-600',       say: function (n, a) { return 'The shop owes ' + n + ' ' + a + '.'; } },
+      CUSTOMER_CREDIT: { title: 'Customer credit', icon: 'fa-wallet',     person: 'Customer', tile: 'bg-sky-50 text-sky-600',           say: function (n, a) { return n + ' has ' + a + ' of credit with the shop.'; } }
+    };
+    var STATUS = { PENDING: { t: 'Pending', c: 'bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-600/15' }, CLEARED: { t: 'Cleared', c: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/15' } };
 
-    <div class="grid grid-cols-2 gap-4">
-      <div>
-        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Phone Number</label>
-        <input type="text" name="phone_number" value="<%= debt.phone_number %>" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white outline-none">
-      </div>
-      <div>
-        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Type</label>
-        <select name="type" required class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white outline-none">
-          <option value="CUSTOMER_DEBT" <%= debt.type === 'CUSTOMER_DEBT' ? 'selected' : '' %>>Customer Debt</option>
-          <option value="SUPPLIER_DEBT" <%= debt.type === 'SUPPLIER_DEBT' ? 'selected' : '' %>>Supplier Debt</option>
-          <option value="CUSTOMER_CREDIT" <%= debt.type === 'CUSTOMER_CREDIT' ? 'selected' : '' %>>Customer Credit</option>
-        </select>
-      </div>
-    </div>
+    function money(v) { return 'TSh ' + Number(v).toLocaleString('en-US', { maximumFractionDigits: 2 }); }
+    function checked(name) { var r = form.querySelector('input[name="' + name + '"]:checked'); return r ? r.value : ''; }
+    function shopName(v) { if (shopEl.tagName === 'SELECT') { var o = shopEl.querySelector('option[value="' + v + '"]'); return o ? o.textContent : v; } return shopEl.getAttribute('data-name') || v; }
+    function say(type, name, amt) { var k = KINDS[type] || KINDS.CUSTOMER_DEBT; return k.say(name || 'This person', money(amt)); }
 
-    <div class="grid grid-cols-2 gap-4">
-      <div>
-        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Amount (TSh)</label>
-        <input type="number" step="0.01" name="amount" value="<%= debt.amount %>" required class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white outline-none">
-      </div>
-      <div>
-        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Status</label>
-        <select name="status" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white outline-none">
-          <option value="PENDING" <%= debt.status === 'PENDING' ? 'selected' : '' %>>PENDING</option>
-          <option value="CLEARED" <%= debt.status === 'CLEARED' ? 'selected' : '' %>>CLEARED</option>
-        </select>
-      </div>
-    </div>
+    function pill(node, status) { var s = STATUS[status] || STATUS.PENDING; node.className = 'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold ' + s.c; node.textContent = s.t; }
 
-    <div>
-      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Notes</label>
-      <textarea name="notes" rows="2" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white outline-none"><%= debt.notes %></textarea>
-    </div>
+    function diff() {
+      var out = [], type = checked('type'), status = checked('status'), amt = parseFloat(amountEl.value), origAmt = parseFloat(amountEl.getAttribute('data-original'));
+      function add(label, was, now) { out.push({ label: label, was: was || 'empty', now: now || 'empty' }); }
+      if (nameEl.value.trim() !== nameEl.getAttribute('data-original')) add('Name', nameEl.getAttribute('data-original'), nameEl.value.trim());
+      if (phoneEl.value.trim() !== phoneEl.getAttribute('data-original')) add('Phone', phoneEl.getAttribute('data-original'), phoneEl.value.trim());
+      if (type !== ORIG_TYPE) add('Type', (KINDS[ORIG_TYPE] || {}).title || ORIG_TYPE, (KINDS[type] || {}).title || type);
+      if (isFinite(amt) && amt !== origAmt) add('Amount', money(origAmt), money(amt));
+      if (status !== ORIG_STATUS) add('Status', (STATUS[ORIG_STATUS] || {}).t || ORIG_STATUS, (STATUS[status] || {}).t || status);
+      if (notes.value.trim() !== notes.getAttribute('data-original').trim()) out.push({ label: 'Notes', text: 'Notes were edited' });
+      var shopNow = shopEl.value, shopWas = shopEl.getAttribute('data-original');
+      var hasShops = shopEl.tagName !== 'SELECT' || shopEl.options.length > 0;
+      if (hasShops && String(shopNow) !== String(shopWas)) add('Shop', shopName(shopWas), shopName(shopNow));
+      return out;
+    }
 
-    <div>
-      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Assign Shop</label>
-      <select name="business_id" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white outline-none">
-        <% businesses.forEach(b => { %>
-          <option value="<%= b.id %>" <%= debt.business_id === b.id ? 'selected' : '' %>><%= b.name %></option>
-        <% }) %>
-      </select>
-    </div>
+    function refresh() {
+      var type = checked('type'), k = KINDS[type] || KINDS.CUSTOMER_DEBT, status = checked('status') || ORIG_STATUS;
+      var n = nameEl.value.trim(), amt = parseFloat(amountEl.value), hasAmt = isFinite(amt) && amt > 0, p = phoneEl.value.trim();
 
-    <div class="pt-2 border-t border-slate-100 flex items-center justify-end gap-3">
-      <a href="/debts" class="px-4 py-2.5 text-sm font-semibold text-slate-500 hover:bg-slate-100 rounded-lg border border-slate-200 transition">Cancel</a>
-      <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 bg-brand-teal hover:bg-brand-tealDark text-white text-sm font-semibold rounded-lg shadow-md shadow-brand-teal/10 transition">
-        <i class="fas fa-save text-xs"></i> Update Record
-      </button>
-    </div>
-  </form>
-</div>
+      $('liveName').textContent = n || 'Untitled entry'; $('avatar').textContent = (n || '?').charAt(0).toUpperCase(); pill($('hdrPill'), status);
+      $('personHeading').textContent = k.person; $('personLabel').textContent = k.person + ' name';
+      $('amountWords').textContent = hasAmt ? money(amt) : '';
+      $('typeWarn').classList.toggle('hidden', type === ORIG_TYPE); $('typeWarn').classList.toggle('flex', type !== ORIG_TYPE);
+
+      $('sumKind').textContent = k.title; $('sumIconI').className = 'fas ' + k.icon; $('sumIcon').className = 'grid h-11 w-11 shrink-0 place-items-center rounded-xl ' + k.tile;
+      $('sumSentence').textContent = (n && hasAmt) ? k.say(n, money(amt)) : 'Fill in the name and amount to see a summary.';
+      $('sumAmount').textContent = hasAmt ? money(amt) : '-'; $('sumPhone').textContent = p || '-';
+      var st = $('sumStatus'); st.textContent = ''; var sp = el('span', '', ''); pill(sp, status); sp.className = 'rounded-full px-2.5 py-0.5 text-xs font-semibold ' + (STATUS[status] || STATUS.PENDING).c; st.appendChild(sp);
+      $('notesCount').textContent = notes.value.length;
+
+      var ch = diff(), list = $('changeList'); list.textContent = '';
+      ch.forEach(function (c) {
+        var li = el('li', 'flex flex-wrap items-center gap-x-2');
+        if (c.text) { li.appendChild(el('span', 'font-medium', c.label + ':')); li.appendChild(el('span', 'text-slate-600', c.text)); }
+        else { li.appendChild(el('span', 'font-medium', c.label + ':')); li.appendChild(el('span', 'text-slate-500 line-through', c.was)); li.appendChild(el('i', 'fas fa-arrow-right text-[10px] text-slate-400')); li.appendChild(el('span', 'font-semibold text-brand-tealDark', c.now)); }
+        list.appendChild(li);
+      });
+      $('changesBox').classList.toggle('hidden', !ch.length);
+
+      var before = $('sumBefore'), changedKey = ch.some(function (c) { return c.label === 'Name' || c.label === 'Type' || c.label === 'Amount'; });
+      if (changedKey) { before.textContent = 'Saved now: ' + say(ORIG_TYPE, nameEl.getAttribute('data-original'), amountEl.getAttribute('data-original')); before.classList.remove('hidden'); } else before.classList.add('hidden');
+
+      $('dirtyDot').className = 'h-2 w-2 rounded-full ' + (ch.length ? 'bg-brand-gold' : 'bg-slate-300');
+      $('dirtyText').textContent = ch.length ? ch.length + (ch.length === 1 ? ' unsaved change' : ' unsaved changes') : 'No changes yet';
+      $('saveBtn').disabled = !ch.length || !n || !hasAmt; $('discardBtn').disabled = !ch.length;
+      return ch.length;
+    }
+
+    form.addEventListener('input', refresh); form.addEventListener('change', refresh);
+    [nameEl, phoneEl].forEach(function (i) { i.addEventListener('blur', function () { i.value = i.value.trim(); refresh(); }); });
+
+    $('discardBtn').addEventListener('click', function () {
+      [nameEl, phoneEl, amountEl, notes].forEach(function (i) { i.value = i.getAttribute('data-original'); });
+      if (shopEl.tagName === 'SELECT') shopEl.value = shopEl.getAttribute('data-original');
+      var t = form.querySelector('input[name="type"][value="' + ORIG_TYPE + '"]'), s = form.querySelector('input[name="status"][value="' + ORIG_STATUS + '"]'); if (t) t.checked = true; if (s) s.checked = true;
+      refresh();
+    });
+    form.addEventListener('submit', function (e) {
+      if (!(parseFloat(amountEl.value) > 0)) { e.preventDefault(); amountEl.focus(); return; }
+      submitting = true; var b = $('saveBtn'); b.disabled = true; b.innerHTML = '<i class="fas fa-spinner fa-spin text-xs"></i><span>Saving</span>';
+    });
+    window.addEventListener('beforeunload', function (e) { if (!submitting && diff().length) { e.preventDefault(); e.returnValue = ''; } });
+    refresh();
+  })();
+</script>
 
 <%- include('../layouts/footer') %>

@@ -1,162 +1,316 @@
 <%- include('../layouts/header') %>
+<%
+  /* ---------- data & derived values ---------- */
+  const stock  = (typeof stockData !== 'undefined' && stockData) ? stockData : [];
+  const top    = (typeof topProducts !== 'undefined' && topProducts) ? topProducts : [];
+  const num    = (v) => Number(v || 0);
+  const fmt    = (v) => num(v).toLocaleString('en-US');
 
-<!-- Top Row Action Header -->
-<div class="mb-6">
-  <h1 class="text-2xl font-bold tracking-tight text-slate-800">Analytics Dashboard</h1>
-  <p class="text-sm text-slate-500 mt-1">Real-time breakdown of top performing products, stock flow velocity, and shop inventory balances.</p>
-</div>
+  const best = top.map(p => ({
+    name: p.Product ? p.Product.name : 'Unknown product',
+    sold: num(p.dataValues ? p.dataValues.total_sold : p.total_sold)
+  }));
+  const bestMax = best.reduce((m, b) => Math.max(m, b.sold), 0);
 
-<!-- Quick Overview Counter Metric Cards -->
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-6">
-  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
+  const state = (p) => num(p.remaining) <= 0 ? 'out' : (num(p.remaining) <= num(p.reorder_level) ? 'low' : 'ok');
+  const rows = stock.map(p => ({
+    name: p.name, stock: num(p.stock), sold: num(p.sold), left: num(p.remaining), reorder: num(p.reorder_level), s: state(p)
+  }));
+  const count = { out: 0, low: 0, ok: 0 };
+  rows.forEach(r => count[r.s]++);
+  const totalSold = rows.reduce((s, r) => s + r.sold, 0);
+  const attention = rows.filter(r => r.s !== 'ok').sort((a, b) => a.left - b.left);
+  const pctOf = (n) => rows.length ? Math.round((n / rows.length) * 100) : 0;
+
+  const headline = count.out ? { t: count.out + (count.out === 1 ? ' product is out of stock' : ' products are out of stock'), c: 'text-rose-700', dot: 'bg-rose-500' }
+    : count.low ? { t: count.low + (count.low === 1 ? ' product is running low' : ' products are running low'), c: 'text-amber-700', dot: 'bg-amber-500' }
+    : { t: rows.length ? 'All stock levels look healthy' : 'No products tracked yet', c: 'text-emerald-700', dot: 'bg-emerald-500' };
+
+  const sev = { out: 0, low: 1, ok: 2 };
+  const initial = (n) => String(n || '?').trim().charAt(0).toUpperCase();
+%>
+
+<div class="space-y-6">
+
+  <p class="max-w-2xl text-sm text-slate-500">See what sells best, how fast stock is moving, and which products need restocking.</p>
+
+  <% if (rows.length || best.length) { %>
     <div>
-      <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Top Stream Product</p>
-      <h3 class="text-base font-bold text-slate-800 mt-1 truncate max-w-[200px]">
-        <%= topProducts && topProducts.length > 0 ? topProducts[0].Product.name : 'N/A' %>
-      </h3>
+      <label for="globalSearch" class="sr-only">Search products</label>
+      <div class="relative">
+        <i class="fas fa-search pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-brand-teal"></i>
+        <input type="text" id="globalSearch" autocomplete="off" placeholder="Search a product in best sellers, restocking and stock levels"
+          class="w-full rounded-2xl border border-slate-200 bg-white py-3.5 pl-11 pr-14 text-sm text-slate-800 shadow-sm placeholder:text-slate-400 focus:border-brand-teal focus:outline-none focus:ring-2 focus:ring-brand-teal/20">
+        <button type="button" id="globalClear" aria-label="Clear search" class="absolute right-3 top-1/2 hidden h-8 w-8 -translate-y-1/2 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600"><i class="fas fa-times text-sm"></i></button>
+        <kbd id="slashHint" class="pointer-events-none absolute right-4 top-1/2 hidden -translate-y-1/2 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-400 sm:block" title="Press / to search">/</kbd>
+      </div>
+      <p id="searchSummary" class="mt-2 hidden text-sm text-slate-500" aria-live="polite"></p>
     </div>
-    <div class="text-emerald-500 bg-emerald-50 w-10 h-10 rounded-lg flex items-center justify-center shrink-0">
-      <i class="fas fa-trophy text-lg"></i>
-    </div>
-  </div>
+  <% } %>
 
-  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between">
-    <div>
-      <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Items Logged</p>
-      <h3 class="text-xl font-mono font-black text-slate-900 mt-1"><%= stockData ? stockData.length : 0 %></h3>
+  <!-- ============ Key figures ============ -->
+  <section aria-label="Key figures" class="grid gap-px overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="relative bg-teal-50 p-5 sm:col-span-2 lg:col-span-1">
+      <span class="absolute inset-x-0 top-0 h-1 bg-brand-gold"></span>
+      <p class="flex items-center gap-2 text-sm font-semibold text-brand-teal"><i class="fas fa-trophy text-xs"></i>Best seller</p>
+      <p class="mt-2 truncate text-lg font-extrabold tracking-tight text-brand-tealDark" title="<%= best.length ? best[0].name : '' %>"><%= best.length ? best[0].name : 'No sales yet' %></p>
+      <p class="mt-1 text-sm text-slate-600"><%= best.length ? fmt(best[0].sold) + ' units sold' : 'Sales will show up here' %></p>
     </div>
-    <div class="text-brand-teal bg-slate-50 w-10 h-10 rounded-lg flex items-center justify-center shrink-0">
-      <i class="fas fa-boxes text-lg"></i>
+    <div class="bg-white p-5">
+      <p class="flex items-center gap-2 text-sm font-semibold text-slate-500"><i class="fas fa-boxes text-xs text-brand-teal"></i>Products tracked</p>
+      <p class="mt-2 text-3xl font-extrabold tabular-nums tracking-tight text-slate-900"><%= rows.length %></p>
+      <p class="mt-1 text-sm text-slate-500">in your inventory</p>
     </div>
-  </div>
+    <div class="bg-white p-5">
+      <p class="flex items-center gap-2 text-sm font-semibold text-slate-500"><i class="fas fa-shopping-cart text-xs text-brand-teal"></i>Units sold</p>
+      <p class="mt-2 text-3xl font-extrabold tabular-nums tracking-tight text-slate-900"><%= fmt(totalSold) %></p>
+      <p class="mt-1 text-sm text-slate-500">across all products</p>
+    </div>
+    <div class="bg-white p-5">
+      <p class="flex items-center gap-2 text-sm font-semibold text-slate-500"><i class="fas fa-heartbeat text-xs text-brand-teal"></i>Stock health</p>
+      <p class="mt-2 flex items-center gap-2 text-sm font-semibold <%= headline.c %>"><span class="h-2 w-2 shrink-0 rounded-full <%= headline.dot %>"></span><%= headline.t %></p>
+      <div class="mt-3 flex h-2.5 overflow-hidden rounded-full bg-slate-100" role="img" aria-label="<%= count.out %> out of stock, <%= count.low %> low, <%= count.ok %> healthy">
+        <div class="h-full bg-rose-500" style="width: <%= pctOf(count.out) %>%"></div>
+        <div class="h-full bg-amber-400" style="width: <%= pctOf(count.low) %>%"></div>
+        <div class="h-full bg-emerald-500" style="width: <%= pctOf(count.ok) %>%"></div>
+      </div>
+      <p class="mt-2 text-xs text-slate-500"><%= count.out %> out, <%= count.low %> low, <%= count.ok %> healthy</p>
+    </div>
+  </section>
 
-  <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between sm:col-span-2 lg:col-span-1">
-    <div>
-      <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Inventory Health Status</p>
-      <h3 class="text-sm font-semibold text-slate-700 mt-1.5 flex items-center gap-1.5">
-        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Operational Stable
-      </h3>
-    </div>
-    <div class="text-slate-400 bg-slate-50 w-10 h-10 rounded-lg flex items-center justify-center shrink-0">
-      <i class="fas fa-heartbeat text-lg"></i>
-    </div>
-  </div>
-</div>
+  <div class="grid items-start gap-6 lg:grid-cols-3">
 
-<!-- Main Intelligence Section split into Responsive Layout Grid -->
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-  
-  <!-- 🏆 LEFT COLUMN: TOP SELLING PRODUCTS LEDGER (1/3 Width) -->
-  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden lg:col-span-1">
-    <div class="px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
-      <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
-      <h3 class="font-bold text-slate-800 text-xs tracking-wide uppercase">Top Selling Products</h3>
-    </div>
-    
-    <div class="overflow-x-auto">
-      <table class="w-full text-left border-collapse whitespace-nowrap">
-        <thead>
-          <tr class="bg-slate-50/70 border-b border-slate-200 text-slate-400 text-[11px] font-bold uppercase tracking-wider">
-            <th class="py-3 px-5">Product Name</th>
-            <th class="py-3 px-5 text-right w-24">Units Sold</th>
-          </tr>
-        </thead>
-        <tbody class="text-sm divide-y divide-slate-100">
-          <% if (topProducts && topProducts.length > 0) { %>
-            <% topProducts.forEach((p, idx) => { %>
-              <tr class="hover:bg-slate-50/40 transition duration-75">
-                <td class="py-3 px-5 font-medium text-slate-800 flex items-center gap-2">
-                  <span class="font-mono text-xs text-slate-300 w-4"><%= idx + 1 %>.</span>
-                  <span class="truncate max-w-[160px]" title="<%= p.Product.name %>"><%= p.Product.name %></span>
-                </td>
-                <td class="py-3 px-5 text-right font-mono font-bold text-emerald-600 bg-emerald-50/30">
-                  <%= p.dataValues.total_sold %>
-                </td>
-              </tr>
+    <!-- ============ Left: best sellers + restock ============ -->
+    <div class="space-y-6 lg:col-span-1">
+
+      <section class="rounded-2xl border border-slate-200/80 bg-white">
+        <div class="px-6 pt-5">
+          <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>Best sellers</h3>
+          <p class="mt-1 text-sm text-slate-500">Bars are compared with the top product.</p>
+        </div>
+        <% if (best.length) { %>
+          <ol class="mt-4 divide-y divide-slate-100 border-t border-slate-100">
+            <% best.forEach((b, i) => { %>
+              <li class="best-row px-6 py-3.5" data-name="<%= String(b.name).toLowerCase() %>">
+                <div class="flex items-center gap-3">
+                  <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold <%= i === 0 ? 'bg-brand-gold text-white' : i < 3 ? 'bg-brand-teal/10 text-brand-teal' : 'bg-slate-100 text-slate-500' %>"><%= i + 1 %></span>
+                  <p class="min-w-0 flex-1 truncate text-sm font-semibold text-slate-800" title="<%= b.name %>" data-hl="<%= b.name %>"><%= b.name %></p>
+                  <p class="shrink-0 text-sm font-bold tabular-nums text-brand-tealDark"><%= fmt(b.sold) %> <span class="text-xs font-normal text-slate-500">sold</span></p>
+                </div>
+                <div class="ml-10 mt-2 h-2 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full <%= i === 0 ? 'bg-brand-gold' : 'bg-brand-teal' %>" style="width: <%= bestMax ? Math.max(4, Math.round((b.sold / bestMax) * 100)) : 0 %>%"></div></div>
+              </li>
             <% }) %>
-          <% } else { %>
-            <tr>
-              <td colspan="2" class="py-8 text-center text-xs italic text-slate-400">No recorded sales items data yet.</td>
-            </tr>
-          <% } %>
-        </tbody>
-      </table>
-    </div>
-  </div>
+          </ol>
+          <p class="best-empty hidden border-t border-slate-100 px-6 py-6 text-center text-sm text-slate-500">No best sellers match your search.</p>
+        <% } else { %>
+          <div class="mt-4 border-t border-slate-100 px-6 py-10 text-center">
+            <span class="mx-auto grid h-11 w-11 place-items-center rounded-full bg-slate-100 text-slate-400"><i class="fas fa-chart-bar"></i></span>
+            <p class="mt-3 text-sm font-medium text-slate-700">No sales yet</p>
+            <p class="mt-1 text-sm text-slate-500">Your best sellers will be ranked here.</p>
+          </div>
+        <% } %>
+      </section>
 
-  <!-- 📦 RIGHT COLUMN: COMPREHENSIVE STOCK FLOW ANALYSIS (2/3 Width) -->
-  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden lg:col-span-2">
-    <div class="px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
-      <div class="w-2 h-2 rounded-full bg-brand-teal"></div>
-      <h3 class="font-bold text-slate-800 text-xs tracking-wide uppercase">Stock Velocity & Level Overview</h3>
-    </div>
-
-    <div class="overflow-x-auto">
-      <table class="w-full text-left border-collapse whitespace-nowrap">
-        <thead>
-          <tr class="bg-slate-50/70 border-b border-slate-200 text-slate-400 text-[11px] font-bold uppercase tracking-wider">
-            <th class="py-3 px-6">Product Description</th>
-            <th class="py-3 px-4 text-center w-24">Starting Stock</th>
-            <th class="py-3 px-4 text-center w-24">Units Sold</th>
-            <th class="py-3 px-6 text-right w-32">Remaining Balance</th>
-          </tr>
-        </thead>
-        <tbody class="text-sm divide-y divide-slate-100 text-slate-700">
-          <% if (stockData && stockData.length > 0) { %>
-            <% stockData.forEach(p => { %>
-              <tr class="hover:bg-slate-50/50 transition duration-75 group">
-                
-                <!-- Product Name Header Info -->
-                <td class="py-3.5 px-6 font-medium text-slate-800">
-                  <%= p.name %>
-                </td>
-                
-                <!-- Initial Total Bulk Capacity Added -->
-                <td class="py-3.5 px-4 text-center font-mono text-slate-500">
-                  <%= p.stock %>
-                </td>
-                
-                <!-- Aggregated Sales Dispatched Volume -->
-                <td class="py-3.5 px-4 text-center font-mono font-medium text-slate-600">
-                  <%= p.sold %>
-                </td>
-                
-                <!-- Remaining Safe Stock Count + Interactive Flag Tags -->
-                <td class="py-3.5 px-6 text-right">
-                  <div class="flex items-center justify-end gap-3">
-                    <span class="font-mono font-bold text-slate-900 text-base"><%= p.remaining %></span>
-                    
-                    <!-- Alert levels depend directly on remaining stock limits -->
-                    <% if (p.remaining <= 0) { %>
-                      <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-rose-50 text-rose-700 border border-rose-100">
-                        Out of Stock
-                      </span>
-                    <% } else if (p.remaining <= p.reorder_level) { %>
-                      <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-50 text-amber-700 border border-amber-100 animate-pulse">
-                        Low Stock
-                      </span>
-                    <% } else { %>
-                      <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-50 text-slate-600 border border-slate-200">
-                        Healthy
-                      </span>
-                    <% } %>
-                  </div>
-                </td>
-
-              </tr>
+      <section class="rounded-2xl border border-slate-200/80 bg-white">
+        <div class="flex items-center justify-between px-6 pt-5">
+          <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>Needs restocking
+            <% if (attention.length) { %><span class="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700"><%= attention.length %></span><% } %></h3>
+          <% if (attention.length) { %><a href="/products?status=low" class="text-sm font-medium text-brand-teal hover:text-brand-tealDark">View in products</a><% } %>
+        </div>
+        <% if (attention.length) { %>
+          <ul class="mt-4 divide-y divide-slate-100 border-t border-slate-100">
+            <% attention.forEach((r, i) => { %>
+              <li class="restock-row flex items-center justify-between gap-3 px-6 py-3 text-sm <%= i >= 6 ? 'hidden' : '' %>" data-extra="<%= i >= 6 ? 1 : 0 %>" data-name="<%= String(r.name).toLowerCase() %>">
+                <span class="truncate font-medium text-slate-700" title="<%= r.name %>" data-hl="<%= r.name %>"><%= r.name %></span>
+                <span class="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold <%= r.s === 'out' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700' %>"><%= r.s === 'out' ? 'Out of stock' : r.left + ' left' %></span>
+              </li>
             <% }) %>
-          <% } else { %>
-            <tr>
-              <td colspan="4" class="py-12 text-center text-sm text-slate-400 italic">
-                No active inventory products tracked.
-              </td>
-            </tr>
-          <% } %>
-        </tbody>
-      </table>
+          </ul>
+          <p class="restock-empty hidden border-t border-slate-100 px-6 py-6 text-center text-sm text-slate-500">No products to restock match your search.</p>
+          <% if (attention.length > 6) { %><p id="restockMore" class="border-t border-slate-100 px-6 py-3 text-xs text-slate-500">and <%= attention.length - 6 %> more in the table</p><% } %>
+        <% } else { %>
+          <div class="mt-4 border-t border-slate-100 px-6 py-8 text-center">
+            <span class="mx-auto grid h-10 w-10 place-items-center rounded-full bg-emerald-50 text-emerald-600"><i class="fas fa-check"></i></span>
+            <p class="mt-3 text-sm font-medium text-slate-700">Nothing to restock</p>
+          </div>
+        <% } %>
+      </section>
     </div>
-  </div>
 
+    <!-- ============ Right: stock levels ============ -->
+    <section class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white lg:col-span-2">
+      <div class="px-5 pt-5 sm:px-6">
+        <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>Stock levels and sales speed</h3>
+        <p class="mt-1 text-sm text-slate-500">How much of each product has sold and how much is left.</p>
+      </div>
+
+      <% if (rows.length) { %>
+        <div class="flex flex-wrap items-center justify-between gap-3 px-5 pt-4 sm:px-6">
+          <div role="tablist" aria-label="Filter by stock level" class="inline-flex rounded-xl bg-slate-100 p-1">
+            <% [['all', 'All', rows.length], ['attention', 'Needs attention', count.out + count.low], ['ok', 'Healthy', count.ok]].forEach((t, i) => { %>
+              <button type="button" role="tab" data-filter="<%= t[0] %>" aria-selected="<%= i === 0 %>" class="filter-tab rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors <%= i === 0 ? 'bg-white text-brand-tealDark shadow-sm' : 'text-slate-600 hover:text-brand-teal' %>"><%= t[1] %> <span class="ml-1 tabular-nums text-slate-400"><%= t[2] %></span></button>
+            <% }) %>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 px-5 pt-3 sm:px-6">
+          <span class="text-sm text-slate-500">Sort by</span>
+          <% [['attention', 'Needs attention first'], ['sold', 'Most sold'], ['left', 'Least left'], ['name', 'Name']].forEach((o, i) => { %>
+            <button type="button" data-sort="<%= o[0] %>" class="sort-btn rounded-full border border-slate-200 px-3 py-1 text-sm font-medium transition-colors <%= i === 0 ? 'border-brand-teal bg-brand-teal/10 text-brand-tealDark' : 'text-slate-600 hover:border-brand-teal/40 hover:text-brand-teal' %>"><%= o[1] %></button>
+          <% }) %>
+        </div>
+
+        <ul id="stockList" class="mt-4 divide-y divide-slate-100 border-t border-slate-100">
+          <% rows.forEach((r, i) => {
+               const soldPct = r.stock > 0 ? Math.min(100, Math.round((r.sold / r.stock) * 100)) : 0;
+               const leftPct = Math.max(0, 100 - soldPct);
+               const leftColor = r.s === 'out' ? 'bg-rose-300' : r.s === 'low' ? 'bg-amber-300' : 'bg-slate-200';
+          %>
+            <li class="stock-row px-5 py-4 sm:px-6" data-name="<%= String(r.name).toLowerCase() %>" data-state="<%= r.s %>" data-sold="<%= r.sold %>" data-left="<%= r.left %>" data-sev="<%= sev[r.s] %>" data-index="<%= i %>">
+              <div class="flex items-center gap-3">
+                <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-teal/10 text-sm font-bold text-brand-teal"><%= initial(r.name) %></span>
+                <div class="min-w-0 flex-1">
+                  <p class="truncate font-semibold text-slate-800" title="<%= r.name %>" data-hl="<%= r.name %>"><%= r.name %></p>
+                  <p class="mt-0.5 text-xs text-slate-500">Started with <span class="font-semibold tabular-nums text-slate-700"><%= fmt(r.stock) %></span>, sold <span class="font-semibold tabular-nums text-slate-700"><%= fmt(r.sold) %></span><% if (r.stock > 0) { %> (<%= soldPct %>%)<% } %></p>
+                </div>
+                <div class="shrink-0 text-right">
+                  <p class="text-xl font-extrabold tabular-nums leading-none <%= r.s === 'out' ? 'text-rose-600' : r.s === 'low' ? 'text-amber-600' : 'text-slate-900' %>"><%= fmt(r.left) %></p>
+                  <p class="mt-1">
+                    <% if (r.s === 'out') { %><span class="rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700 ring-1 ring-inset ring-rose-600/15">Out of stock</span>
+                    <% } else if (r.s === 'low') { %><span class="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 ring-1 ring-inset ring-amber-600/20">Low stock</span>
+                    <% } else { %><span class="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/15">Healthy</span><% } %>
+                  </p>
+                </div>
+              </div>
+              <div class="ml-[3.25rem] mt-3 flex h-2 overflow-hidden rounded-full bg-slate-100" role="img" aria-label="<%= soldPct %> percent sold, <%= leftPct %> percent left">
+                <div class="h-full bg-brand-teal" style="width: <%= soldPct %>%"></div>
+                <div class="h-full <%= leftColor %>" style="width: <%= leftPct %>%"></div>
+              </div>
+            </li>
+          <% }) %>
+        </ul>
+
+        <div id="stockEmpty" class="hidden border-t border-slate-100 px-6 py-12 text-center">
+          <span class="mx-auto grid h-12 w-12 place-items-center rounded-full bg-brand-teal/10 text-brand-teal"><i class="fas fa-search text-lg"></i></span>
+          <p class="mt-4 text-sm font-semibold text-slate-800">No products match</p>
+          <p class="mt-1 text-sm text-slate-500">Try another name or choose a different filter.</p>
+        </div>
+        <p id="stockCount" class="border-t border-slate-100 px-5 py-3 text-sm text-slate-500 sm:px-6" aria-live="polite"></p>
+      <% } else { %>
+        <div class="mt-4 border-t border-slate-100 px-6 py-14 text-center">
+          <span class="mx-auto grid h-12 w-12 place-items-center rounded-full bg-brand-teal/10 text-brand-teal"><i class="fas fa-boxes text-lg"></i></span>
+          <p class="mt-4 text-sm font-semibold text-slate-800">No products tracked yet</p>
+          <p class="mt-1 text-sm text-slate-500">Add products to see their stock levels and sales speed.</p>
+          <a href="/products/create" class="mt-4 inline-flex rounded-xl bg-brand-gold px-4 py-2 text-sm font-semibold text-white hover:bg-brand-goldHover">Add product</a>
+        </div>
+      <% } %>
+    </section>
+  </div>
 </div>
+
+<script>
+  (function () {
+    var input = document.getElementById('globalSearch');
+    var list = document.getElementById('stockList');
+    var filter = 'all', sort = 'attention', toks = [];
+    var stockRows = list ? Array.prototype.slice.call(list.querySelectorAll('.stock-row')) : [];
+    function $(id) { return document.getElementById(id); }
+
+    /* every word typed must appear in the product name */
+    function tokens(q) { return q.toLowerCase().split(/\s+/).filter(Boolean); }
+    function matches(name) { return toks.every(function (t) { return name.indexOf(t) > -1; }); }
+
+    /* highlight the matching letters in a name (names are written as text, never as HTML) */
+    function highlight(el) {
+      var text = el.getAttribute('data-hl'); el.textContent = '';
+      if (!toks.length) { el.textContent = text; return; }
+      var re = new RegExp('(' + toks.map(function (t) { return t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }).join('|') + ')', 'ig');
+      text.split(re).forEach(function (part, i) {
+        if (i % 2) { var m = document.createElement('mark'); m.className = 'rounded bg-amber-200/70 px-0.5 text-inherit'; m.textContent = part; el.appendChild(m); }
+        else if (part) el.appendChild(document.createTextNode(part));
+      });
+    }
+
+    var sorters = {
+      attention: function (a, b) { return a.dataset.sev - b.dataset.sev || a.dataset.left - b.dataset.left || a.dataset.name.localeCompare(b.dataset.name); },
+      sold:      function (a, b) { return b.dataset.sold - a.dataset.sold || a.dataset.name.localeCompare(b.dataset.name); },
+      left:      function (a, b) { return a.dataset.left - b.dataset.left || a.dataset.name.localeCompare(b.dataset.name); },
+      name:      function (a, b) { return a.dataset.name.localeCompare(b.dataset.name); }
+    };
+
+    function render() {
+      var searching = toks.length > 0, nBest = 0, nRestock = 0, nStock = 0;
+
+      /* best sellers */
+      document.querySelectorAll('.best-row').forEach(function (r) {
+        var ok = !searching || matches(r.dataset.name); r.classList.toggle('hidden', !ok); if (ok) nBest++;
+        highlight(r.querySelector('[data-hl]'));
+      });
+      var be = document.querySelector('.best-empty'); if (be) be.classList.toggle('hidden', !searching || nBest > 0);
+
+      /* needs restocking: first 6 normally, every match while searching */
+      document.querySelectorAll('.restock-row').forEach(function (r) {
+        var ok = searching ? matches(r.dataset.name) : r.dataset.extra === '0'; r.classList.toggle('hidden', !ok); if (ok && searching) nRestock++;
+        highlight(r.querySelector('[data-hl]'));
+      });
+      var re = document.querySelector('.restock-empty'); if (re) re.classList.toggle('hidden', !searching || nRestock > 0);
+      var more = $('restockMore'); if (more) more.classList.toggle('hidden', searching);
+
+      /* stock levels */
+      if (list) {
+        stockRows.sort(sorters[sort]).forEach(function (r) {
+          var st = r.dataset.state, ok = (filter === 'all' || (filter === 'attention' ? st !== 'ok' : st === 'ok')) && (!searching || matches(r.dataset.name));
+          r.classList.toggle('hidden', !ok); if (ok) nStock++;
+          highlight(r.querySelector('[data-hl]'));
+          list.appendChild(r);
+        });
+        $('stockEmpty').classList.toggle('hidden', nStock > 0); list.classList.toggle('hidden', nStock === 0);
+        $('stockCount').textContent = 'Showing ' + nStock + ' of ' + stockRows.length + (stockRows.length === 1 ? ' product' : ' products');
+      }
+
+      /* search box extras */
+      if (input) {
+        $('globalClear').classList.toggle('hidden', !input.value); $('globalClear').classList.toggle('grid', !!input.value);
+        $('slashHint').classList.toggle('hidden', !!input.value);
+        var sum = $('searchSummary');
+        sum.classList.toggle('hidden', !searching);
+        if (searching) sum.textContent = 'Found ' + nBest + ' in best sellers, ' + nRestock + ' in restocking and ' + nStock + ' in stock levels for "' + input.value.trim() + '".';
+      }
+    }
+
+    if (input) {
+      var raf; input.addEventListener('input', function () { toks = tokens(input.value); cancelAnimationFrame(raf); raf = requestAnimationFrame(render); });
+      input.addEventListener('keydown', function (e) { if (e.key === 'Escape' && input.value) { input.value = ''; toks = []; render(); } });
+      $('globalClear').addEventListener('click', function () { input.value = ''; toks = []; render(); input.focus(); });
+      document.addEventListener('keydown', function (e) {                       /* press "/" anywhere to jump to the search box */
+        if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
+        if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
+        e.preventDefault(); input.focus(); input.select();
+      });
+    }
+
+    document.querySelectorAll('.filter-tab').forEach(function (t) {
+      t.addEventListener('click', function () {
+        filter = t.dataset.filter;
+        document.querySelectorAll('.filter-tab').forEach(function (x) {
+          var on = x === t; x.setAttribute('aria-selected', on);
+          x.classList.toggle('bg-white', on); x.classList.toggle('text-brand-tealDark', on); x.classList.toggle('shadow-sm', on); x.classList.toggle('text-slate-600', !on);
+        });
+        render();
+      });
+    });
+    document.querySelectorAll('.sort-btn').forEach(function (b) {
+      b.addEventListener('click', function () {
+        sort = b.dataset.sort;
+        document.querySelectorAll('.sort-btn').forEach(function (x) {
+          var on = x === b;
+          x.classList.toggle('border-brand-teal', on); x.classList.toggle('bg-brand-teal/10', on); x.classList.toggle('text-brand-tealDark', on); x.classList.toggle('text-slate-600', !on);
+        });
+        render();
+      });
+    });
+    render();
+  })();
+</script>
 
 <%- include('../layouts/footer') %>

@@ -1,58 +1,196 @@
 <%- include('../layouts/header') %>
+<%
+  const shops = (typeof businesses !== 'undefined' && businesses) ? businesses : [];
+  const field = 'w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-teal focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-teal/20';
+  const label = 'mb-1.5 block text-sm font-medium text-slate-700';
+  const categories = ['Rent', 'Electricity', 'Water', 'Transport', 'Salaries', 'Stationeries', 'Supplies'];
+%>
 
-<div class="mb-4">
-  <a href="/expenses" class="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-brand-teal transition duration-150 group">
-    <i class="fas fa-arrow-left text-xs group-hover:-translate-x-0.5 transition-transform"></i>
-    <span>Go Back</span>
-  </a>
-</div>
+<div class="mx-auto max-w-5xl space-y-6">
 
-<div class="mb-6">
-  <h1 class="text-2xl font-bold tracking-tight text-slate-800">Record Expense</h1>
-  <p class="text-sm text-slate-500 mt-1">Log operational spending to track store outlay.</p>
-</div>
+  <nav aria-label="Breadcrumb" class="flex items-center gap-2 text-sm text-slate-500">
+    <a href="/expenses" class="group inline-flex items-center gap-2 font-medium transition-colors hover:text-brand-teal"><i class="fas fa-arrow-left text-xs transition-transform group-hover:-translate-x-0.5"></i>Expenses</a>
+    <i class="fas fa-chevron-right text-[10px] text-slate-300"></i><span class="text-slate-700">New expense</span>
+  </nav>
 
-<div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden max-w-xl">
-  <div class="h-1.5 bg-brand-teal w-full"></div>
-  
-  <form method="POST" action="/expenses/create" class="p-6 space-y-4">
-    <div>
-      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Category</label>
-      <input type="text" name="category" required class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white outline-none" placeholder="e.g. Rent, Electricity, Stationeries">
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div role="alert" class="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4">
+      <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-rose-100 text-rose-600"><i class="fas fa-exclamation-circle"></i></span>
+      <div class="min-w-0"><h4 class="text-sm font-semibold text-rose-800">The expense could not be saved</h4><p class="mt-0.5 text-sm text-rose-700"><%= error %></p></div>
     </div>
+  <% } %>
 
-    <div class="grid grid-cols-2 gap-4">
-      <div>
-        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Amount (TSh)</label>
-        <input type="number" step="0.01" name="amount" required class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white outline-none" placeholder="0.00">
+  <div class="grid items-start gap-6 lg:grid-cols-3">
+
+    <!-- ============ Form ============ -->
+    <form id="expenseForm" method="POST" action="/expenses/create" class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white lg:col-span-2">
+      <div class="space-y-8 p-6 sm:p-8">
+
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-brand-tealDark">Record an expense</h2>
+          <p class="mt-1 text-sm text-slate-500">Write down what the business spent so your totals stay accurate.</p>
+        </div>
+
+        <!-- Amount -->
+        <section>
+          <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>How much?</h3>
+          <div class="mt-4">
+            <label for="amount" class="<%= label %>">Amount in TSh</label>
+            <div class="relative">
+              <span class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">TSh</span>
+              <input type="number" id="amount" name="amount" step="0.01" min="0.01" required autofocus inputmode="decimal" placeholder="0" class="<%= field %> py-3.5 pl-14 pr-4 text-xl font-bold tabular-nums">
+            </div>
+            <p id="amountWords" class="mt-1.5 h-5 text-sm font-medium text-brand-teal"></p>
+          </div>
+        </section>
+
+        <!-- Category -->
+        <section>
+          <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>What was it for?</h3>
+          <div class="mt-4">
+            <label for="category" class="<%= label %>">Category</label>
+            <input type="text" id="category" name="category" required list="categoryList" autocomplete="off" placeholder="e.g. Rent, Electricity, Stationeries" class="<%= field %> px-3.5">
+            <datalist id="categoryList"><% categories.forEach(c => { %><option value="<%= c %>"><% }) %></datalist>
+            <div class="mt-3 flex flex-wrap items-center gap-2" role="group" aria-label="Quick choices for category">
+              <span class="text-sm text-slate-500">Quick pick</span>
+              <% categories.forEach(c => { %>
+                <button type="button" data-category="<%= c %>" class="cat-chip rounded-full border border-slate-200 px-3 py-1 text-sm font-medium text-slate-600 transition-colors hover:border-brand-teal/40 hover:text-brand-teal"><%= c %></button>
+              <% }) %>
+            </div>
+            <p class="mt-2 text-xs text-slate-500">Use the same spelling each time so your reports group the expenses together.</p>
+          </div>
+        </section>
+
+        <!-- Date -->
+        <section>
+          <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>When?</h3>
+          <div class="mt-4">
+            <label for="expense_date" class="<%= label %>">Date of the expense</label>
+            <div class="flex flex-wrap items-center gap-3">
+              <input type="date" id="expense_date" name="expense_date" value="<%= new Date().toISOString().split('T')[0] %>" class="<%= field %> w-auto px-3.5">
+              <div class="inline-flex rounded-xl bg-slate-100 p-1" role="group" aria-label="Quick dates">
+                <button type="button" data-day="0" class="day-btn rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors">Today</button>
+                <button type="button" data-day="1" class="day-btn rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors">Yesterday</button>
+              </div>
+            </div>
+            <p id="dateWords" class="mt-1.5 text-sm text-slate-500"></p>
+            <p id="futureWarn" class="mt-2 hidden items-start gap-2 rounded-xl bg-amber-50 px-3.5 py-2.5 text-sm font-medium text-amber-800" role="status"><i class="fas fa-exclamation-triangle mt-0.5 text-xs"></i><span>This date is in the future. Check it is correct.</span></p>
+          </div>
+        </section>
+
+        <!-- Details -->
+        <section>
+          <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>Details</h3>
+          <div class="mt-4 space-y-5">
+            <div>
+              <label for="description" class="<%= label %>">Note <span class="font-normal text-slate-400">(optional)</span></label>
+              <textarea id="description" name="description" rows="3" maxlength="500" placeholder="Receipt number, who was paid, or anything worth remembering" class="<%= field %> px-3.5"></textarea>
+              <p class="mt-1 text-right text-xs text-slate-400"><span id="noteCount">0</span>/500</p>
+            </div>
+            <div>
+              <label for="business_id" class="<%= label %>">Shop</label>
+              <% if (shops.length === 1) { %>
+                <p class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-100 px-3.5 py-2.5 text-sm font-medium text-slate-700"><i class="fas fa-store text-xs text-brand-teal"></i><%= shops[0].name %></p>
+                <input type="hidden" name="business_id" value="<%= shops[0].id %>" data-name="<%= shops[0].name %>" id="business_id">
+              <% } else { %>
+                <select id="business_id" name="business_id" class="<%= field %> px-3.5">
+                  <% shops.forEach(b => { %><option value="<%= b.id %>"><%= b.name %></option><% }) %>
+                </select>
+              <% } %>
+            </div>
+          </div>
+        </section>
       </div>
-      <div>
-        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Expense Date</label>
-        <input type="date" name="expense_date" value="<%= new Date().toISOString().split('T')[0] %>" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white outline-none">
+
+      <div class="flex flex-col-reverse items-stretch justify-end gap-3 border-t border-slate-100 bg-slate-50/60 px-6 py-4 sm:flex-row sm:items-center sm:px-8">
+        <a href="/expenses" class="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-center text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50">Cancel</a>
+        <button type="submit" id="saveBtn" class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-gold px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-goldHover disabled:cursor-wait disabled:opacity-70">
+          <i class="fas fa-check text-xs"></i><span>Save expense</span>
+        </button>
       </div>
-    </div>
+    </form>
 
-    <div>
-      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Description / Note</label>
-      <textarea name="description" rows="2" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white outline-none" placeholder="Optional details..."></textarea>
-    </div>
-
-    <div>
-      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Assign Shop</label>
-      <select name="business_id" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white outline-none">
-        <% businesses.forEach(b => { %>
-          <option value="<%= b.id %>"><%= b.name %></option>
-        <% }) %>
-      </select>
-    </div>
-
-    <div class="pt-2 border-t border-slate-100 flex items-center justify-end gap-3">
-      <a href="/expenses" class="px-4 py-2.5 text-sm font-semibold text-slate-500 hover:bg-slate-100 rounded-lg border border-slate-200 transition">Cancel</a>
-      <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 bg-brand-teal hover:bg-brand-tealDark text-white text-sm font-semibold rounded-lg shadow-md shadow-brand-teal/10 transition">
-        <i class="fas fa-check text-xs"></i> Save Expense
-      </button>
-    </div>
-  </form>
+    <!-- ============ Summary ============ -->
+    <aside class="lg:sticky lg:top-24">
+      <section class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
+        <div class="h-1 bg-brand-gold"></div>
+        <div class="bg-teal-50 px-6 py-4"><p class="text-xs font-medium text-brand-teal">Summary</p><p class="mt-0.5 text-sm text-slate-600">Check this before you save.</p></div>
+        <div class="p-6">
+          <div class="flex items-start gap-3">
+            <span id="sumInitial" class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-teal/10 text-lg font-bold text-brand-teal">?</span>
+            <div class="min-w-0">
+              <p id="sumCategory" class="truncate text-sm font-semibold text-slate-400">Category</p>
+              <p id="sumSentence" class="mt-1 text-sm leading-relaxed text-slate-400">Fill in the amount and category to see a summary.</p>
+            </div>
+          </div>
+          <dl class="mt-5 space-y-3 border-t border-slate-100 pt-4 text-sm">
+            <div class="flex items-center justify-between gap-3"><dt class="text-slate-500">Amount</dt><dd id="sumAmount" class="font-bold tabular-nums text-rose-600">-</dd></div>
+            <div class="flex items-center justify-between gap-3"><dt class="text-slate-500">Date</dt><dd id="sumDate" class="text-right font-medium text-slate-700">-</dd></div>
+            <div class="flex items-center justify-between gap-3"><dt class="text-slate-500">Shop</dt><dd id="sumShop" class="truncate font-medium text-slate-700">-</dd></div>
+          </dl>
+        </div>
+      </section>
+    </aside>
+  </div>
 </div>
+
+<script>
+  (function () {
+    var $ = function (id) { return document.getElementById(id); };
+    var form = $('expenseForm'), amountEl = $('amount'), catEl = $('category'), dateEl = $('expense_date'), noteEl = $('description'), shopEl = $('business_id');
+
+    function ymd(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+    function money(v) { return 'TSh ' + Number(v).toLocaleString('en-US', { maximumFractionDigits: 2 }); }
+    function parts(s) { var p = s.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); }
+    function longDate(s) { var d = parts(s); return isNaN(d) ? '' : d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); }
+    function shopName() { return shopEl.tagName === 'SELECT' ? (shopEl.options[shopEl.selectedIndex] || {}).textContent || '' : shopEl.getAttribute('data-name') || ''; }
+
+    /* The server fills in its own date, which can be a day behind for you. Start from the date on this device. */
+    dateEl.value = ymd(new Date());
+
+    function refresh() {
+      var amt = parseFloat(amountEl.value), hasAmt = isFinite(amt) && amt > 0, cat = catEl.value.trim(), date = dateEl.value, shop = shopName();
+
+      $('amountWords').textContent = hasAmt ? money(amt) : '';
+      $('dateWords').textContent = date ? longDate(date) : '';
+      var future = date && parts(date) > new Date(new Date().setHours(23, 59, 59, 999));
+      $('futureWarn').classList.toggle('hidden', !future); $('futureWarn').classList.toggle('flex', !!future);
+      $('noteCount').textContent = noteEl.value.length;
+
+      document.querySelectorAll('.cat-chip').forEach(function (c) {
+        var on = cat.toLowerCase() === c.dataset.category.toLowerCase();
+        c.classList.toggle('border-brand-teal', on); c.classList.toggle('bg-brand-teal/10', on); c.classList.toggle('text-brand-tealDark', on);
+      });
+      var today = ymd(new Date()), y = new Date(); y.setDate(y.getDate() - 1);
+      document.querySelectorAll('.day-btn').forEach(function (b) {
+        var on = date === (b.dataset.day === '0' ? today : ymd(y));
+        b.classList.toggle('bg-white', on); b.classList.toggle('text-brand-tealDark', on); b.classList.toggle('shadow-sm', on); b.classList.toggle('text-slate-600', !on);
+      });
+
+      $('sumInitial').textContent = (cat || '?').charAt(0).toUpperCase();
+      var c = $('sumCategory'); c.textContent = cat || 'Category'; c.className = 'truncate text-sm font-semibold ' + (cat ? 'text-brand-tealDark' : 'text-slate-400');
+      var s = $('sumSentence');
+      if (hasAmt && cat) { s.textContent = money(amt) + ' spent on ' + cat.toLowerCase() + (date ? ' on ' + longDate(date) : '') + '.'; s.className = 'mt-1 text-sm font-medium leading-relaxed text-slate-800'; }
+      else { s.textContent = 'Fill in the amount and category to see a summary.'; s.className = 'mt-1 text-sm leading-relaxed text-slate-400'; }
+      $('sumAmount').textContent = hasAmt ? money(amt) : '-';
+      $('sumDate').textContent = date ? parts(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
+      $('sumShop').textContent = shop || '-';
+    }
+
+    form.addEventListener('input', refresh); form.addEventListener('change', refresh);
+    catEl.addEventListener('blur', function () { catEl.value = catEl.value.trim(); refresh(); });
+    document.querySelectorAll('.cat-chip').forEach(function (b) { b.addEventListener('click', function () { catEl.value = b.dataset.category; refresh(); (amountEl.value ? noteEl : amountEl).focus(); }); });
+    document.querySelectorAll('.day-btn').forEach(function (b) {
+      b.addEventListener('click', function () { var d = new Date(); d.setDate(d.getDate() - Number(b.dataset.day)); dateEl.value = ymd(d); refresh(); });
+    });
+
+    form.addEventListener('submit', function (e) {
+      if (!(parseFloat(amountEl.value) > 0)) { e.preventDefault(); amountEl.focus(); if (typeof Toast !== 'undefined') Toast.fire({ icon: 'warning', title: 'Enter an amount greater than zero', timer: 1800 }); return; }
+      if (!catEl.value.trim()) { e.preventDefault(); catEl.focus(); return; }
+      var b = $('saveBtn'); b.disabled = true; b.innerHTML = '<i class="fas fa-spinner fa-spin text-xs"></i><span>Saving</span>';
+    });
+    refresh();
+  })();
+</script>
 
 <%- include('../layouts/footer') %>

@@ -1,397 +1,394 @@
 <%- include('../layouts/header') %>
+<%
+  /* ---------- helpers & derived data ---------- */
+  const L       = locals;
+  const num     = (v) => Number(v || 0);
+  const money   = (v) => num(v).toLocaleString('en-US');
+  const admin   = typeof userRole !== 'undefined' && (userRole === 'superadmin' || userRole === 'admin');
+  const q       = { search: L.search || '', date: L.date || '', from: L.from || '', to: L.to || '' };
+  const cur     = Number(L.currentPage) || 1, pages = Number(L.totalPages) || 1;
+  const singleMode = !!q.date;
 
-  <div class="mb-6">
-    <h1 class="text-2xl font-bold tracking-tight text-slate-800">Stock Movement History</h1>
-    <p class="text-sm text-slate-500 mt-1">Audit ledger, financial margins, velocity aggregations, and combined stock performance records.</p>
-  </div>
+  const build = (overrides, page) => {
+    const p = new URLSearchParams();
+    ['search', 'date', 'from', 'to'].forEach(k => { const v = (k in overrides) ? overrides[k] : q[k]; if (v) p.set(k, v); });
+    if (page > 1) p.set('page', page);
+    const s = p.toString();
+    return '/stock' + (s ? '?' + s : '');
+  };
+  const chips = [];
+  if (q.search) chips.push({ key: 'search', text: 'Product: ' + q.search });
+  if (q.date)   chips.push({ key: 'date',   text: 'On ' + q.date });
+  if (q.from)   chips.push({ key: 'from',   text: 'From ' + q.from });
+  if (q.to)     chips.push({ key: 'to',     text: 'To ' + q.to });
+  const filtered = chips.length > 0;
+  const pageList = [...new Set([1, pages, cur - 1, cur, cur + 1])].filter(n => n >= 1 && n <= pages).sort((a, b) => a - b);
 
-  <!-- FILTER FORM -->
-  <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-6">
-    <form method="GET" action="/stock" class="flex flex-col lg:flex-row items-end gap-4">
+  /* Sales split */
+  const sales = num(L.totalSales), cash = num(L.cashSales), nonCash = num(L.nonCashSales);
+  const splitBase = cash + nonCash || sales || 1;
+  const cashPct = Math.round((cash / splitBase) * 100), nonCashPct = 100 - cashPct;
+  const profit = num(L.totalProfit), margin = sales > 0 ? Math.round((profit / sales) * 1000) / 10 : 0;
+  const net = num(L.netFinancialPosition);
 
-      <div class="w-full lg:flex-1 min-w-[200px]">
-        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Search Catalog Product</label>
-        <div class="relative">
-          <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
-            <i class="fas fa-search text-xs"></i>
-          </span>
-          <input type="text" name="search" value="<%= search %>" placeholder="Type product name..."
-            class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg pl-9 pr-3 py-1.5 text-sm focus:outline-none focus:border-brand-teal transition duration-150">
+  /* Daily volume: one row per day with stock in and sold side by side */
+  const dayKey = (v) => v instanceof Date ? v.toISOString().slice(0, 10) : String(v || '').slice(0, 10);
+  const dayMap = new Map();
+  (L.dailySummary || []).forEach(d => {
+    const k = dayKey(d.dataValues ? d.dataValues.date : d.date); if (!dayMap.has(k)) dayMap.set(k, { key: k, IN: 0, OUT: 0 });
+    dayMap.get(k)[d.type === 'IN' ? 'IN' : 'OUT'] += num(d.dataValues ? d.dataValues.total_quantity : d.total_quantity);
+  });
+  const days = [...dayMap.values()];
+  const dayMax = days.reduce((m, d) => Math.max(m, d.IN, d.OUT), 0);
+  const shortDay = (key) => { const [y, m, d] = key.split('-').map(Number); const dt = new Date(y, (m || 1) - 1, d || 1); return isNaN(dt) ? key : dt.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }); };
+
+  /* Ledger rows */
+  const rows = (L.movements || []).map(m => {
+    const p = m.Product, qty = num(m.quantity), out = m.type === 'OUT';
+    const sell = p ? num(p.sell_price) : 0, buy = p ? num(p.buy_price) : 0;
+    const revenue = out ? qty * sell : null, cost = qty * buy, pf = out ? revenue - cost : null;
+    const when = new Date(m.createdAt || m.created_at);
+    return {
+      name: p ? p.name : null, out, qty, revenue, cost, profit: pf, ref: m.reference || '',
+      margin: (out && revenue > 0) ? Math.round((pf / revenue) * 1000) / 10 : null,
+      iso: isNaN(when) ? '' : when.toISOString(), known: !!p
+    };
+  });
+  const nOut = rows.filter(r => r.out).length, nIn = rows.length - nOut;
+  const field = 'w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-brand-teal focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-teal/20';
+  const stat = (label, value, tone, hint) => `<div class="flex items-center justify-between gap-3 py-3"><dt><p class="text-sm text-slate-600">${label}</p>${hint ? `<p class="text-xs text-slate-400">${hint}</p>` : ''}</dt><dd class="amt shrink-0 text-right text-base font-bold tabular-nums ${tone}">TSh ${money(value)}</dd></div>`;
+%>
+
+<div class="space-y-6">
+
+  <p class="max-w-2xl text-sm text-slate-500">Every stock movement with its sales, margins and the money position behind it.</p>
+
+  <!-- ============ Filters ============ -->
+  <section class="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6">
+    <form id="filterForm" method="GET" action="/stock" class="space-y-4">
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="mr-1 text-sm text-slate-500">Quick pick</span>
+        <% [['today', 'Today'], ['yesterday', 'Yesterday'], ['week', 'This week'], ['month', 'This month'], ['lastMonth', 'Last month']].forEach(c => { %>
+          <button type="button" data-range="<%= c[0] %>" class="range-chip rounded-full border border-slate-200 px-3 py-1 text-sm font-medium text-slate-600 transition-colors hover:border-brand-teal/40 hover:text-brand-teal"><%= c[1] %></button>
+        <% }) %>
+      </div>
+
+      <div class="grid gap-3 md:grid-cols-[1.4fr_auto_1fr_1fr_auto] md:items-end">
+        <div>
+          <label for="search" class="mb-1.5 block text-sm font-medium text-slate-700">Product</label>
+          <div class="relative">
+            <i class="fas fa-search pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
+            <input id="search" type="text" name="search" value="<%= q.search %>" autocomplete="off" placeholder="Search by product name" class="<%= field %> pl-10 pr-3">
+          </div>
+        </div>
+
+        <div>
+          <span class="mb-1.5 block text-sm font-medium text-slate-700">Dates</span>
+          <div role="group" aria-label="Date filter type" class="inline-flex rounded-xl bg-slate-100 p-1">
+            <button type="button" data-mode="range" aria-pressed="<%= !singleMode %>" class="mode-btn rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors">Range</button>
+            <button type="button" data-mode="single" aria-pressed="<%= singleMode %>" class="mode-btn rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors">One day</button>
+          </div>
+        </div>
+
+        <div data-for="range" class="<%= singleMode ? 'hidden' : '' %>">
+          <label for="from" class="mb-1.5 block text-sm font-medium text-slate-700">From</label>
+          <input id="from" type="date" name="from" value="<%= q.from %>" <%= singleMode ? 'disabled' : '' %> class="<%= field %> px-3">
+        </div>
+        <div data-for="range" class="<%= singleMode ? 'hidden' : '' %>">
+          <label for="to" class="mb-1.5 block text-sm font-medium text-slate-700">To</label>
+          <input id="to" type="date" name="to" value="<%= q.to %>" min="<%= q.from %>" <%= singleMode ? 'disabled' : '' %> class="<%= field %> px-3">
+        </div>
+        <div data-for="single" class="md:col-span-2 <%= singleMode ? '' : 'hidden' %>">
+          <label for="date" class="mb-1.5 block text-sm font-medium text-slate-700">Day</label>
+          <input id="date" type="date" name="date" value="<%= q.date %>" <%= singleMode ? '' : 'disabled' %> class="<%= field %> px-3">
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button type="submit" class="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-brand-teal px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-tealDark md:flex-none"><i class="fas fa-search text-xs"></i>Search</button>
+          <% if (filtered) { %><a href="/stock" class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">Reset</a><% } %>
         </div>
       </div>
-
-      <div class="w-full sm:w-auto flex-1 min-w-[150px]">
-        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Single Target Day</label>
-        <input type="date" name="date" value="<%= date || '' %>"
-          class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-brand-teal transition duration-150">
-      </div>
-
-      <div class="w-full sm:w-auto flex-1 min-w-[150px]">
-        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Origin (From)</label>
-        <input type="date" name="from" value="<%= from || '' %>"
-          class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-brand-teal transition duration-150">
-      </div>
-
-      <div class="w-full sm:w-auto flex-1 min-w-[150px]">
-        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Terminal (To)</label>
-        <input type="date" name="to" value="<%= to || '' %>"
-          class="w-full bg-slate-50 border border-slate-200 text-slate-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-brand-teal transition duration-150">
-      </div>
-
-      <div class="w-full lg:w-auto flex items-center gap-2 shrink-0 pt-2 lg:pt-0">
-        <button type="submit"
-          class="flex-1 lg:flex-none inline-flex items-center justify-center gap-2 px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold rounded-lg transition duration-150 shadow-sm whitespace-nowrap">
-          <i class="fas fa-sliders-h text-xs text-slate-400"></i> Apply Filters
-        </button>
-
-        <a href="/stock"
-          class="inline-flex items-center justify-center px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 text-sm font-semibold rounded-lg border border-slate-200 transition duration-150">
-          Reset
-        </a>
-      </div>
-
     </form>
+
+    <% if (chips.length) { %>
+      <div class="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
+        <span class="text-sm text-slate-500">Filtering by</span>
+        <% chips.forEach(c => { %>
+          <a href="<%= build({ [c.key]: '' }, 1) %>" aria-label="Remove filter <%= c.text %>" class="group inline-flex items-center gap-2 rounded-full bg-brand-teal/10 px-3 py-1 text-sm font-medium text-brand-tealDark transition-colors hover:bg-rose-50 hover:text-rose-700"><%= c.text %><i class="fas fa-times text-[10px] opacity-60 group-hover:opacity-100"></i></a>
+        <% }) %>
+      </div>
+    <% } %>
+  </section>
+
+  <!-- ============ Summary ============ -->
+  <div class="flex items-center justify-between">
+    <h2 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>Summary</h2>
+    <button type="button" id="privacyToggle" aria-pressed="false" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-600 transition-colors hover:border-brand-teal/40 hover:text-brand-teal"><i class="far fa-eye text-xs"></i><span>Hide amounts</span></button>
   </div>
 
-  <!-- FINANCIAL & METRIC SUMMARY CARDS -->
-  <div class="mb-6 space-y-4">
+  <div id="summary" class="grid gap-5 lg:grid-cols-3">
 
-    <!-- ROW 1: PRIMARY SALES & PROFIT METRICS -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-
-      <!-- TOTAL SALES REVENUE -->
-      <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between min-h-[92px]">
-        <div class="min-w-0 pr-2">
-          <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">Total Sales</p>
-          <h2 class="text-lg font-mono font-black text-slate-800 mt-1 truncate">
-            TSh <%= Number(totalSales || 0).toLocaleString() %>
-          </h2>
-        </div>
-        <div class="text-brand-teal bg-teal-50/60 w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
-          <i class="fas fa-cash-register text-sm"></i>
-        </div>
+    <!-- Sales -->
+    <section class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
+      <div class="relative bg-teal-50 p-6">
+        <span class="absolute inset-x-0 top-0 h-1 bg-brand-gold"></span>
+        <p class="text-sm font-semibold text-brand-teal">Total sales</p>
+        <p class="mt-2 flex flex-wrap items-baseline gap-x-2 tabular-nums text-brand-tealDark"><span class="text-lg font-semibold opacity-70">TSh</span><span class="amt text-3xl font-extrabold tracking-tight"><%= money(sales) %></span></p>
       </div>
-
-      <!-- CASH SALES -->
-      <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between min-h-[92px]">
-        <div class="min-w-0 pr-2">
-          <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">Cash Sales</p>
-          <h2 class="text-lg font-mono font-black text-emerald-600 mt-1 truncate">
-            TSh <%= Number(cashSales || 0).toLocaleString() %>
-          </h2>
+      <div class="p-6">
+        <div class="flex h-3 overflow-hidden rounded-full bg-slate-100" role="img" aria-label="<%= cashPct %> percent cash, <%= nonCashPct %> percent non-cash">
+          <div class="h-full bg-emerald-500" style="width: <%= cashPct %>%"></div>
+          <div class="h-full bg-sky-500" style="width: <%= nonCashPct %>%"></div>
         </div>
-        <div class="text-emerald-500 bg-emerald-50 w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
-          <i class="fas fa-money-bill-wave text-sm"></i>
-        </div>
+        <dl class="mt-4 space-y-3 text-sm tabular-nums">
+          <div class="flex items-center justify-between"><dt class="flex items-center gap-2 text-slate-600"><span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>Cash sales</dt><dd class="amt font-semibold text-slate-800">TSh <%= money(cash) %></dd></div>
+          <div class="flex items-center justify-between"><dt class="flex items-center gap-2 text-slate-600"><span class="h-2.5 w-2.5 rounded-full bg-sky-500"></span>Non-cash sales</dt><dd class="amt font-semibold text-slate-800">TSh <%= money(nonCash) %></dd></div>
+        </dl>
       </div>
+    </section>
 
-      <!-- NON-CASH SALES -->
-      <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between min-h-[92px]">
-        <div class="min-w-0 pr-2">
-          <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">Non-Cash Sales</p>
-          <h2 class="text-lg font-mono font-black text-sky-600 mt-1 truncate">
-            TSh <%= Number(nonCashSales || 0).toLocaleString() %>
-          </h2>
-        </div>
-        <div class="text-sky-500 bg-sky-50 w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
-          <i class="fas fa-credit-card text-sm"></i>
-        </div>
+    <!-- Profit and costs -->
+    <section class="rounded-2xl border border-slate-200/80 bg-white p-6">
+      <h3 class="text-sm font-semibold text-slate-800"><%= admin ? 'Profit and costs' : 'Spending' %></h3>
+      <dl class="mt-2 divide-y divide-slate-100">
+        <% if (admin) { %>
+          <%- stat('Calculated profit', profit, 'text-emerald-700', margin + '% of sales') %>
+          <%- stat('Cost of goods sold', L.totalSoldProductsCost, 'text-amber-700', 'What the sold items cost') %>
+          <%- stat('Stock value at cost', L.totalRegisteredProductsCost, 'text-brand-teal', 'Products on your shelves') %>
+        <% } %>
+        <%- stat('Total expenses', L.totalExpenses, 'text-rose-600', 'Money spent so far') %>
+      </dl>
+    </section>
+
+    <!-- Money position -->
+    <section class="rounded-2xl border border-slate-200/80 bg-white p-6">
+      <h3 class="text-sm font-semibold text-slate-800">Money position</h3>
+      <dl class="mt-2 divide-y divide-slate-100">
+        <%- stat('Cash in hand', L.cashInHand, 'text-emerald-700', 'Money you can use today') %>
+        <%- stat('Owed to you', L.debtsOwedToYou, 'text-brand-teal', 'Pending customer debts') %>
+        <%- stat('You owe', L.debtsYouOwe, 'text-amber-700', 'Pending supplier debts') %>
+      </dl>
+      <div class="mt-3 flex items-baseline justify-between rounded-xl bg-teal-50 px-4 py-3.5">
+        <span class="text-sm font-bold text-brand-tealDark">Net position</span>
+        <span class="amt text-xl font-extrabold tabular-nums <%= net < 0 ? 'text-rose-600' : 'text-brand-tealDark' %>"><span class="text-xs font-semibold opacity-70">TSh</span> <%= money(net) %></span>
       </div>
-
-      <!-- CALCULATED PROFIT (Admin/Superadmin Only) -->
-      <% if (typeof userRole !== 'undefined' && (userRole === 'superadmin' || userRole === 'admin')) { %>
-        <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between min-h-[92px]">
-          <div class="min-w-0 pr-2">
-            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">Calculated Profit</p>
-            <h2 class="text-lg font-mono font-black text-emerald-600 mt-1 truncate">
-              TSh <%= Number(totalProfit || 0).toLocaleString() %>
-            </h2>
-          </div>
-          <div class="text-emerald-500 bg-emerald-50 w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
-            <i class="fas fa-wallet text-sm"></i>
-          </div>
-        </div>
-      <% } %>
-
-    </div>
-
-    <!-- ROW 2: COSTS, EXPENSES & DEBTS -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-
-      <!-- REGISTERED STOCK COST (Admin/Superadmin Only) -->
-      <% if (typeof userRole !== 'undefined' && (userRole === 'superadmin' || userRole === 'admin')) { %>
-        <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between min-h-[92px]">
-          <div class="min-w-0 pr-2">
-            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">Stock Value (Cost)</p>
-            <h2 class="text-lg font-mono font-black text-indigo-700 mt-1 truncate">
-              TSh <%= Number(totalRegisteredProductsCost || 0).toLocaleString() %>
-            </h2>
-          </div>
-          <div class="text-indigo-600 bg-indigo-50 w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
-            <i class="fas fa-warehouse text-sm"></i>
-          </div>
-        </div>
-      <% } %>
-
-      <!-- COST OF GOODS SOLD - COGS (Admin/Superadmin Only) -->
-      <% if (typeof userRole !== 'undefined' && (userRole === 'superadmin' || userRole === 'admin')) { %>
-        <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between min-h-[92px]">
-          <div class="min-w-0 pr-2">
-            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">Cost of Goods Sold</p>
-            <h2 class="text-lg font-mono font-black text-amber-700 mt-1 truncate">
-              TSh <%= Number(totalSoldProductsCost || 0).toLocaleString() %>
-            </h2>
-          </div>
-          <div class="text-amber-600 bg-amber-50 w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
-            <i class="fas fa-tags text-sm"></i>
-          </div>
-        </div>
-      <% } %>
-
-      <!-- TOTAL EXPENSES -->
-      <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between min-h-[92px]">
-        <div class="min-w-0 pr-2">
-          <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">Total Expenses</p>
-          <h2 class="text-lg font-mono font-black text-rose-600 mt-1 truncate">
-            TSh <%= Number(totalExpenses || 0).toLocaleString() %>
-          </h2>
-        </div>
-        <div class="text-rose-500 bg-rose-50 w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
-          <i class="fas fa-receipt text-sm"></i>
-        </div>
-      </div>
-
-      <!-- DEBTS OWED TO YOU -->
-      <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between min-h-[92px]">
-        <div class="min-w-0 pr-2">
-          <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">Debts Owed To You</p>
-          <h2 class="text-lg font-mono font-black text-indigo-600 mt-1 truncate">
-            TSh <%= Number(debtsOwedToYou || 0).toLocaleString() %>
-          </h2>
-        </div>
-        <div class="text-indigo-500 bg-indigo-50 w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
-          <i class="fas fa-hand-holding-usd text-sm"></i>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- ROW 3: DEBTS YOU OWE, CASH IN HAND & NET POSITION -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-
-      <!-- DEBTS YOU OWE -->
-      <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between min-h-[92px]">
-        <div class="min-w-0 pr-2">
-          <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">Debts You Owe</p>
-          <h2 class="text-lg font-mono font-black text-amber-600 mt-1 truncate">
-            TSh <%= Number(debtsYouOwe || 0).toLocaleString() %>
-          </h2>
-        </div>
-        <div class="text-amber-500 bg-amber-50 w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
-          <i class="fas fa-file-invoice-dollar text-sm"></i>
-        </div>
-      </div>
-
-      <!-- CASH IN HAND -->
-      <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between ring-1 ring-emerald-500/10 min-h-[92px]">
-        <div class="min-w-0 pr-2">
-          <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">Cash In Hand (Liquid)</p>
-          <h2 class="text-lg font-mono font-black text-emerald-700 mt-1 truncate">
-            TSh <%= Number(cashInHand || 0).toLocaleString() %>
-          </h2>
-        </div>
-        <div class="text-emerald-600 bg-emerald-100/70 w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
-          <i class="fas fa-coins text-sm"></i>
-        </div>
-      </div>
-
-      <!-- NET FINANCIAL POSITION -->
-      <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between ring-1 ring-brand-teal/10 min-h-[92px]">
-        <div class="min-w-0 pr-2">
-          <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">Net Financial Position</p>
-          <h2 class="text-lg font-mono font-black text-brand-teal mt-1 truncate">
-            TSh <%= Number(netFinancialPosition || 0).toLocaleString() %>
-          </h2>
-        </div>
-        <div class="text-brand-teal bg-teal-100/70 w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
-          <i class="fas fa-scale-balanced text-sm"></i>
-        </div>
-      </div>
-
-    </div>
-
+    </section>
   </div>
 
-  <!-- DAILY VELOCITY & OPERATIONAL LEDGER -->
-  <div class="flex flex-col xl:flex-row gap-6 items-start mb-6">
+  <!-- ============ Daily volume + ledger ============ -->
+  <div class="grid items-start gap-6 xl:grid-cols-[20rem_minmax(0,1fr)]">
 
-    <!-- DAILY VOLUME VELOCITY TABLE -->
-    <div class="w-full xl:w-80 shrink-0 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-      <div class="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
-        <div class="w-1.5 h-1.5 rounded-full bg-brand-gold"></div>
-        <h3 class="font-bold text-slate-800 text-xs tracking-wide uppercase">Daily Volume Velocity</h3>
+    <section class="rounded-2xl border border-slate-200/80 bg-white">
+      <div class="px-5 pt-5">
+        <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>Daily volume</h3>
+        <p class="mt-1 flex items-center gap-4 text-xs text-slate-500"><span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-emerald-500"></span>Stock in</span><span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-brand-teal"></span>Sold</span></p>
+      </div>
+      <% if (days.length) { %>
+        <ul class="mt-4 max-h-[34rem] divide-y divide-slate-100 overflow-y-auto border-t border-slate-100">
+          <% days.forEach(d => { %>
+            <li class="px-5 py-3.5">
+              <p class="text-sm font-semibold text-slate-700"><%= shortDay(d.key) %></p>
+              <div class="mt-2 space-y-1.5 text-xs tabular-nums">
+                <div class="flex items-center gap-2"><div class="h-2 flex-1 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full bg-emerald-500" style="width: <%= dayMax ? Math.round((d.IN / dayMax) * 100) : 0 %>%"></div></div><span class="w-10 text-right font-semibold text-slate-700"><%= money(d.IN) %></span></div>
+                <div class="flex items-center gap-2"><div class="h-2 flex-1 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full bg-brand-teal" style="width: <%= dayMax ? Math.round((d.OUT / dayMax) * 100) : 0 %>%"></div></div><span class="w-10 text-right font-semibold text-slate-700"><%= money(d.OUT) %></span></div>
+              </div>
+            </li>
+          <% }) %>
+        </ul>
+      <% } else { %>
+        <div class="mt-4 border-t border-slate-100 px-5 py-10 text-center"><span class="mx-auto grid h-11 w-11 place-items-center rounded-full bg-slate-100 text-slate-400"><i class="fas fa-chart-bar"></i></span><p class="mt-3 text-sm font-medium text-slate-700">No movement yet</p><p class="mt-1 text-sm text-slate-500">Daily totals will appear here.</p></div>
+      <% } %>
+    </section>
+
+    <section class="min-w-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
+      <div class="flex flex-wrap items-center justify-between gap-3 px-5 pt-5 sm:px-6">
+        <div>
+          <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>Movement ledger</h3>
+          <p class="mt-1 text-sm text-slate-500"><%= rows.length %> <%= rows.length === 1 ? 'record' : 'records' %><%= pages > 1 ? ' on this page' : '' %></p>
+        </div>
+        <button type="button" id="exportCsv" <%= rows.length ? '' : 'disabled' %> class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-600 transition-colors hover:border-brand-teal/40 hover:text-brand-teal disabled:cursor-not-allowed disabled:opacity-50"><i class="fas fa-file-download text-xs"></i>Export CSV</button>
       </div>
 
-      <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse whitespace-nowrap">
+      <% if (rows.length) { %>
+        <div role="tablist" aria-label="Filter by movement" class="mx-5 mt-4 inline-flex rounded-xl bg-slate-100 p-1 sm:mx-6">
+          <% [['all', 'All', rows.length], ['OUT', 'Sold', nOut], ['IN', 'Stock in', nIn]].forEach((t, i) => { %>
+            <button type="button" role="tab" data-type="<%= t[0] %>" aria-selected="<%= i === 0 %>" class="type-tab rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors <%= i === 0 ? 'bg-white text-brand-tealDark shadow-sm' : 'text-slate-600 hover:text-brand-teal' %>"><%= t[1] %> <span class="ml-1 tabular-nums text-slate-400"><%= t[2] %></span></button>
+          <% }) %>
+        </div>
+      <% } %>
+
+      <div class="mt-4 overflow-x-auto border-t border-slate-100">
+        <table class="w-full text-left text-sm">
           <thead>
-            <tr class="bg-slate-50/70 border-b border-slate-200 text-slate-400 text-[10px] font-bold uppercase tracking-wider">
-              <th class="py-2.5 px-4">Date</th>
-              <th class="py-2.5 px-2 text-center">Type</th>
-              <th class="py-2.5 px-4 text-right">Sum Qty</th>
+            <tr class="text-xs font-medium text-slate-500">
+              <th scope="col" class="px-5 py-3 sm:px-6">When</th>
+              <th scope="col" class="px-3 py-3">Product</th>
+              <th scope="col" class="px-3 py-3">Movement</th>
+              <th scope="col" class="px-3 py-3 text-right">Revenue</th>
+              <% if (admin) { %><th scope="col" class="hidden px-3 py-3 text-right lg:table-cell">Cost</th><th scope="col" class="px-3 py-3 pr-5 text-right sm:pr-6">Profit</th><% } %>
             </tr>
           </thead>
-          <tbody class="text-xs divide-y divide-slate-100 text-slate-700">
-            <% if (dailySummary && dailySummary.length > 0) { %>
-              <% dailySummary.forEach(d => { %>
-                <tr class="hover:bg-slate-50/40 transition duration-75">
-                  <td class="py-2.5 px-4 font-medium text-slate-600">
-                    <%= d.dataValues.date %>
+          <tbody id="ledgerBody" class="divide-y divide-slate-100">
+            <% if (rows.length) { %>
+              <% rows.forEach((r, i) => { %>
+                <tr class="ledger-row transition-colors hover:bg-brand-teal/[0.03]" data-type="<%= r.out ? 'OUT' : 'IN' %>" data-i="<%= i %>">
+                  <td class="whitespace-nowrap px-5 py-3.5 text-xs text-slate-500 sm:px-6"><% if (r.iso) { %><time data-dt datetime="<%= r.iso %>"><%= r.iso.substr(0, 10) %></time><% } else { %>-<% } %></td>
+                  <td class="px-3 py-3.5">
+                    <% if (r.known) { %><p class="font-semibold text-slate-800"><%= r.name %></p><% } else { %><p class="italic text-slate-400">Product no longer available</p><% } %>
+                    <p class="mt-0.5 text-xs"><% if (r.ref) { %><span class="rounded bg-slate-100 px-1.5 py-0.5 font-mono font-semibold text-slate-600"><%= r.ref %></span><% } else { %><span class="text-slate-400">Internal log</span><% } %></p>
                   </td>
-                  <td class="py-2.5 px-2 text-center">
-                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold font-mono uppercase <%= d.type === 'IN' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700' %>">
-                      <%= d.type %>
-                    </span>
+                  <td class="whitespace-nowrap px-3 py-3.5">
+                    <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset <%= r.out ? 'bg-teal-50 text-brand-tealDark ring-brand-teal/20' : 'bg-emerald-50 text-emerald-700 ring-emerald-600/15' %>"><i class="fas <%= r.out ? 'fa-arrow-up' : 'fa-arrow-down' %> text-[9px]"></i><%= r.out ? 'Sold' : 'Stock in' %></span>
+                    <span class="ml-1.5 font-bold tabular-nums <%= r.out ? 'text-slate-700' : 'text-emerald-700' %>"><%= r.out ? '\u2212' : '+' %><%= r.qty %></span>
                   </td>
-                  <td class="py-2.5 px-4 text-right font-mono font-bold text-slate-800">
-                    <%= d.dataValues.total_quantity %>
-                  </td>
-                </tr>
-              <% }) %>
-            <% } else { %>
-              <tr>
-                <td colspan="3" class="py-6 text-center text-xs italic text-slate-400">No velocity trends found.</td>
-              </tr>
-            <% } %>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- MAIN OPERATIONAL LEDGER -->
-    <div class="flex-1 w-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-      <div class="px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-        <h3 class="font-bold text-slate-800 text-xs tracking-wide uppercase">Unified Operational & Margin Ledger</h3>
-        <span class="text-[11px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200/50 font-semibold">
-          Active Viewport: <%= movements ? movements.length : 0 %> Records
-        </span>
-      </div>
-
-      <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse whitespace-nowrap text-sm">
-          <thead>
-            <tr class="bg-slate-50/70 border-b border-slate-200 text-slate-400 text-[11px] font-bold uppercase tracking-wider">
-              <th class="py-3.5 px-4">Timestamp</th>
-              <th class="py-3.5 px-4">Product Description</th>
-              <th class="py-3.5 px-2 text-center">Type</th>
-              <th class="py-3.5 px-3 text-center">Qty</th>
-              <th class="py-3.5 px-4 text-right">Gross Rev</th>
-              <% if (typeof userRole !== 'undefined' && (userRole === 'superadmin' || userRole === 'admin')) { %>
-                <th class="py-3.5 px-4 text-right">Acquisition Cost</th>
-              <% } %>
-              <% if (typeof userRole !== 'undefined' && (userRole === 'superadmin' || userRole === 'admin')) { %>
-                <th class="py-3.5 px-4 text-right">Net Profit</th>
-              <% } %>
-              <th class="py-3.5 px-4 text-center">Margin</th>
-              <th class="py-3.5 px-4 text-right">Ref Code</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100 text-slate-700 text-xs">
-            <% if (movements && movements.length > 0) { %>
-              <% movements.forEach(m => { %>
-                <tr class="hover:bg-slate-50/50 transition duration-150">
-
-                  <td class="py-3.5 px-4 text-slate-500 font-medium">
-                    <%= new Date(m.createdAt || m.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) %>
-                  </td>
-
-                  <td class="py-3.5 px-4 font-semibold text-slate-800">
-                    <%= m.Product ? m.Product.name : 'Unknown Catalog Item' %>
-                  </td>
-
-                  <td class="py-3.5 px-2 text-center">
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold font-mono <%= m.type === 'IN' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700' %>">
-                      <%= m.type %>
-                    </span>
-                  </td>
-
-                  <td class="py-3.5 px-3 text-center font-mono font-bold">
-                    <%= m.type === 'IN' ? '+' : '-' %><%= m.quantity %>
-                  </td>
-
-                  <% if (m.type === 'OUT' && m.Product) { %>
-                    <% 
-                      let lineRevenue = m.quantity * parseFloat(m.Product.sell_price || 0); 
-                      let lineCost = m.quantity * parseFloat(m.Product.buy_price || 0); 
-                      let lineProfit = lineRevenue - lineCost; 
-                      let marginPercent = lineRevenue > 0 ? ((lineProfit / lineRevenue) * 100).toFixed(1) : 0;
-                    %>
-                    <td class="py-3.5 px-4 text-right font-mono text-slate-700">TSh <%= lineRevenue.toLocaleString() %></td>
-                    <% if (typeof userRole !== 'undefined' && (userRole === 'superadmin' || userRole === 'admin')) { %>
-                      <td class="py-3.5 px-4 text-right font-mono text-slate-400">TSh <%= lineCost.toLocaleString() %></td>
-                    <% } %>
-                    <% if (typeof userRole !== 'undefined' && (userRole === 'superadmin' || userRole === 'admin')) { %>
-                      <td class="py-3.5 px-4 text-right font-mono font-bold text-emerald-600 bg-emerald-50/20">TSh <%= lineProfit.toLocaleString() %></td>
-                    <% } %>
-                    <td class="py-3.5 px-4 text-center font-mono font-bold text-emerald-700"><%= marginPercent %>%</td>
-                  <% } else if (m.type === 'IN' && m.Product) { %>
-                    <% let restockCost = m.quantity * parseFloat(m.Product.buy_price || 0); %>
-                    <td class="py-3.5 px-4 text-right text-slate-300 italic font-sans">—</td>
-                    <td class="py-3.5 px-4 text-right font-mono text-amber-600 bg-amber-50/10">TSh <%= restockCost.toLocaleString() %></td>
-                    <td class="py-3.5 px-4 text-right text-slate-300 italic font-sans">—</td>
-                    <td class="py-3.5 px-4 text-center text-slate-300 italic font-sans">—</td>
-                  <% } else { %>
-                    <td colspan="4" class="py-3.5 px-4 text-center text-slate-400 italic">Reference product details detached</td>
+                  <td class="amt whitespace-nowrap px-3 py-3.5 text-right tabular-nums text-slate-800"><%= r.out && r.known ? 'TSh ' + money(r.revenue) : '-' %></td>
+                  <% if (admin) { %>
+                    <td class="amt hidden whitespace-nowrap px-3 py-3.5 text-right tabular-nums text-slate-500 lg:table-cell"><%= r.known ? 'TSh ' + money(r.cost) : '-' %></td>
+                    <td class="whitespace-nowrap px-3 py-3.5 pr-5 text-right sm:pr-6">
+                      <% if (r.out && r.known) { %>
+                        <p class="amt font-bold tabular-nums <%= r.profit < 0 ? 'text-rose-600' : 'text-emerald-700' %>">TSh <%= money(r.profit) %></p>
+                        <% if (r.margin !== null) { %><p class="text-xs tabular-nums text-slate-500"><%= r.margin %>% margin</p><% } %>
+                      <% } else { %><span class="text-slate-300">-</span><% } %>
+                    </td>
                   <% } %>
-
-                  <td class="py-3.5 px-4 text-right font-mono text-[10px]">
-                    <% if (m.reference) { %>
-                      <span class="text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded font-semibold">
-                        <%= m.reference %>
-                      </span>
-                    <% } else { %>
-                      <span class="text-slate-400 italic font-sans">Internal Log</span>
-                    <% } %>
-                  </td>
-
                 </tr>
               <% }) %>
             <% } else { %>
-              <tr>
-                <td colspan="9" class="py-12 text-center text-sm text-slate-400 italic">No matching operational or financial transaction rows found.</td>
-              </tr>
+              <tr><td colspan="<%= admin ? 6 : 4 %>" class="px-6 py-14 text-center">
+                <span class="mx-auto grid h-12 w-12 place-items-center rounded-full bg-brand-teal/10 text-brand-teal"><i class="fas fa-clipboard-list text-lg"></i></span>
+                <% if (filtered) { %>
+                  <p class="mt-4 text-sm font-semibold text-slate-800">No records match these filters</p>
+                  <p class="mt-1 text-sm text-slate-500">Try another product name or a wider date range.</p>
+                  <a href="/stock" class="mt-4 inline-flex rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-brand-teal hover:bg-brand-teal/5">Reset filters</a>
+                <% } else { %>
+                  <p class="mt-4 text-sm font-semibold text-slate-800">No stock movements yet</p>
+                  <p class="mt-1 text-sm text-slate-500">Sales and restocks will be listed here.</p>
+                <% } %>
+              </td></tr>
             <% } %>
           </tbody>
         </table>
       </div>
-    </div>
+      <p id="ledgerEmpty" class="hidden border-t border-slate-100 px-6 py-10 text-center text-sm text-slate-500">No records of this kind on this page.</p>
 
+      <% if (pages > 1) { %>
+        <nav aria-label="Pagination" class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-5 py-4 sm:px-6">
+          <p class="text-sm text-slate-500">Page <span class="font-semibold text-slate-800"><%= cur %></span> of <span class="font-semibold text-slate-800"><%= pages %></span></p>
+          <div class="inline-flex items-center gap-1">
+            <% if (cur > 1) { %><a href="<%= build({}, cur - 1) %>" aria-label="Previous page" class="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"><i class="fas fa-chevron-left text-xs"></i></a>
+            <% } else { %><span class="grid h-9 w-9 cursor-not-allowed place-items-center rounded-lg border border-slate-100 text-slate-300"><i class="fas fa-chevron-left text-xs"></i></span><% } %>
+            <% pageList.forEach((n, i) => { %>
+              <% if (i > 0 && n - pageList[i - 1] > 1) { %><span class="px-1 text-slate-400">&hellip;</span><% } %>
+              <% if (n === cur) { %><span aria-current="page" class="grid h-9 min-w-[2.25rem] place-items-center rounded-lg bg-brand-teal px-2 text-sm font-bold text-white"><%= n %></span>
+              <% } else { %><a href="<%= build({}, n) %>" class="grid h-9 min-w-[2.25rem] place-items-center rounded-lg border border-slate-200 px-2 text-sm font-medium text-slate-600 hover:bg-slate-50"><%= n %></a><% } %>
+            <% }) %>
+            <% if (cur < pages) { %><a href="<%= build({}, cur + 1) %>" aria-label="Next page" class="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"><i class="fas fa-chevron-right text-xs"></i></a>
+            <% } else { %><span class="grid h-9 w-9 cursor-not-allowed place-items-center rounded-lg border border-slate-100 text-slate-300"><i class="fas fa-chevron-right text-xs"></i></span><% } %>
+          </div>
+        </nav>
+      <% } %>
+    </section>
   </div>
+</div>
 
-  <!-- PAGINATION -->
-  <% if (totalPages > 1) { %>
-    <div class="flex justify-center items-center gap-1.5 mt-4 mb-8">
-      <% if (currentPage > 1) { %>
-        <a href="/stock?page=<%= Number(currentPage) - 1 %>&search=<%= search %>&date=<%= date || '' %>&from=<%= from || '' %>&to=<%= to || '' %>"
-          class="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 text-xs font-semibold rounded-lg hover:bg-slate-50 transition duration-150">
-          <i class="fas fa-chevron-left"></i>
-        </a>
-      <% } %>
+<script type="application/json" id="ledgerData"><%- JSON.stringify({ admin: admin, rows: rows }).replace(/</g, '\\u003c') %></script>
 
-      <% for (let i = 1; i <= totalPages; i++) { %>
-        <a href="/stock?page=<%= i %>&search=<%= search %>&date=<%= date || '' %>&from=<%= from || '' %>&to=<%= to || '' %>"
-          class="px-3.5 py-1.5 text-xs font-mono font-bold rounded-lg border transition duration-150 <%= currentPage == i ? 'bg-slate-800 border-slate-800 text-white shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50' %>">
-          <%= i %>
-        </a>
-      <% } %>
+<style>
+  #summary.privacy .amt { filter: blur(9px); user-select: none; }
+  .amt { transition: filter .2s ease; }
+</style>
 
-      <% if (currentPage < totalPages) { %>
-        <a href="/stock?page=<%= Number(currentPage) + 1 %>&search=<%= search %>&date=<%= date || '' %>&from=<%= from || '' %>&to=<%= to || '' %>"
-          class="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 text-xs font-semibold rounded-lg hover:bg-slate-50 transition duration-150">
-          <i class="fas fa-chevron-right"></i>
-        </a>
-      <% } %>
-    </div>
-  <% } %>
+<script>
+  /* Wrapped in a function so it cannot clash with the footer's Toast and Dialog */
+  (function () {
+    var $ = function (id) { return document.getElementById(id); };
+    var form = $('filterForm'), fromEl = $('from'), toEl = $('to'), dayEl = $('date');
+
+    /* Times in the viewer's own time zone */
+    document.querySelectorAll('time[data-dt]').forEach(function (t) {
+      var d = new Date(t.getAttribute('datetime')); if (isNaN(d)) return;
+      t.textContent = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ', ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    });
+
+    /* Range or one day */
+    function setMode(mode) {
+      var single = mode === 'single';
+      document.querySelectorAll('[data-for="range"]').forEach(function (n) { n.classList.toggle('hidden', single); });
+      document.querySelectorAll('[data-for="single"]').forEach(function (n) { n.classList.toggle('hidden', !single); });
+      fromEl.disabled = single; toEl.disabled = single; dayEl.disabled = !single;
+      document.querySelectorAll('.mode-btn').forEach(function (b) {
+        var on = b.dataset.mode === mode; b.setAttribute('aria-pressed', on);
+        b.classList.toggle('bg-white', on); b.classList.toggle('text-brand-tealDark', on); b.classList.toggle('shadow-sm', on); b.classList.toggle('text-slate-600', !on);
+      });
+    }
+    document.querySelectorAll('.mode-btn').forEach(function (b) { b.addEventListener('click', function () { setMode(b.dataset.mode); }); });
+    setMode(dayEl.disabled ? 'range' : 'single');
+    fromEl.addEventListener('change', function () { toEl.min = fromEl.value; if (toEl.value && toEl.value < fromEl.value) toEl.value = fromEl.value; });
+
+    /* Quick picks */
+    function ymd(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+    function pick(key) {
+      var t = new Date(), s = new Date(t), e = new Date(t);
+      if (key === 'today') return { single: ymd(t) };
+      if (key === 'yesterday') { s.setDate(t.getDate() - 1); return { single: ymd(s) }; }
+      if (key === 'week') s.setDate(t.getDate() - ((t.getDay() + 6) % 7));
+      if (key === 'month') s = new Date(t.getFullYear(), t.getMonth(), 1);
+      if (key === 'lastMonth') { s = new Date(t.getFullYear(), t.getMonth() - 1, 1); e = new Date(t.getFullYear(), t.getMonth(), 0); }
+      return { from: ymd(s), to: ymd(e) };
+    }
+    document.querySelectorAll('.range-chip').forEach(function (chip) {
+      var r = pick(chip.dataset.range);
+      var active = r.single ? (!dayEl.disabled && dayEl.value === r.single) : (!fromEl.disabled && fromEl.value === r.from && toEl.value === r.to);
+      if (active) chip.classList.add('border-brand-teal', 'bg-brand-teal/10', 'text-brand-tealDark');
+      chip.addEventListener('click', function () {
+        if (r.single) { setMode('single'); dayEl.value = r.single; fromEl.value = ''; toEl.value = ''; }
+        else { setMode('range'); fromEl.value = r.from; toEl.value = r.to; dayEl.value = ''; }
+        form.submit();
+      });
+    });
+
+    /* Hide amounts (same switch as the dashboard) */
+    var KEY = 'dv_hide_amounts', box = $('summary'), pbtn = $('privacyToggle');
+    function applyPrivacy(on) {
+      box.classList.toggle('privacy', on); document.getElementById('ledgerBody').classList.toggle('privacy', on); pbtn.setAttribute('aria-pressed', on);
+      pbtn.querySelector('span').textContent = on ? 'Show amounts' : 'Hide amounts'; pbtn.querySelector('i').className = (on ? 'far fa-eye-slash' : 'far fa-eye') + ' text-xs';
+      document.querySelectorAll('#ledgerBody .amt').forEach(function (n) { n.style.filter = on ? 'blur(9px)' : ''; });
+    }
+    var saved = false; try { saved = localStorage.getItem(KEY) === '1'; } catch (e) {}
+    applyPrivacy(saved);
+    pbtn.addEventListener('click', function () { var on = !box.classList.contains('privacy'); applyPrivacy(on); try { localStorage.setItem(KEY, on ? '1' : '0'); } catch (e) {} });
+
+    /* Ledger: filter by movement type */
+    var rowsEl = Array.prototype.slice.call(document.querySelectorAll('.ledger-row'));
+    document.querySelectorAll('.type-tab').forEach(function (t) {
+      t.addEventListener('click', function () {
+        var type = t.dataset.type, shown = 0;
+        document.querySelectorAll('.type-tab').forEach(function (x) {
+          var on = x === t; x.setAttribute('aria-selected', on);
+          x.classList.toggle('bg-white', on); x.classList.toggle('text-brand-tealDark', on); x.classList.toggle('shadow-sm', on); x.classList.toggle('text-slate-600', !on);
+        });
+        rowsEl.forEach(function (r) { var ok = type === 'all' || r.dataset.type === type; r.classList.toggle('hidden', !ok); if (ok) shown++; });
+        $('ledgerEmpty').classList.toggle('hidden', shown > 0);
+      });
+    });
+
+    /* Export the rows on this page */
+    var exp = $('exportCsv');
+    if (exp) exp.addEventListener('click', function () {
+      var data = JSON.parse($('ledgerData').textContent);
+      function q(v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; }
+      var head = ['Time', 'Product', 'Movement', 'Quantity', 'Revenue'].concat(data.admin ? ['Cost', 'Profit', 'Margin %'] : []).concat(['Reference']);
+      var lines = [head.map(q).join(',')];
+      data.rows.forEach(function (r) {
+        var d = new Date(r.iso), when = isNaN(d) ? '' : d.toLocaleDateString('en-GB') + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        var cols = [when, r.name || 'Unavailable product', r.out ? 'Sold' : 'Stock in', r.qty, r.revenue == null ? '' : r.revenue];
+        if (data.admin) cols = cols.concat([r.cost, r.profit == null ? '' : r.profit, r.margin == null ? '' : r.margin]);
+        lines.push(cols.concat([r.ref]).map(q).join(','));
+      });
+      var blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' }), a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = 'stock_movements.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
+    });
+  })();
+</script>
 
 <%- include('../layouts/footer') %>

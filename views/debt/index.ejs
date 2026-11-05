@@ -1,164 +1,278 @@
 <%- include('../layouts/header') %>
+<%
+  /* ---------- state & helpers ---------- */
+  const f      = (typeof filters !== 'undefined' && filters) ? filters : {};
+  const rows   = (typeof debts !== 'undefined' && debts) ? debts : [];
+  const pg     = (typeof pagination !== 'undefined' && pagination) ? pagination : { currentPage: 1, totalPages: 1 };
+  const cur    = Number(pg.currentPage) || 1, pages = Number(pg.totalPages) || 1;
+  const money  = (v) => Number(v || 0).toLocaleString('en-US');
+  const KEYS   = ['search', 'type', 'status', 'start_date', 'end_date'];
 
-<div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-  <div>
-    <h1 class="text-2xl font-bold tracking-tight text-slate-800">Debts & Credit Ledger</h1>
-    <p class="text-sm text-slate-500 mt-0.5">Manage outstanding customer debts and supplier balances.</p>
+  const build = (overrides, page) => {
+    const p = new URLSearchParams();
+    KEYS.forEach(k => { const v = (k in overrides) ? overrides[k] : f[k]; if (v) p.set(k, v); });
+    if (page > 1) p.set('page', page);
+    const s = p.toString();
+    return '/debts' + (s ? '?' + s : '');
+  };
+
+  const TYPES = {
+    CUSTOMER_DEBT:   { label: 'Customer debt',   hint: 'Owed to you', icon: 'fa-arrow-down', cls: 'bg-teal-50 text-brand-tealDark ring-brand-teal/20', tile: 'bg-brand-teal/10 text-brand-teal' },
+    SUPPLIER_DEBT:   { label: 'Supplier debt',   hint: 'You owe',     icon: 'fa-arrow-up',   cls: 'bg-amber-50 text-amber-800 ring-amber-600/20',      tile: 'bg-amber-50 text-amber-600' },
+    CUSTOMER_CREDIT: { label: 'Customer credit', hint: 'Credit held', icon: 'fa-wallet',     cls: 'bg-sky-50 text-sky-700 ring-sky-600/20',            tile: 'bg-sky-50 text-sky-600' }
+  };
+  const typeOf = (t) => TYPES[t] || { label: String(t || 'Entry').replace(/_/g, ' ').toLowerCase(), hint: '', icon: 'fa-file-invoice-dollar', cls: 'bg-slate-100 text-slate-600 ring-slate-500/15', tile: 'bg-slate-100 text-slate-500' };
+
+  /* Totals for the entries on this page */
+  const pendingSum = (t) => rows.filter(d => d.type === t && d.status === 'PENDING').reduce((s, d) => s + Number(d.amount || 0), 0);
+  const owedToYou = pendingSum('CUSTOMER_DEBT'), youOwe = pendingSum('SUPPLIER_DEBT'), creditHeld = pendingSum('CUSTOMER_CREDIT');
+
+  const chips = [];
+  if (f.search)     chips.push({ key: 'search',     text: 'Name: ' + f.search });
+  if (f.start_date) chips.push({ key: 'start_date', text: 'From ' + f.start_date });
+  if (f.end_date)   chips.push({ key: 'end_date',   text: 'To ' + f.end_date });
+  const filtered = chips.length > 0 || !!f.type || !!f.status;
+
+  const pageList = [...new Set([1, pages, cur - 1, cur, cur + 1])].filter(n => n >= 1 && n <= pages).sort((a, b) => a - b);
+  const field = 'w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-brand-teal focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-teal/20';
+  const initial = (n) => String(n || '?').trim().charAt(0).toUpperCase();
+%>
+
+<div class="space-y-6">
+
+  <!-- ============ Actions ============ -->
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <p class="max-w-xl text-sm text-slate-500">Keep track of money customers owe you, money you owe suppliers, and credit you hold for customers.</p>
+    <a href="/debts/create" class="inline-flex items-center gap-2 rounded-xl bg-brand-gold px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-goldHover">
+      <i class="fas fa-plus text-xs"></i>Record entry
+    </a>
   </div>
-  <a href="/debts/create" class="inline-flex items-center gap-2 px-4 py-2.5 bg-brand-teal hover:bg-brand-tealDark text-white text-sm font-semibold rounded-lg shadow-sm transition">
-    <i class="fas fa-plus text-xs"></i> Record New Entry
-  </a>
-</div>
 
-<!-- Filter Bar -->
-<div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 mb-6">
-  <form method="GET" action="/debts" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3">
-    <div>
-      <label class="block text-xs font-semibold text-slate-600 mb-1">Search Person</label>
-      <input type="text" name="search" value="<%= filters.search %>" placeholder="Name..." class="w-full bg-slate-50 border border-slate-200 rounded-lg py-1.5 px-3 text-xs text-slate-800 focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white outline-none">
+  <!-- ============ Totals ============ -->
+  <section aria-label="Totals for the entries below" class="grid gap-px overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 sm:grid-cols-3">
+    <div class="relative bg-teal-50 p-5">
+      <span class="absolute inset-x-0 top-0 h-1 bg-brand-teal"></span>
+      <p class="flex items-center gap-2 text-sm font-semibold text-brand-teal"><i class="fas fa-arrow-down text-xs"></i>Owed to you</p>
+      <p class="mt-2 tabular-nums text-brand-tealDark"><span class="text-xs font-medium opacity-70">TSh</span> <span class="text-2xl font-extrabold tracking-tight"><%= money(owedToYou) %></span></p>
+      <p class="mt-1 text-xs text-slate-500">Pending customer debts</p>
     </div>
-    <div>
-      <label class="block text-xs font-semibold text-slate-600 mb-1">Type</label>
-      <select name="type" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-1.5 px-3 text-xs text-slate-800 focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white outline-none">
-        <option value="">All Types</option>
-        <option value="CUSTOMER_DEBT" <%= filters.type === 'CUSTOMER_DEBT' ? 'selected' : '' %>>Customer Debt</option>
-        <option value="SUPPLIER_DEBT" <%= filters.type === 'SUPPLIER_DEBT' ? 'selected' : '' %>>Supplier Debt</option>
-        <option value="CUSTOMER_CREDIT" <%= filters.type === 'CUSTOMER_CREDIT' ? 'selected' : '' %>>Customer Credit</option>
-      </select>
+    <div class="relative bg-white p-5">
+      <span class="absolute inset-x-0 top-0 h-1 bg-brand-gold"></span>
+      <p class="flex items-center gap-2 text-sm font-semibold text-amber-700"><i class="fas fa-arrow-up text-xs"></i>You owe</p>
+      <p class="mt-2 tabular-nums text-slate-900"><span class="text-xs font-medium opacity-70">TSh</span> <span class="text-2xl font-extrabold tracking-tight"><%= money(youOwe) %></span></p>
+      <p class="mt-1 text-xs text-slate-500">Pending supplier debts</p>
     </div>
-    <div>
-      <label class="block text-xs font-semibold text-slate-600 mb-1">Status</label>
-      <select name="status" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-1.5 px-3 text-xs text-slate-800 focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white outline-none">
-        <option value="">All Statuses</option>
-        <option value="PENDING" <%= filters.status === 'PENDING' ? 'selected' : '' %>>Pending</option>
-        <option value="CLEARED" <%= filters.status === 'CLEARED' ? 'selected' : '' %>>Cleared</option>
-      </select>
+    <div class="relative bg-white p-5">
+      <span class="absolute inset-x-0 top-0 h-1 bg-sky-500"></span>
+      <p class="flex items-center gap-2 text-sm font-semibold text-sky-700"><i class="fas fa-wallet text-xs"></i>Customer credit</p>
+      <p class="mt-2 tabular-nums text-slate-900"><span class="text-xs font-medium opacity-70">TSh</span> <span class="text-2xl font-extrabold tracking-tight"><%= money(creditHeld) %></span></p>
+      <p class="mt-1 text-xs text-slate-500">Pending credit held</p>
     </div>
-    <div>
-      <label class="block text-xs font-semibold text-slate-600 mb-1">Start Date</label>
-      <input type="date" name="start_date" value="<%= filters.start_date %>" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-1.5 px-3 text-xs text-slate-800 focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white outline-none">
-    </div>
-    <div>
-      <label class="block text-xs font-semibold text-slate-600 mb-1">End Date</label>
-      <input type="date" name="end_date" value="<%= filters.end_date %>" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-1.5 px-3 text-xs text-slate-800 focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white outline-none">
-    </div>
-    <div class="flex items-end gap-2">
-      <button type="submit" class="flex-1 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-lg transition">Filter</button>
-      <a href="/debts" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-lg transition">Reset</a>
-    </div>
-  </form>
-</div>
+  </section>
+  <p class="-mt-3 text-xs text-slate-500">Totals cover the <%= rows.length %> <%= rows.length === 1 ? 'entry' : 'entries' %> shown below<%= pages > 1 ? ' on this page' : '' %>.</p>
 
-<!-- Table -->
-<div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-  <div class="overflow-x-auto">
-    <table class="w-full text-left text-sm text-slate-600">
-      <thead class="bg-slate-50 border-b border-slate-200 text-xs uppercase font-bold text-slate-500">
-        <tr>
-          <th class="px-4 py-3">Person</th>
-          <th class="px-4 py-3">Phone</th>
-          <th class="px-4 py-3">Type</th>
-          <th class="px-4 py-3">Amount</th>
-          <th class="px-4 py-3">Status</th>
-          <th class="px-4 py-3">Shop</th>
-          <th class="px-4 py-3 text-right">Actions</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-slate-100">
-        <% if (debts.length === 0) { %>
-          <tr>
-            <td colspan="7" class="px-4 py-8 text-center text-xs text-slate-400">No debt records found.</td>
-          </tr>
-        <% } %>
-        <% debts.forEach(debt => { %>
-          <tr class="hover:bg-slate-50/50 transition">
-            <td class="px-4 py-3 font-semibold text-slate-800"><%= debt.person_name %></td>
-            <td class="px-4 py-3 text-xs text-slate-500"><%= debt.phone_number || '-' %></td>
-            <td class="px-4 py-3 text-xs font-bold">
-              <span class="px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider 
-                <%= debt.type === 'CUSTOMER_DEBT' ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-blue-50 text-blue-700 border border-blue-200' %>">
-                <%= debt.type.replace('_', ' ') %>
-              </span>
-            </td>
-            <td class="px-4 py-3 font-bold text-slate-800 whitespace-nowrap">TSh <%= Number(debt.amount).toLocaleString() %></td>
-            <td class="px-4 py-3 text-xs font-bold">
-              <span class="px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider 
-                <%= debt.status === 'CLEARED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200' %>">
-                <%= debt.status %>
-              </span>
-            </td>
-            <td class="px-4 py-3 text-xs text-slate-600"><%= debt.Business ? debt.Business.name : '-' %></td>
-            <td class="px-4 py-3 text-right space-x-2 whitespace-nowrap">
-              <button onclick="handleToggleStatus('/debts/toggle-status/<%= debt.id %>', '<%= debt.status %>')" class="text-xs px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded transition">
-                <%= debt.status === 'PENDING' ? 'Mark Cleared' : 'Reopen' %>
-              </button>
-              <a href="/debts/edit/<%= debt.id %>" class="text-slate-400 hover:text-brand-teal transition"><i class="fas fa-edit"></i></a>
-              <button onclick="handleDelete('/debts/delete/<%= debt.id %>')" class="text-slate-400 hover:text-rose-600 transition"><i class="fas fa-trash"></i></button>
-            </td>
-          </tr>
+  <section class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
+
+    <!-- Type + status tabs -->
+    <div class="flex flex-wrap items-center justify-between gap-3 px-5 pt-5 sm:px-6">
+      <div role="tablist" aria-label="Filter by type" class="inline-flex flex-wrap rounded-xl bg-slate-100 p-1">
+        <% [['', 'All'], ['CUSTOMER_DEBT', 'Customer debt'], ['SUPPLIER_DEBT', 'Supplier debt'], ['CUSTOMER_CREDIT', 'Customer credit']].forEach(t => { const on = (f.type || '') === t[0]; %>
+          <a href="<%= build({ type: t[0] }, 1) %>" role="tab" aria-selected="<%= on %>" class="rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors <%= on ? 'bg-white text-brand-tealDark shadow-sm' : 'text-slate-600 hover:text-brand-teal' %>"><%= t[1] %></a>
         <% }) %>
-      </tbody>
-    </table>
-  </div>
-
-  <!-- Pagination -->
-  <% if (pagination.totalPages > 1) { %>
-    <div class="p-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-      <span>Page <strong><%= pagination.currentPage %></strong> of <strong><%= pagination.totalPages %></strong></span>
-      <div class="flex gap-1">
-        <% for(let i = 1; i <= pagination.totalPages; i++) { %>
-          <a href="/debts?page=<%= i %>&search=<%= filters.search %>&type=<%= filters.type %>&status=<%= filters.status %>&start_date=<%= filters.start_date %>&end_date=<%= filters.end_date %>" 
-             class="px-2.5 py-1 rounded-md border <%= pagination.currentPage === i ? 'bg-brand-teal text-white border-brand-teal' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50' %>">
-            <%= i %>
-          </a>
-        <% } %>
+      </div>
+      <div role="tablist" aria-label="Filter by status" class="inline-flex rounded-xl bg-slate-100 p-1">
+        <% [['', 'Any status'], ['PENDING', 'Pending'], ['CLEARED', 'Cleared']].forEach(t => { const on = (f.status || '') === t[0]; %>
+          <a href="<%= build({ status: t[0] }, 1) %>" role="tab" aria-selected="<%= on %>" class="rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors <%= on ? 'bg-white text-brand-tealDark shadow-sm' : 'text-slate-600 hover:text-brand-teal' %>"><%= t[1] %></a>
+        <% }) %>
       </div>
     </div>
-  <% } %>
+
+    <!-- Search + dates -->
+    <form method="GET" action="/debts" class="grid gap-3 px-5 py-4 sm:px-6 md:grid-cols-[1fr_11rem_11rem_auto] md:items-end">
+      <input type="hidden" name="type" value="<%= f.type || '' %>">
+      <input type="hidden" name="status" value="<%= f.status || '' %>">
+      <div>
+        <label for="search" class="mb-1.5 block text-sm font-medium text-slate-700">Person</label>
+        <div class="relative">
+          <i class="fas fa-search pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
+          <input id="search" type="text" name="search" value="<%= f.search || '' %>" placeholder="Search by name" class="<%= field %> pl-10 pr-3">
+        </div>
+      </div>
+      <div>
+        <label for="start_date" class="mb-1.5 block text-sm font-medium text-slate-700">From</label>
+        <input id="start_date" type="date" name="start_date" value="<%= f.start_date || '' %>" class="<%= field %> px-3">
+      </div>
+      <div>
+        <label for="end_date" class="mb-1.5 block text-sm font-medium text-slate-700">To</label>
+        <input id="end_date" type="date" name="end_date" value="<%= f.end_date || '' %>" min="<%= f.start_date || '' %>" class="<%= field %> px-3">
+      </div>
+      <div class="flex items-center gap-2">
+        <button type="submit" class="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-brand-teal px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-tealDark md:flex-none"><i class="fas fa-search text-xs"></i>Search</button>
+        <% if (filtered) { %><a href="/debts" class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50">Reset</a><% } %>
+      </div>
+    </form>
+
+    <% if (chips.length) { %>
+      <div class="flex flex-wrap items-center gap-2 px-5 pb-4 sm:px-6">
+        <span class="text-sm text-slate-500">Filtering by</span>
+        <% chips.forEach(c => { %>
+          <a href="<%= build({ [c.key]: '' }, 1) %>" aria-label="Remove filter <%= c.text %>" class="group inline-flex items-center gap-2 rounded-full bg-brand-teal/10 px-3 py-1 text-sm font-medium text-brand-tealDark transition-colors hover:bg-rose-50 hover:text-rose-700"><%= c.text %><i class="fas fa-times text-[10px] opacity-60 group-hover:opacity-100"></i></a>
+        <% }) %>
+      </div>
+    <% } %>
+
+    <!-- Ledger -->
+    <div class="overflow-x-auto border-t border-slate-100">
+      <table class="w-full text-left text-sm">
+        <thead>
+          <tr class="text-xs font-medium text-slate-500">
+            <th scope="col" class="px-5 py-3 sm:px-6">Person</th>
+            <th scope="col" class="hidden px-3 py-3 md:table-cell">Type</th>
+            <th scope="col" class="px-3 py-3 text-right">Amount</th>
+            <th scope="col" class="hidden px-3 py-3 sm:table-cell">Status</th>
+            <th scope="col" class="hidden px-3 py-3 lg:table-cell">Shop</th>
+            <th scope="col" class="py-3 pl-3 pr-5 text-right sm:pr-6">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <% if (rows.length) { %>
+            <% rows.forEach(d => { const t = typeOf(d.type), cleared = d.status === 'CLEARED', when = d.createdAt ? new Date(d.createdAt) : null; %>
+              <tr class="transition-colors hover:bg-brand-teal/[0.03]">
+                <td class="px-5 py-3.5 sm:px-6">
+                  <div class="flex items-center gap-3">
+                    <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-sm font-bold <%= t.tile %>"><%= initial(d.person_name) %></span>
+                    <div class="min-w-0">
+                      <p class="truncate font-semibold text-slate-800"><%= d.person_name %></p>
+                      <p class="mt-0.5 truncate text-xs text-slate-500">
+                        <% if (d.phone_number) { %><span class="font-mono"><%= d.phone_number %></span><% } else { %><span class="italic text-slate-400">No phone</span><% } %>
+                        <% if (when && !isNaN(when)) { %><span class="ml-2 text-slate-400"><time data-d datetime="<%= when.toISOString() %>"><%= when.toISOString().substr(0, 10) %></time></span><% } %>
+                      </p>
+                      <p class="mt-1 flex flex-wrap items-center gap-1.5 md:hidden">
+                        <span class="rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset <%= t.cls %>"><%= t.label %></span>
+                        <span class="sm:hidden rounded-full px-2 py-0.5 text-[11px] font-semibold <%= cleared ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700' %>"><%= cleared ? 'Cleared' : 'Pending' %></span>
+                      </p>
+                    </div>
+                  </div>
+                </td>
+
+                <td class="hidden px-3 py-3.5 md:table-cell">
+                  <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset <%= t.cls %>"><i class="fas <%= t.icon %> text-[10px]"></i><%= t.label %></span>
+                </td>
+
+                <td class="px-3 py-3.5 text-right">
+                  <p class="font-bold tabular-nums <%= cleared ? 'text-slate-400 line-through decoration-slate-300' : 'text-slate-900' %>">TSh <%= money(d.amount) %></p>
+                  <% if (t.hint) { %><p class="mt-0.5 hidden text-xs text-slate-500 md:block"><%= t.hint %></p><% } %>
+                </td>
+
+                <td class="hidden px-3 py-3.5 sm:table-cell">
+                  <% if (cleared) { %>
+                    <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/15"><i class="fas fa-check text-[9px]"></i>Cleared</span>
+                  <% } else { %>
+                    <span class="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700 ring-1 ring-inset ring-rose-600/15"><span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span>Pending</span>
+                  <% } %>
+                </td>
+
+                <td class="hidden px-3 py-3.5 text-slate-600 lg:table-cell"><%= d.Business ? d.Business.name : '-' %></td>
+
+                <td class="py-3.5 pl-3 pr-5 text-right sm:pr-6">
+                  <div class="inline-flex items-center gap-1">
+                    <button type="button" data-status data-url="/debts/toggle-status/<%= d.id %>" data-pending="<%= cleared ? '0' : '1' %>" data-person="<%= d.person_name %>"
+                      class="mr-1 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors <%= cleared ? 'border border-slate-200 text-slate-600 hover:bg-slate-50' : 'bg-emerald-600 text-white shadow-sm hover:bg-emerald-700' %>">
+                      <i class="fas <%= cleared ? 'fa-undo' : 'fa-check' %> text-[10px]"></i><%= cleared ? 'Reopen' : 'Mark cleared' %>
+                    </button>
+                    <a href="/debts/edit/<%= d.id %>" title="Edit" aria-label="Edit entry for <%= d.person_name %>" class="grid h-9 w-9 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-brand-gold/10 hover:text-brand-goldHover"><i class="fas fa-edit text-sm"></i></a>
+                    <button type="button" data-delete data-url="/debts/delete/<%= d.id %>" data-person="<%= d.person_name %>" title="Delete" aria-label="Delete entry for <%= d.person_name %>" class="grid h-9 w-9 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600"><i class="fas fa-trash-alt text-sm"></i></button>
+                  </div>
+                </td>
+              </tr>
+            <% }) %>
+          <% } else { %>
+            <tr><td colspan="6" class="px-6 py-14 text-center">
+              <span class="mx-auto grid h-12 w-12 place-items-center rounded-full bg-brand-teal/10 text-brand-teal"><i class="fas fa-file-invoice-dollar text-lg"></i></span>
+              <% if (filtered) { %>
+                <p class="mt-4 text-sm font-semibold text-slate-800">No entries match these filters</p>
+                <p class="mt-1 text-sm text-slate-500">Try another name, a wider date range, or a different type.</p>
+                <a href="/debts" class="mt-4 inline-flex rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-brand-teal hover:bg-brand-teal/5">Reset filters</a>
+              <% } else { %>
+                <p class="mt-4 text-sm font-semibold text-slate-800">Nothing recorded yet</p>
+                <p class="mt-1 text-sm text-slate-500">Record a debt or credit to start your ledger.</p>
+                <a href="/debts/create" class="mt-4 inline-flex rounded-xl bg-brand-gold px-4 py-2 text-sm font-semibold text-white hover:bg-brand-goldHover">Record entry</a>
+              <% } %>
+            </td></tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+
+    <% if (pages > 1) { %>
+      <nav aria-label="Pagination" class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-5 py-4 sm:px-6">
+        <p class="text-sm text-slate-500">Page <span class="font-semibold text-slate-800"><%= cur %></span> of <span class="font-semibold text-slate-800"><%= pages %></span></p>
+        <div class="inline-flex items-center gap-1">
+          <% if (cur > 1) { %>
+            <a href="<%= build({}, cur - 1) %>" aria-label="Previous page" class="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"><i class="fas fa-chevron-left text-xs"></i></a>
+          <% } else { %>
+            <span class="grid h-9 w-9 cursor-not-allowed place-items-center rounded-lg border border-slate-100 text-slate-300"><i class="fas fa-chevron-left text-xs"></i></span>
+          <% } %>
+          <% pageList.forEach((n, i) => { %>
+            <% if (i > 0 && n - pageList[i - 1] > 1) { %><span class="px-1 text-slate-400">&hellip;</span><% } %>
+            <% if (n === cur) { %>
+              <span aria-current="page" class="grid h-9 min-w-[2.25rem] place-items-center rounded-lg bg-brand-teal px-2 text-sm font-bold text-white"><%= n %></span>
+            <% } else { %>
+              <a href="<%= build({}, n) %>" class="grid h-9 min-w-[2.25rem] place-items-center rounded-lg border border-slate-200 px-2 text-sm font-medium text-slate-600 hover:bg-slate-50"><%= n %></a>
+            <% } %>
+          <% }) %>
+          <% if (cur < pages) { %>
+            <a href="<%= build({}, cur + 1) %>" aria-label="Next page" class="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"><i class="fas fa-chevron-right text-xs"></i></a>
+          <% } else { %>
+            <span class="grid h-9 w-9 cursor-not-allowed place-items-center rounded-lg border border-slate-100 text-slate-300"><i class="fas fa-chevron-right text-xs"></i></span>
+          <% } %>
+        </div>
+      </nav>
+    <% } %>
+  </section>
 </div>
 
-<!-- SweetAlert2 CDN & Embedded JS -->
- <script src="/js/sweetalert2.all.min.js"></script>
-
 <script>
-  function handleToggleStatus(url, currentStatus) {
-    const isPending = currentStatus === 'PENDING';
-    const actionText = isPending ? 'mark this debt as CLEARED' : 'reopen this debt as PENDING';
+  /* Wrapped in a function so it cannot clash with the footer's Toast and Dialog */
+  (function () {
+    /* Dates in the viewer's own time zone */
+    document.querySelectorAll('time[data-d]').forEach(function (t) {
+      var d = new Date(t.getAttribute('datetime')); if (!isNaN(d)) t.textContent = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    });
 
-    Swal.fire({
-      icon: 'question',
-      title: 'Update Debt Status?',
-      text: `Are you sure you want to ${actionText}?`,
-      showCancelButton: true,
-      confirmButtonColor: '#0d9488',
-      cancelButtonColor: '#64748b',
-      confirmButtonText: 'Yes, change status',
-      cancelButtonText: 'Cancel',
-      heightAuto: false // Prevents body padding manipulation & layout shifts
-    }).then((result) => {
-      if (result.isConfirmed) {
-        window.location.href = url;
+    /* "To" cannot be before "From" */
+    var from = document.getElementById('start_date'), to = document.getElementById('end_date');
+    if (from && to) from.addEventListener('change', function () { to.min = from.value; if (to.value && to.value < from.value) to.value = from.value; });
+
+    var DANGER = {
+      popup: 'rounded-2xl border border-slate-200 shadow-2xl p-6', title: 'text-lg font-bold text-slate-800', htmlContainer: 'text-sm text-slate-500', actions: 'gap-2 mt-4',
+      confirmButton: 'rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-400',
+      cancelButton: 'rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50'
+    };
+
+    document.addEventListener('click', function (e) {
+      var st = e.target.closest('[data-status]'), del = e.target.closest('[data-delete]');
+
+      if (st) {
+        var pending = st.dataset.pending === '1', url = st.dataset.url;
+        (typeof Dialog !== 'undefined' ? Dialog : Swal).fire({
+          icon: 'question', iconColor: '#1A6B78', showCancelButton: true,
+          title: pending ? 'Mark as cleared?' : 'Reopen this entry?',
+          text: pending ? 'The entry for ' + st.dataset.person + ' will be marked as cleared.' : 'The entry for ' + st.dataset.person + ' will go back to pending.',
+          confirmButtonText: pending ? 'Yes, mark cleared' : 'Yes, reopen', cancelButtonText: 'Cancel'
+        }).then(function (r) { if (r.isConfirmed) window.location.href = url; });
+      }
+
+      if (del) {
+        var link = del.dataset.url;
+        Swal.fire({
+          icon: 'warning', iconColor: '#e11d48', showCancelButton: true, reverseButtons: true, buttonsStyling: false, customClass: DANGER,
+          title: 'Delete this entry?', text: 'The entry for ' + del.dataset.person + ' will be removed permanently. This cannot be undone.',
+          confirmButtonText: 'Yes, delete', cancelButtonText: 'Keep it'
+        }).then(function (r) { if (r.isConfirmed) window.location.href = link; });
       }
     });
-  }
-
-  function handleDelete(url) {
-    Swal.fire({
-      icon: 'warning',
-      title: 'Delete Debt Record?',
-      text: 'This action cannot be undone. Are you sure?',
-      showCancelButton: true,
-      confirmButtonColor: '#e11d48',
-      cancelButtonColor: '#64748b',
-      confirmButtonText: 'Yes, delete it',
-      cancelButtonText: 'Cancel',
-      heightAuto: false // Prevents body padding manipulation & layout shifts
-    }).then((result) => {
-      if (result.isConfirmed) {
-        window.location.href = url;
-      }
-    });
-  }
+  })();
 </script>
 
 <%- include('../layouts/footer') %>

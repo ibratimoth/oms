@@ -1,68 +1,209 @@
 <%- include('../layouts/header') %>
+<%
+  const field = 'w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-teal focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-teal/20';
+  const label = 'mb-1.5 block text-sm font-medium text-slate-700';
+  const providers = ['Vodacom', 'Tigo', 'Airtel', 'Halotel', 'NMB', 'CRDB'];
+  const isActive = !!merchant.is_active;
+  const initial = String(merchant.provider || merchant.name || '?').trim().charAt(0).toUpperCase();
+%>
+
+<div class="mx-auto max-w-5xl space-y-6">
+
+  <nav aria-label="Breadcrumb" class="flex items-center gap-2 text-sm text-slate-500">
+    <a href="/merchants" class="group inline-flex items-center gap-2 font-medium transition-colors hover:text-brand-teal">
+      <i class="fas fa-arrow-left text-xs transition-transform group-hover:-translate-x-0.5"></i>Merchants
+    </a>
+    <i class="fas fa-chevron-right text-[10px] text-slate-300"></i><span class="text-slate-700">Edit</span>
+  </nav>
 
   <% if (typeof error !== 'undefined' && error) { %>
-    <div class="mb-6 max-w-xl bg-rose-50 border border-rose-200 rounded-xl p-4 flex items-start gap-3 shadow-sm">
-      <div class="bg-rose-100 text-rose-600 p-1.5 rounded-lg shrink-0">
-        <i class="fas fa-exclamation-circle text-lg"></i>
-      </div>
-      <div class="flex-1">
-        <h4 class="text-sm font-bold text-rose-800">Update Failure</h4>
-        <p class="text-xs text-rose-600 mt-0.5"><%= error %></p>
-      </div>
+    <div role="alert" class="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4">
+      <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-rose-100 text-rose-600"><i class="fas fa-exclamation-circle"></i></span>
+      <div class="min-w-0"><h4 class="text-sm font-semibold text-rose-800">The changes could not be saved</h4><p class="mt-0.5 text-sm text-rose-700"><%= error %></p></div>
     </div>
   <% } %>
 
-  <div class="mb-4">
-    <a href="/merchants" class="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-brand-teal transition duration-150 group">
-      <i class="fas fa-arrow-left text-xs group-hover:-translate-x-0.5 transition-transform duration-150"></i>
-      <span>Go Back</span>
-    </a>
+  <!-- ============ Identity header ============ -->
+  <div class="flex items-center gap-4">
+    <span id="avatar" class="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-brand-teal text-xl font-bold text-white"><%= initial %></span>
+    <div class="min-w-0">
+      <h2 id="liveName" class="truncate text-2xl font-bold tracking-tight text-brand-tealDark"><%= merchant.name %></h2>
+      <p class="mt-0.5 text-sm text-slate-500">Change the details of this payment account.</p>
+    </div>
   </div>
 
-  <div class="mb-6">
-    <h1 class="text-2xl font-bold tracking-tight text-slate-800">Edit Merchant Profile</h1>
-    <p class="text-sm text-slate-500 mt-1">Modify channel configuration details or change account numbers.</p>
-  </div>
+  <div class="grid items-start gap-6 lg:grid-cols-3">
 
-  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden max-w-xl">
-    <div class="h-1.5 bg-brand-teal w-full"></div>
-    
-    <form method="POST" action="/merchants/edit/<%= merchant.id %>?_method=PUT" class="p-6 space-y-4">
-      <div>
-        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Merchant Name / Label</label>
-        <input type="text" name="name" value="<%= merchant.name %>" required
-          class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white transition duration-150">
+    <!-- ============ Form ============ -->
+    <form id="merchantForm" method="POST" action="/merchants/edit/<%= merchant.id %>?_method=PUT" class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white lg:col-span-2">
+      <div class="space-y-8 p-6 sm:p-8">
+
+        <section>
+          <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>Account label</h3>
+          <div class="mt-4">
+            <label for="name" class="<%= label %>">Name</label>
+            <input type="text" id="name" name="name" value="<%= merchant.name %>" data-original="<%= merchant.name %>" required autocomplete="off" class="<%= field %> px-3.5">
+          </div>
+        </section>
+
+        <section>
+          <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>Provider and number</h3>
+          <div class="mt-4 grid gap-5 sm:grid-cols-2">
+            <div>
+              <label for="provider" class="<%= label %>">Network or bank <span class="font-normal text-slate-400">(optional)</span></label>
+              <input type="text" id="provider" name="provider" value="<%= merchant.provider || '' %>" data-original="<%= merchant.provider || '' %>" autocomplete="off" placeholder="e.g. Vodacom, NMB" class="<%= field %> px-3.5">
+            </div>
+            <div>
+              <label for="account_number" class="<%= label %>">Lipa, till or account number <span class="font-normal text-slate-400">(optional)</span></label>
+              <div class="relative">
+                <i class="fas fa-hashtag pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
+                <input type="text" id="account_number" name="account_number" value="<%= merchant.account_number || '' %>" data-original="<%= merchant.account_number || '' %>" inputmode="numeric" autocomplete="off" placeholder="e.g. 5543210" class="<%= field %> pl-9 pr-3.5 font-mono">
+              </div>
+            </div>
+          </div>
+          <div class="mt-3 flex flex-wrap items-center gap-2" role="group" aria-label="Quick choices for provider">
+            <span class="text-sm text-slate-500">Quick pick</span>
+            <% providers.forEach(p => { %>
+              <button type="button" data-provider="<%= p %>" class="chip rounded-full border border-slate-200 px-3 py-1 text-sm font-medium text-slate-600 transition-colors hover:border-brand-teal/40 hover:text-brand-teal"><%= p %></button>
+            <% }) %>
+          </div>
+          <p id="numberWarn" class="mt-4 hidden items-start gap-2 rounded-xl bg-amber-50 px-3.5 py-2.5 text-sm font-medium text-amber-800" role="status"><i class="fas fa-exclamation-triangle mt-0.5 text-xs"></i><span>You changed the number. Customers will pay to the new one, so check it carefully.</span></p>
+        </section>
+
+        <section>
+          <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>Availability</h3>
+          <fieldset class="mt-4">
+            <legend class="sr-only">Is this account available at checkout?</legend>
+            <div class="grid gap-3 sm:grid-cols-2">
+              <% [['true', 'Active', 'Available at checkout', 'fa-check-circle', isActive], ['false', 'Inactive', 'Hidden from checkout', 'fa-pause-circle', !isActive]].forEach(o => { %>
+                <label class="cursor-pointer">
+                  <input type="radio" name="is_active" value="<%= o[0] %>" data-original="<%= o[4] ? 'checked' : '' %>" class="peer sr-only" <%= o[4] ? 'checked' : '' %>>
+                  <span class="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3.5 transition-all peer-checked:border-brand-teal peer-checked:bg-brand-teal/5 peer-checked:ring-2 peer-checked:ring-brand-teal/15 peer-focus-visible:ring-2 peer-focus-visible:ring-brand-gold">
+                    <span class="grid h-9 w-9 place-items-center rounded-lg bg-slate-100 text-slate-500"><i class="fas <%= o[3] %>"></i></span>
+                    <span><span class="block text-sm font-semibold text-slate-800"><%= o[1] %></span><span class="block text-xs text-slate-500"><%= o[2] %></span></span>
+                  </span>
+                </label>
+              <% }) %>
+            </div>
+          </fieldset>
+          <p id="inactiveNote" class="mt-3 hidden items-start gap-2 rounded-xl bg-slate-100 px-3.5 py-2.5 text-sm text-slate-600" role="status"><i class="fas fa-info-circle mt-0.5 text-xs text-brand-teal"></i><span>Cashiers will not be able to pick this account when completing new orders. Past orders are not affected.</span></p>
+        </section>
+
+        <section id="changesBox" class="hidden rounded-xl border border-brand-gold/30 bg-amber-50/60 p-4">
+          <h4 class="flex items-center gap-2 text-sm font-semibold text-amber-800"><i class="fas fa-pen text-xs"></i>What will change</h4>
+          <ul id="changeList" class="mt-2 space-y-1.5 text-sm text-slate-700"></ul>
+        </section>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Provider / Network</label>
-          <input type="text" name="provider" value="<%= merchant.provider || '' %>"
-            class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white transition duration-150">
+      <div class="flex flex-col gap-3 border-t border-slate-100 bg-slate-50/60 px-6 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+        <p class="flex items-center gap-2 text-sm text-slate-500"><span id="dirtyDot" class="h-2 w-2 rounded-full bg-slate-300"></span><span id="dirtyText">No changes yet</span></p>
+        <div class="flex flex-col-reverse gap-3 sm:flex-row sm:items-center">
+          <button type="button" id="discardBtn" disabled class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">Discard changes</button>
+          <a href="/merchants" class="rounded-xl px-4 py-2.5 text-center text-sm font-medium text-slate-500 transition-colors hover:bg-slate-100">Back to merchants</a>
+          <button type="submit" id="saveBtn" disabled class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-gold px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-goldHover disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none">
+            <i class="fas fa-check text-xs"></i><span>Save changes</span>
+          </button>
         </div>
-
-        <div>
-          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Lipa / Account Number</label>
-          <input type="text" name="account_number" value="<%= merchant.account_number || '' %>"
-            class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white transition duration-150">
-        </div>
-      </div>
-
-      <div>
-        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Operational Status</label>
-        <select name="is_active" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white transition duration-150">
-          <option value="true" <%= merchant.is_active ? 'selected' : '' %>>Active (Available at Checkout)</option>
-          <option value="false" <%= !merchant.is_active ? 'selected' : '' %>>Inactive (Disabled)</option>
-        </select>
-      </div>
-
-      <div class="pt-2 border-t border-slate-100 flex items-center justify-end gap-3">
-        <a href="/merchants" class="px-4 py-2.5 text-sm font-semibold text-slate-500 hover:bg-slate-100 rounded-lg border border-slate-200 shadow-sm transition">Cancel</a>
-        <button type="submit" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-brand-teal hover:bg-brand-tealDark text-white text-sm font-semibold rounded-lg shadow-md shadow-brand-teal/10 transition duration-150">
-          <i class="fas fa-save text-xs"></i> Update Merchant
-        </button>
       </div>
     </form>
+
+    <!-- ============ Live preview ============ -->
+    <aside class="lg:sticky lg:top-24">
+      <section class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
+        <div class="h-1 bg-brand-gold"></div>
+        <div class="bg-teal-50 px-6 py-4"><p class="text-xs font-medium text-brand-teal">Preview</p><p class="mt-0.5 text-sm text-slate-600">Updates as you edit.</p></div>
+        <div class="p-5">
+          <div id="pvCard" class="rounded-2xl border border-slate-200 p-5 transition-opacity">
+            <div class="flex items-start justify-between gap-3">
+              <span id="pvInitial" class="grid h-12 w-12 place-items-center rounded-2xl bg-brand-teal text-lg font-extrabold text-white"><%= initial %></span>
+              <span id="pvPill" class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"><span id="pvDot" class="h-1.5 w-1.5 rounded-full"></span><span id="pvPillText"></span></span>
+            </div>
+            <h3 id="pvName" class="mt-4 truncate text-base font-bold text-slate-900"></h3>
+            <p id="pvProvider" class="mt-0.5 truncate text-sm"></p>
+            <div class="mt-4 rounded-xl bg-slate-50 px-3.5 py-2.5">
+              <p class="text-xs text-slate-500">Account or till number</p>
+              <p id="pvNumber" class="truncate font-mono text-sm font-semibold"></p>
+            </div>
+          </div>
+          <p class="mt-4 text-xs font-medium text-slate-500">In the payment list when completing an order</p>
+          <p id="pvOption" class="mt-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm"></p>
+        </div>
+      </section>
+    </aside>
   </div>
+</div>
+
+<script>
+  (function () {
+    var $ = function (id) { return document.getElementById(id); };
+    var name = $('name'), provider = $('provider'), number = $('account_number'), submitting = false;
+    var fields = [{ el: name, label: 'Name' }, { el: provider, label: 'Provider' }, { el: number, label: 'Number' }];
+    function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; }
+    function checkedActive() { return document.querySelector('input[name="is_active"]:checked').value === 'true'; }
+    var originalActive = document.querySelector('input[name="is_active"][data-original="checked"]').value === 'true';
+    function orig(i) { return (i.el.getAttribute('data-original') || '').trim(); }
+    function show(v) { return v || 'empty'; }
+
+    function setText(node, text, fallback, strong) {
+      node.textContent = text || fallback;
+      node.classList.toggle('text-slate-400', !text);
+      if (strong) node.classList.toggle(strong, !!text);
+    }
+
+    function refresh() {
+      var n = name.value.trim(), p = provider.value.trim(), a = number.value.trim(), on = checkedActive();
+
+      /* header + live card */
+      $('liveName').textContent = n || 'Untitled merchant';
+      var letter = (p || n || '?').charAt(0).toUpperCase(); $('avatar').textContent = letter; $('pvInitial').textContent = letter;
+      setText($('pvName'), n, 'Merchant name', 'text-slate-900'); setText($('pvProvider'), p, 'Provider not set', 'text-slate-500');
+      setText($('pvNumber'), a, 'Not set', 'text-slate-800');
+      var extra = [p, a].filter(Boolean).join(' - '); setText($('pvOption'), n ? (extra ? n + ' (' + extra + ')' : n) : '', 'Merchant name', 'text-slate-800');
+      $('pvCard').classList.toggle('opacity-60', !on);
+      $('pvPill').className = 'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ' + (on ? 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/15' : 'bg-slate-100 text-slate-500 ring-1 ring-inset ring-slate-400/20');
+      $('pvDot').className = 'h-1.5 w-1.5 rounded-full ' + (on ? 'bg-emerald-500' : 'bg-slate-400');
+      $('pvPillText').textContent = on ? 'Active' : 'Inactive';
+      document.querySelectorAll('.chip').forEach(function (c) {
+        var sel = p.toLowerCase() === c.dataset.provider.toLowerCase();
+        c.classList.toggle('border-brand-teal', sel); c.classList.toggle('bg-brand-teal/10', sel); c.classList.toggle('text-brand-tealDark', sel);
+      });
+
+      /* notes */
+      $('inactiveNote').classList.toggle('hidden', on); $('inactiveNote').classList.toggle('flex', !on);
+      var numChanged = a !== orig(fields[2]); $('numberWarn').classList.toggle('hidden', !numChanged); $('numberWarn').classList.toggle('flex', numChanged);
+
+      /* what will change */
+      var list = $('changeList'); list.textContent = ''; var count = 0;
+      fields.forEach(function (f) {
+        var now = f.el.value.trim(), was = orig(f); if (now === was) return; count++;
+        var li = el('li', 'flex flex-wrap items-center gap-x-2');
+        li.appendChild(el('span', 'font-medium', f.label + ':')); li.appendChild(el('span', 'text-slate-500 line-through', show(was)));
+        li.appendChild(el('i', 'fas fa-arrow-right text-[10px] text-slate-400')); li.appendChild(el('span', 'font-semibold text-brand-tealDark', show(now))); list.appendChild(li);
+      });
+      if (on !== originalActive) {
+        count++; var s = el('li', 'flex flex-wrap items-center gap-x-2');
+        s.appendChild(el('span', 'font-medium', 'Status:')); s.appendChild(el('span', 'text-slate-500 line-through', originalActive ? 'Active' : 'Inactive'));
+        s.appendChild(el('i', 'fas fa-arrow-right text-[10px] text-slate-400')); s.appendChild(el('span', 'font-semibold text-brand-tealDark', on ? 'Active' : 'Inactive')); list.appendChild(s);
+      }
+      $('changesBox').classList.toggle('hidden', !count);
+      $('dirtyDot').className = 'h-2 w-2 rounded-full ' + (count ? 'bg-brand-gold' : 'bg-slate-300');
+      $('dirtyText').textContent = count ? count + (count === 1 ? ' unsaved change' : ' unsaved changes') : 'No changes yet';
+      $('saveBtn').disabled = !count || !n; $('discardBtn').disabled = !count;
+      return count;
+    }
+
+    fields.forEach(function (f) { f.el.addEventListener('input', refresh); f.el.addEventListener('blur', function () { f.el.value = f.el.value.trim(); refresh(); }); });
+    document.querySelectorAll('input[name="is_active"]').forEach(function (r) { r.addEventListener('change', refresh); });
+    document.querySelectorAll('.chip').forEach(function (c) { c.addEventListener('click', function () { provider.value = c.dataset.provider; refresh(); number.focus(); }); });
+
+    $('discardBtn').addEventListener('click', function () {
+      fields.forEach(function (f) { f.el.value = f.el.getAttribute('data-original') || ''; });
+      document.querySelector('input[name="is_active"][value="' + originalActive + '"]').checked = true; refresh();
+    });
+    $('merchantForm').addEventListener('submit', function () { submitting = true; var b = $('saveBtn'); b.disabled = true; b.innerHTML = '<i class="fas fa-spinner fa-spin text-xs"></i><span>Saving</span>'; });
+    window.addEventListener('beforeunload', function (e) { if (!submitting && refresh()) { e.preventDefault(); e.returnValue = ''; } });
+    refresh();
+  })();
+</script>
 
 <%- include('../layouts/footer') %>

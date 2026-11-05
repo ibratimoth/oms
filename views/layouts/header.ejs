@@ -51,10 +51,12 @@
     } else if (hit(i) && i.href.length > bestLen) { bestLen = i.href.length; current = { section: g.title, label: i.label }; }
   }));
 
-  const base  = 'group relative flex items-center gap-3 rounded-xl px-2 py-1.5 text-[13.5px] font-medium transition-colors duration-150';
-  const tile  = (on) => 'grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[13px] transition-colors duration-150 ' +
-                        (on ? 'bg-brand-gold text-white shadow-sm' : 'bg-white/[0.07] text-teal-200 group-hover:bg-white/15 group-hover:text-white');
-  const bar   = '<span class="absolute -left-3 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-brand-gold"></span>';
+  /* Long class strings use backticks (template literals) on purpose: if an editor "formats" this file and
+     wraps a long line, a backtick string survives it, while a normal 'quoted' string would break the page. */
+  const base = `group relative flex items-center gap-3 rounded-xl px-2 py-1.5 text-[13.5px] font-medium transition-colors duration-150`;
+  const tile = (on) => `grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[13px] transition-colors duration-150 ${
+    on ? `bg-brand-gold text-white shadow-sm` : `bg-white/[0.07] text-teal-200 group-hover:bg-white/15 group-hover:text-white`}`;
+  const bar = `<span class="absolute -left-3 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-brand-gold"></span>`;
 
   const renderLink = (i) => {
     const on = hit(i);
@@ -85,6 +87,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/jpeg" href="/images/delleventures.jpeg">
+  <link rel="apple-touch-icon" href="/images/delleventures.jpeg">
   <title><%= current.label %> · Delle Ventures</title>
 
   <script src="/js/tailwindcss.js"></script>
