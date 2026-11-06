@@ -19,20 +19,26 @@
   const key = (v) => v instanceof Date ? v.toISOString().slice(0, 10) : String(v);
   const series = (L.dailySales || []).map(d => ({ date: key(d.dataValues.date), sales: num(d.dataValues.sales) }))
     .sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0).slice(-30);
-  const W = 640, H = 230, PL = 6, PR = 6, PT = 18, PB = 30, cw = W - PL - PR, ch = H - PT - PB;
+  const W = 680, H = 250, PL = 14, PR = 14, PT = 26, PB = 36, cw = W - PL - PR, ch = H - PT - PB;
+  const n = series.length;
+  const slot = n > 0 ? cw / n : 0;
+  const barW = Math.max(5, Math.min(34, slot * 0.62));
   const maxS = series.reduce((m, d) => Math.max(m, d.sales), 0);
-  const pts = series.map((d, i) => ({
-    x: series.length > 1 ? PL + (i * cw) / (series.length - 1) : PL + cw / 2,
-    y: PT + (1 - (maxS ? d.sales / maxS : 0)) * ch, date: d.date, sales: d.sales
-  }));
-  let line = '', area = '';
-  if (pts.length > 1) {
-    line = 'M' + pts[0].x.toFixed(1) + ' ' + pts[0].y.toFixed(1);
-    for (let i = 1; i < pts.length; i++) { const a = pts[i - 1], b = pts[i], mx = ((a.x + b.x) / 2).toFixed(1); line += ' C' + mx + ' ' + a.y.toFixed(1) + ' ' + mx + ' ' + b.y.toFixed(1) + ' ' + b.x.toFixed(1) + ' ' + b.y.toFixed(1); }
-    area = line + ' L' + pts[pts.length - 1].x.toFixed(1) + ' ' + (PT + ch) + ' L' + pts[0].x.toFixed(1) + ' ' + (PT + ch) + ' Z';
-  }
-  const best = pts.reduce((m, p) => (!m || p.sales > m.sales) ? p : m, null);
-  const periodTotal = series.reduce((s, d) => s + d.sales, 0), avgDay = series.length ? Math.round(periodTotal / series.length) : 0;
+  const bestIdx = n ? series.reduce((bi, d, i, arr) => d.sales > arr[bi].sales ? i : bi, 0) : -1;
+  const bars = series.map((d, i) => {
+    const h = maxS > 0 ? Math.max(2, (d.sales / maxS) * ch) : 2;
+    return { x: PL + i * slot + (slot - barW) / 2, y: PT + ch - h, h };
+  });
+  /* 7-day moving average, oldest to newest */
+  const avgPts = series.map((d, i) => {
+    const from = Math.max(0, i - 6);
+    const seg = series.slice(from, i + 1);
+    const a = seg.reduce((s, x) => s + x.sales, 0) / seg.length;
+    return { x: (PL + i * slot + slot / 2).toFixed(1), y: (PT + (1 - (maxS ? a / maxS : 0)) * ch).toFixed(1) };
+  });
+  const avgPath = avgPts.length > 1 ? 'M' + avgPts.map(p => p.x + ' ' + p.y).join(' L') : '';
+  const best = n ? { date: series[bestIdx].date, sales: series[bestIdx].sales } : null;
+  const periodTotal = series.reduce((s, d) => s + d.sales, 0), avgDay = n ? Math.round(periodTotal / n) : 0;
   const shortDay = (k) => { const [y, m, d] = k.split('-').map(Number); const dt = new Date(y, (m || 1) - 1, d || 1); return isNaN(dt) ? k : dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }); };
 
   /* Balance columns */
@@ -76,7 +82,7 @@
   <!-- ============ Bento grid ============ -->
   <div class="grid gap-4 lg:grid-cols-12">
 
-    <!-- Sales trend -->
+    <!-- Sales trend: daily columns + 7-day average -->
     <section class="overflow-hidden rounded-3xl border border-slate-200/80 bg-white lg:col-span-8">
       <div class="flex flex-wrap items-start justify-between gap-4 px-6 pt-6">
         <div>
@@ -93,21 +99,29 @@
 
       <% if (series.length) { %>
         <div id="chartBox" class="relative mt-2 px-2 pb-3">
+          <div class="flex items-center justify-end gap-4 px-3 pt-1 text-[11px] font-medium text-slate-400">
+            <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-[3px] bg-gradient-to-b from-[#1F7A88] to-[#124E58]"></span>Daily sales</span>
+            <span class="flex items-center gap-1.5"><span class="h-[3px] w-4 rounded-full bg-brand-gold"></span>7-day average</span>
+          </div>
           <svg id="trend" viewBox="0 0 <%= W %> <%= H %>" class="h-auto w-full touch-none" role="img" aria-label="Daily sales for the last <%= series.length %> days">
-            <defs><linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1A6B78" stop-opacity=".28"/><stop offset="100%" stop-color="#1A6B78" stop-opacity="0"/></linearGradient></defs>
-            <% [0, .5, 1].forEach(t => { %><line x1="<%= PL %>" x2="<%= W - PR %>" y1="<%= (PT + t * ch).toFixed(1) %>" y2="<%= (PT + t * ch).toFixed(1) %>" stroke="#E2E8F0" stroke-dasharray="3 5"/><% }) %>
-            <% if (area) { %>
-              <path d="<%= area %>" fill="url(#areaFill)"/>
-              <path d="<%= line %>" fill="none" stroke="#1A6B78" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-            <% } %>
-            <% if (best) { %><circle cx="<%= best.x.toFixed(1) %>" cy="<%= best.y.toFixed(1) %>" r="5" fill="#D49A17" stroke="#fff" stroke-width="2"/><% } %>
-            <g id="hoverMark" class="hidden"><line id="hoverLine" y1="<%= PT %>" y2="<%= PT + ch %>" stroke="#124E58" stroke-opacity=".35"/><circle id="hoverDot" r="5" fill="#124E58" stroke="#fff" stroke-width="2"/></g>
-            <text x="<%= PL %>" y="<%= H - 8 %>" font-size="12" fill="#64748B"><%= shortDay(series[0].date) %></text>
-            <% if (series.length > 1) { %><text x="<%= W - PR %>" y="<%= H - 8 %>" font-size="12" fill="#64748B" text-anchor="end"><%= shortDay(series[series.length - 1].date) %></text><% } %>
+            <defs><linearGradient id="barFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1F7A88"/><stop offset="100%" stop-color="#124E58"/></linearGradient></defs>
+            <% if (maxS > 0) { %><text x="<%= PL %>" y="<%= PT - 10 %>" font-size="11" fill="#94A3B8">TSh <%= money(maxS) %></text><% } %>
+            <% [0, .5, 1].forEach(t => { %><line x1="<%= PL %>" x2="<%= W - PR %>" y1="<%= (PT + t * ch).toFixed(1) %>" y2="<%= (PT + t * ch).toFixed(1) %>" stroke="#EEF2F6" stroke-dasharray="3 5"/><% }) %>
+            <% bars.forEach((b, i) => { const isBest = i === bestIdx; %>
+              <rect class="col" data-i="<%= i %>" data-fill="<%= isBest ? '#D49A17' : 'url(#barFill)' %>"
+                x="<%= b.x.toFixed(1) %>" y="<%= b.y.toFixed(1) %>" width="<%= barW.toFixed(1) %>" height="<%= b.h.toFixed(1) %>"
+                rx="<%= Math.min(5, barW / 3).toFixed(1) %>" fill="<%= isBest ? '#D49A17' : 'url(#barFill)' %>"
+                style="animation-delay: <%= Math.min(i * 18, 480) %>ms"/>
+            <% }) %>
+            <% if (avgPath) { %><path d="<%= avgPath %>" fill="none" stroke="#D49A17" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation: lineIn .8s ease .35s both"/><% } %>
+            <g id="hoverMark" class="hidden"><line id="hoverLine" y1="<%= PT %>" y2="<%= PT + ch %>" stroke="#124E58" stroke-opacity=".3"/><circle id="hoverDot" r="4" fill="#124E58" stroke="#fff" stroke-width="2"/></g>
+            <text x="<%= PL %>" y="<%= H - 10 %>" font-size="12" fill="#64748B"><%= shortDay(series[0].date) %></text>
+            <% if (n > 5) { %><text x="<%= (PL + cw / 2).toFixed(1) %>" y="<%= H - 10 %>" font-size="12" fill="#94A3B8" text-anchor="middle"><%= shortDay(series[Math.floor(n / 2)].date) %></text><% } %>
+            <% if (n > 1) { %><text x="<%= W - PR %>" y="<%= H - 10 %>" font-size="12" fill="#64748B" text-anchor="end"><%= shortDay(series[n - 1].date) %></text><% } %>
           </svg>
           <div id="tip" class="pointer-events-none absolute z-10 hidden -translate-x-1/2 whitespace-nowrap rounded-lg bg-brand-tealDark px-3 py-1.5 text-xs text-white shadow-lg"><span id="tipDate" class="text-teal-200"></span><br><span id="tipAmt" class="amt font-bold"></span></div>
         </div>
-        <script type="application/json" id="trendData"><%- JSON.stringify({ w: W, pts: pts }).replace(/</g, '\\u003c') %></script>
+        <script type="application/json" id="trendData"><%- JSON.stringify({ w: W, h: H, pl: PL, slot: slot, n: n, bars: bars.map((b, i) => ({ cx: +(b.x + barW / 2).toFixed(1), y: +b.y.toFixed(1), date: series[i].date, sales: series[i].sales })) }).replace(/</g, '\\u003c') %></script>
       <% } else { %>
         <div class="px-6 pb-10 pt-8 text-center"><span class="mx-auto grid h-12 w-12 place-items-center rounded-full bg-slate-100 text-slate-400"><i class="fas fa-chart-line text-lg"></i></span><p class="mt-3 text-sm font-medium text-slate-700">No sales recorded yet</p><p class="mt-1 text-sm text-slate-500">Your sales trend will appear after the first completed order.</p></div>
       <% } %>
@@ -233,6 +247,13 @@
 <style>
   #dash.privacy .amt { filter: blur(9px); user-select: none; }
   .amt { transition: filter .2s ease; }
+  /* Column entrance */
+  #trend .col { transform-box: fill-box; transform-origin: bottom; animation: barGrow .55s cubic-bezier(.22,.9,.35,1) both; }
+  @keyframes barGrow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+  @keyframes lineIn { from { opacity: 0; } to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) {
+    #trend .col, #trend path[style*="lineIn"] { animation: none; }
+  }
 </style>
 
 <script>
@@ -251,22 +272,29 @@
     apply(saved);
     btn.addEventListener('click', function () { var on = !dash.classList.contains('privacy'); apply(on); try { localStorage.setItem(KEY, on ? '1' : '0'); } catch (e) {} });
 
-    /* Sales trend: hover or touch to read a day */
+    /* Sales columns: hover or touch to read a day */
     var dataEl = document.getElementById('trendData'); if (!dataEl) return;
-    var data = JSON.parse(dataEl.textContent), pts = data.pts, svg = document.getElementById('trend'), box = document.getElementById('chartBox');
+    var data = JSON.parse(dataEl.textContent), svg = document.getElementById('trend'), box = document.getElementById('chartBox');
+    var cols = Array.prototype.slice.call(svg.querySelectorAll('rect.col'));
     var mark = document.getElementById('hoverMark'), line = document.getElementById('hoverLine'), dot = document.getElementById('hoverDot'), tip = document.getElementById('tip');
+    var cur = null;
 
     function show(clientX) {
-      var r = svg.getBoundingClientRect(), x = (clientX - r.left) * (data.w / r.width), best = pts[0];
-      pts.forEach(function (p) { if (Math.abs(p.x - x) < Math.abs(best.x - x)) best = p; });
-      line.setAttribute('x1', best.x); line.setAttribute('x2', best.x); dot.setAttribute('cx', best.x); dot.setAttribute('cy', best.y); mark.classList.remove('hidden');
-      var d = best.date.split('-').map(Number), label = new Date(d[0], d[1] - 1, d[2]).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
-      document.getElementById('tipDate').textContent = label; document.getElementById('tipAmt').textContent = 'TSh ' + Number(best.sales).toLocaleString('en-US');
+      var r = svg.getBoundingClientRect(), x = (clientX - r.left) * (data.w / r.width);
+      var idx = Math.max(0, Math.min(data.n - 1, Math.floor((x - data.pl) / data.slot)));
+      var b = data.bars[idx];
+      if (cur && cur !== cols[idx]) cur.setAttribute('fill', cur.getAttribute('data-fill'));
+      cur = cols[idx];
+      cur.setAttribute('fill', '#0F3D46');
+      line.setAttribute('x1', b.cx); line.setAttribute('x2', b.cx);
+      dot.setAttribute('cx', b.cx); dot.setAttribute('cy', b.y); mark.classList.remove('hidden');
+      var d = b.date.split('-').map(Number), label = new Date(d[0], d[1] - 1, d[2]).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+      document.getElementById('tipDate').textContent = label; document.getElementById('tipAmt').textContent = 'TSh ' + Number(b.sales).toLocaleString('en-US');
       tip.classList.remove('hidden');
-      var bx = box.getBoundingClientRect(), left = (best.x / data.w) * r.width + (r.left - bx.left), top = (best.y / 230) * r.height - 54;
+      var bx = box.getBoundingClientRect(), left = (b.cx / data.w) * r.width + (r.left - bx.left), top = (b.y / data.h) * r.height - 52;
       tip.style.left = Math.min(Math.max(left, 50), bx.width - 50) + 'px'; tip.style.top = Math.max(top, 0) + 'px';
     }
-    function hide() { mark.classList.add('hidden'); tip.classList.add('hidden'); }
+    function hide() { if (cur) { cur.setAttribute('fill', cur.getAttribute('data-fill')); cur = null; } mark.classList.add('hidden'); tip.classList.add('hidden'); }
     svg.addEventListener('mousemove', function (e) { show(e.clientX); });
     svg.addEventListener('mouseleave', hide);
     svg.addEventListener('touchstart', function (e) { show(e.touches[0].clientX); }, { passive: true });
