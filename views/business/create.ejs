@@ -1,47 +1,115 @@
 <%- include('../layouts/header') %>
+<%
+  const field = 'w-full rounded-xl border border-slate-200 bg-slate-50 py-3.5 text-lg font-semibold text-slate-900 placeholder:font-normal placeholder:text-slate-400 focus:border-brand-teal focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-teal/20';
+%>
+
+<div class="mx-auto max-w-5xl space-y-6">
+
+  <nav aria-label="Breadcrumb" class="flex items-center gap-2 text-sm text-slate-500">
+    <a href="/business" class="group inline-flex items-center gap-2 font-medium transition-colors hover:text-brand-teal"><i class="fas fa-arrow-left text-xs transition-transform group-hover:-translate-x-0.5"></i>Shops</a>
+    <i class="fas fa-chevron-right text-[10px] text-slate-300"></i><span class="text-slate-700">Register</span>
+  </nav>
 
   <% if (typeof error !== 'undefined' && error) { %>
-    <div class="mb-6 max-w-xl bg-rose-50 border border-rose-200 rounded-xl p-4 flex items-start gap-3 shadow-sm">
-      <div class="bg-rose-100 text-rose-600 p-1.5 rounded-lg shrink-0">
-        <i class="fas fa-exclamation-circle text-lg"></i>
-      </div>
-      <div class="flex-1">
-        <h4 class="text-sm font-bold text-rose-800">Registration Failure</h4>
-        <p class="text-xs text-rose-600 mt-0.5"><%= error %></p>
-      </div>
+    <div role="alert" class="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4">
+      <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-rose-100 text-rose-600"><i class="fas fa-exclamation-circle"></i></span>
+      <div class="min-w-0"><h4 class="text-sm font-semibold text-rose-800">The shop could not be registered</h4><p class="mt-0.5 text-sm text-rose-700"><%= error %></p></div>
     </div>
   <% } %>
 
-  <div class="mb-4">
-    <a href="/business" class="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-brand-teal transition duration-150 group">
-      <i class="fas fa-arrow-left text-xs group-hover:-translate-x-0.5 transition-transform duration-150"></i>
-      <span>Go Back</span>
-    </a>
-  </div>
+  <div class="grid items-start gap-6 lg:grid-cols-3">
 
-  <div class="mb-6">
-    <h1 class="text-2xl font-bold tracking-tight text-slate-800">Register New Shop</h1>
-    <p class="text-sm text-slate-500 mt-1">Initialize your enterprise profile workspace container instance.</p>
-  </div>
+    <!-- ============ Form ============ -->
+    <form id="shopForm" method="POST" action="/business/create" class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white lg:col-span-2" novalidate>
+      <div class="space-y-8 p-6 sm:p-8">
 
-  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden max-w-xl">
-    <div class="h-1.5 bg-brand-teal w-full"></div>
-    
-    <form method="POST" action="/business/create" class="p-6 space-y-4">
-      <div>
-        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">Official Brand / Shop Name</label>
-        <input type="text" name="name" required
-          class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2.5 px-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-teal/20 focus:border-brand-teal focus:bg-white transition duration-150"
-          placeholder="e.g., Delle Ventures">
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-brand-tealDark">Register a new shop</h2>
+          <p class="mt-1 text-sm text-slate-500">Every shop keeps its own products, orders, debts and expenses, so each one gets its own space in the system.</p>
+        </div>
+
+        <section>
+          <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>Shop name</h3>
+          <div class="mt-4">
+            <label for="name" class="mb-1.5 block text-sm font-medium text-slate-700">Official brand or shop name</label>
+            <div class="relative">
+              <i class="fas fa-store pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+              <input type="text" id="name" name="name" required autofocus autocomplete="off" maxlength="100" placeholder="e.g. Delle Ventures" class="<%= field %> pl-12 pr-4">
+            </div>
+            <div class="mt-1.5 flex items-start justify-between gap-3 text-xs">
+              <p id="nameHint" class="text-slate-500">Use the name your customers know. You can rename the shop later.</p>
+              <p class="shrink-0 tabular-nums text-slate-400"><span id="nameCount">0</span>/100</p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>What happens next</h3>
+          <ol class="mt-4 space-y-4">
+            <li class="flex gap-3"><span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-brand-teal text-xs font-bold text-white">1</span><div><p class="text-sm font-semibold text-slate-800">The shop is created</p><p class="text-sm text-slate-500">It appears in your list of shops straight away.</p></div></li>
+            <li class="flex gap-3"><span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-brand-teal/15 text-xs font-bold text-brand-teal">2</span><div><p class="text-sm font-semibold text-slate-800">Add your team</p><p class="text-sm text-slate-500">Create staff accounts and choose this shop for them. <a href="/users" class="font-semibold text-brand-teal hover:text-brand-tealDark">Go to users</a></p></div></li>
+            <li class="flex gap-3"><span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-brand-teal/15 text-xs font-bold text-brand-teal">3</span><div><p class="text-sm font-semibold text-slate-800">Stock the shelves</p><p class="text-sm text-slate-500">Add products so you can start taking orders. <a href="/products/create" class="font-semibold text-brand-teal hover:text-brand-tealDark">Add a product</a></p></div></li>
+          </ol>
+        </section>
       </div>
 
-      <div class="pt-2 border-t border-slate-100 flex items-center justify-end gap-3">
-        <a href="/business" class="px-4 py-2.5 text-sm font-semibold text-slate-500 hover:bg-slate-100 rounded-lg border border-slate-200 shadow-sm transition">Cancel</a>
-        <button type="submit" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-brand-teal hover:bg-brand-tealDark text-white text-sm font-semibold rounded-lg shadow-md shadow-brand-teal/10 transition duration-150">
-          <i class="fas fa-check text-xs"></i> Provision Workspace
+      <div class="flex flex-col-reverse items-stretch justify-end gap-3 border-t border-slate-100 bg-slate-50/60 px-6 py-4 sm:flex-row sm:items-center sm:px-8">
+        <a href="/business" class="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-center text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50">Cancel</a>
+        <button type="submit" id="saveBtn" class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-gold px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-goldHover disabled:cursor-wait disabled:opacity-70">
+          <i class="fas fa-check text-xs"></i><span>Register shop</span>
         </button>
       </div>
     </form>
+
+    <!-- ============ Preview ============ -->
+    <aside class="lg:sticky lg:top-24">
+      <section class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
+        <div class="h-1 bg-brand-gold"></div>
+        <div class="bg-teal-50 px-6 py-4"><p class="text-xs font-medium text-brand-teal">Preview</p><p class="mt-0.5 text-sm text-slate-600">How it will look in your shop list.</p></div>
+        <div class="p-5">
+          <div class="rounded-2xl border border-slate-200 p-5">
+            <div class="flex items-start gap-4">
+              <span id="pvInitial" class="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-brand-teal text-xl font-extrabold text-white">?</span>
+              <div class="min-w-0 pt-0.5">
+                <h3 id="pvName" class="truncate text-base font-bold text-slate-400">Shop name</h3>
+                <p class="mt-1 flex items-center gap-1.5 text-sm text-slate-500"><i class="far fa-calendar text-xs text-brand-gold"></i>Registered today</p>
+              </div>
+            </div>
+            <div class="mt-4 rounded-xl bg-slate-50 px-3.5 py-2.5"><p class="text-xs text-slate-500">Shop ID</p><p class="font-mono text-sm font-semibold text-slate-400">Created when you save</p></div>
+          </div>
+        </div>
+      </section>
+    </aside>
   </div>
+</div>
+
+<script>
+  (function () {
+    var $ = function (id) { return document.getElementById(id); };
+    var form = $('shopForm'), nameEl = $('name');
+
+    function clean(v) { return v.replace(/\s+/g, ' ').trim(); }
+
+    function refresh() {
+      var n = clean(nameEl.value), short = n.length > 0 && n.length < 2;
+      $('nameCount').textContent = nameEl.value.length;
+      $('pvInitial').textContent = (n || '?').charAt(0).toUpperCase();
+      var pn = $('pvName'); pn.textContent = n || 'Shop name'; pn.className = 'truncate text-base font-bold ' + (n ? 'text-slate-900' : 'text-slate-400');
+      var hint = $('nameHint');
+      hint.textContent = short ? 'The name needs at least 2 characters.' : 'Use the name your customers know. You can rename the shop later.';
+      hint.className = short ? 'font-medium text-amber-700' : 'text-slate-500';
+    }
+
+    nameEl.addEventListener('input', refresh);
+    nameEl.addEventListener('blur', function () { nameEl.value = clean(nameEl.value); refresh(); });
+
+    form.addEventListener('submit', function (e) {
+      var n = clean(nameEl.value); nameEl.value = n;
+      if (n.length < 2) { e.preventDefault(); nameEl.focus(); refresh(); if (typeof Toast !== 'undefined') Toast.fire({ icon: 'warning', title: 'Enter the shop name', timer: 1800 }); return; }
+      var b = $('saveBtn'); b.disabled = true; b.innerHTML = '<i class="fas fa-spinner fa-spin text-xs"></i><span>Registering</span>';
+    });
+    refresh();
+  })();
+</script>
 
 <%- include('../layouts/footer') %>

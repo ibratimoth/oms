@@ -1,168 +1,245 @@
-<!DOCTYPE html>
-<html lang="en">
+<% const loginError=(typeof error !=='undefined' && error) ? error : '' ; const back=(typeof returnTo !=='undefined' &&
+  returnTo) ? returnTo : '' ; const year=new Date().getFullYear(); const
+  field='block w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-11 text-[15px] text-slate-900 placeholder:text-slate-400 transition-colors focus:border-brand-teal focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-teal/20'
+  ; %>
+  <!DOCTYPE html>
+  <html lang="en" class="h-full bg-[#F3F6F7]">
 
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login | Delle Ventures Order Management</title>
-  <script src="/js/tailwindcss.js"></script>
-  <link rel="stylesheet" href="/css/all.min.css">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign in · Delle Ventures</title>
     <link rel="icon" type="image/jpeg" href="/images/delleventures.jpeg">
-  <link rel="apple-touch-icon" href="/images/delleventures.jpeg">
-
-  <style>
-    /* Custom brand colors matching the logo */
-    .bg-brand-teal {
-      background-color: #1A6B78;
-    }
-
-    .text-brand-teal {
-      color: #1A6B78;
-    }
-
-    .border-brand-teal {
-      border-color: #1A6B78;
-    }
-
-    .focus-brand-teal:focus {
-      border-color: #1A6B78;
-      --tw-ring-color: #1A6B78;
-    }
-
-    .bg-brand-gold {
-      background-color: #D49A17;
-    }
-
-    .text-brand-gold {
-      color: #D49A17;
-    }
-
-    .hover-brand-gold:hover {
-      background-color: #B88211;
-    }
-  </style>
-</head>
-
-<body class="bg-gray-50 min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8">
-
-  <div class="bg-white rounded-2xl shadow-xl overflow-hidden max-w-4xl w-full min-h-[550px] flex flex-col md:flex-row">
-
-    <div class="md:w-1/2 bg-brand-teal p-8 flex flex-col justify-between text-white relative overflow-hidden">
-      <div class="absolute -top-10 -left-10 w-40 h-40 bg-brand-gold opacity-10 rounded-full"></div>
-
-      <div class="relative z-10">
-        <span class="text-xs font-semibold tracking-wider uppercase bg-white/20 px-3 py-1 rounded-full">
-          OMS Portal
-        </span>
-      </div>
-
-      <div class="my-auto py-8 flex flex-col items-center text-center relative z-10">
-        <img src="/images/delleventures.jpeg" alt="Delle Ventures Logo"
-          class="w-48 h-auto object-contain mb-6 drop-shadow-md rounded-lg">
-        <h2 class="text-2xl font-bold tracking-tight">Order Management System</h2>
-        <p class="text-teal-100 text-sm mt-2 max-w-xs">
-          Streamline your orders, tracking, and logistics fulfillment in one secure place.
-        </p>
-      </div>
-
-      <div class="text-xs text-teal-200/80 relative z-10">
-        &copy; 2026 Delle Ventures. All rights reserved.
-      </div>
-    </div>
-
-    <div class="w-full md:w-1/2 p-8 sm:p-12 flex flex-col justify-center">
-
-      <div class="flex flex-col items-center mb-6 md:hidden">
-        <img src="/images/delleventures.jpeg" alt="Delle Ventures Logo" class="w-32 h-auto object-contain mb-3">
-        <h1 class="text-xl font-bold text-gray-800">Order Management System</h1>
-      </div>
-
-      <div class="mb-8 hidden md:block">
-        <h3 class="text-2xl font-bold text-gray-800">Welcome Back</h3>
-        <p class="text-sm text-gray-500 mt-1">Please enter your details to sign in</p>
-      </div>
-
-      <% if (typeof error !=='undefined' && error) { %>
-        <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-r-md flex items-start">
-          <i class="fas fa-exclamation-circle text-red-500 mt-0.5 mr-3"></i>
-          <p class="text-sm text-red-700 font-medium">
-            <%= error %>
-          </p>
-        </div>
-        <% } %>
-
-          <form method="POST" action="/login" class="space-y-5">
-
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1.5">Username</label>
-              <div class="relative">
-                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                  <i class="fas fa-user text-sm"></i>
-                </div>
-                <input type="text" name="username" required
-                  class="block w-full pl-10 pr-3 py-2.5 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg text-sm focus:outline-none focus:ring-2 focus-brand-teal transition duration-200"
-                  placeholder="Enter your username">
-                <input type="hidden" name="returnTo" value="<%= typeof returnTo !== 'undefined' ? returnTo : '' %>">
-              </div>
-            </div>
-
-            <div>
-              <div class="flex justify-between items-center mb-1.5">
-                <label class="block text-sm font-medium text-gray-700">Password</label>
-                <a href="#" class="text-xs font-semibold text-brand-teal hover:underline">Forgot password?</a>
-              </div>
-              <div class="relative flex items-center">
-                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                  <i class="fas fa-lock text-sm"></i>
-                </div>
-                <input type="password" name="password" id="passwordField" required
-                  class="block w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-300 text-gray-900 rounded-lg text-sm focus:outline-none focus:ring-2 focus-brand-teal transition duration-200"
-                  placeholder="••••••••">
-                <button type="button" onclick="togglePasswordVisibility()"
-                  class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none select-none">
-                  <i id="toggleIcon" class="fas fa-eye text-sm"></i>
-                </button>
-              </div>
-            </div>
-
-            <div class="flex items-center justify-between pt-1">
-              <div class="flex items-center">
-                <input id="remember-me" name="remember-me" type="checkbox"
-                  class="h-4 w-4 text-brand-teal focus:ring-brand-teal border-gray-300 rounded cursor-pointer">
-                <label for="remember-me" class="ml-2 block text-xs text-gray-600 cursor-pointer select-none">Remember
-                  this device</label>
-              </div>
-            </div>
-
-            <div class="pt-2">
-              <button type="submit"
-                class="w-full flex justify-center items-center py-2.5 px-4 border border-transparent rounded-lg text-sm font-semibold text-white bg-brand-gold hover-brand-gold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-colors shadow-sm duration-200">
-                Sign In <i class="fas fa-arrow-right ml-2 text-xs"></i>
-              </button>
-            </div>
-
-          </form>
-
-    </div>
-  </div>
-
-  <script>
-    function togglePasswordVisibility() {
-      const passwordField = document.getElementById('passwordField');
-      const toggleIcon = document.getElementById('toggleIcon');
-
-      if (passwordField.type === 'password') {
-        passwordField.type = 'text';
-        toggleIcon.classList.remove('fa-eye');
-        toggleIcon.classList.add('fa-eye-slash');
-      } else {
-        passwordField.type = 'password';
-        toggleIcon.classList.remove('fa-eye-slash');
-        toggleIcon.classList.add('fa-eye');
+    <link rel="apple-touch-icon" href="/images/delleventures.jpeg">
+    <link rel="stylesheet" href="/css/fonts.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <script src="/js/tailwindcss.js"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: { brand: { teal: '#1A6B78', tealDark: '#124E58', gold: '#D49A17', goldHover: '#B88211' } }
+          }
+        }
       }
-    }
-  </script>
+    </script>
+    <link rel="stylesheet" href="/css/all.min.css">
 
-</body>
+    <style>
+      :focus-visible {
+        outline: 2px solid #D49A17;
+        outline-offset: 2px;
+      }
 
-</html>
+      .brand-panel {
+        background-color: #124E58;
+        background-image:
+          radial-gradient(circle at 12% 8%, rgba(212, 154, 23, .22) 0, rgba(212, 154, 23, 0) 38%),
+          radial-gradient(circle at 92% 96%, rgba(26, 107, 120, .9) 0, rgba(26, 107, 120, 0) 55%),
+          linear-gradient(rgba(255, 255, 255, .045) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, .045) 1px, transparent 1px);
+        background-size: auto, auto, 32px 32px, 32px 32px;
+      }
+
+      .shake {
+        animation: shake .4s ease;
+      }
+
+      @keyframes shake {
+
+        20%,
+        60% {
+          transform: translateX(-5px);
+        }
+
+        40%,
+        80% {
+          transform: translateX(5px);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .shake {
+          animation: none;
+        }
+      }
+    </style>
+  </head>
+
+  <body
+    class="min-h-full font-sans text-slate-900 antialiased selection:bg-brand-teal/15 selection:text-brand-tealDark">
+
+    <main class="grid min-h-screen lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
+
+      <!-- ============ Brand panel ============ -->
+      <aside
+        class="brand-panel relative hidden flex-col justify-between overflow-hidden p-12 text-white lg:flex xl:p-16">
+        <div class="flex items-center gap-3">
+          <img src="/images/delleventures.jpeg" alt=""
+            class="h-12 w-12 rounded-xl bg-white object-contain p-1 shadow-lg shadow-black/20">
+          <span class="text-xl font-bold tracking-tight">Delle <span class="text-brand-gold">Ventures</span></span>
+        </div>
+
+        <div class="max-w-md">
+          <span
+            class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold tracking-wide text-teal-100 ring-1 ring-white/15"><span
+              class="h-1.5 w-1.5 rounded-full bg-brand-gold"></span>Order management portal</span>
+          <h1 class="mt-6 text-4xl font-extrabold leading-tight tracking-tight xl:text-[2.75rem]">Run every sale, stock
+            count and shilling from one place.</h1>
+          <ul class="mt-10 space-y-5">
+            <li class="flex items-start gap-4"><span
+                class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/10 text-brand-gold ring-1 ring-white/10"><i
+                  class="fas fa-shopping-cart"></i></span>
+              <span><span class="block text-[15px] font-semibold">Orders from sale to payment</span><span
+                  class="block text-sm text-teal-100/80">Create, complete and invoice orders in a few
+                  taps.</span></span>
+            </li>
+            <li class="flex items-start gap-4"><span
+                class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/10 text-brand-gold ring-1 ring-white/10"><i
+                  class="fas fa-boxes"></i></span>
+              <span><span class="block text-[15px] font-semibold">Stock you can trust</span><span
+                  class="block text-sm text-teal-100/80">See what is selling and what needs restocking.</span></span>
+            </li>
+            <li class="flex items-start gap-4"><span
+                class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/10 text-brand-gold ring-1 ring-white/10"><i
+                  class="fas fa-file-invoice-dollar"></i></span>
+              <span><span class="block text-[15px] font-semibold">Debts and expenses, clearly kept</span><span
+                  class="block text-sm text-teal-100/80">Know who owes you, what you owe and what you
+                  spent.</span></span>
+            </li>
+          </ul>
+        </div>
+
+        <p class="text-sm text-teal-200/80">&copy; <%= year %> Delle Ventures. All rights reserved.</p>
+      </aside>
+
+      <!-- ============ Form ============ -->
+      <section class="flex flex-col justify-center px-5 py-10 sm:px-10 lg:px-14 xl:px-20">
+        <div class="mx-auto w-full max-w-md">
+
+          <!-- Brand on small screens -->
+          <div class="mb-8 flex items-center gap-3 lg:hidden">
+            <img src="/images/delleventures.jpeg" alt=""
+              class="h-12 w-12 rounded-xl border border-slate-200 bg-white object-contain p-1">
+            <span class="text-xl font-bold tracking-tight text-brand-tealDark">Delle <span
+                class="text-brand-gold">Ventures</span></span>
+          </div>
+
+          <div class="rounded-3xl border border-slate-200/80 bg-white p-7 shadow-xl shadow-brand-tealDark/5 sm:p-9">
+            <div class="h-1 w-12 rounded-full bg-brand-gold"></div>
+            <h2 class="mt-5 text-3xl font-extrabold tracking-tight text-brand-tealDark">Welcome back</h2>
+            <p class="mt-2 text-sm text-slate-500">Sign in with your username and password to continue.</p>
+
+            <% if (loginError) { %>
+              <div id="loginError" role="alert"
+                class="mt-6 flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4">
+                <span class="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-rose-100 text-rose-600"><i
+                    class="fas fa-exclamation-circle"></i></span>
+                <div class="min-w-0">
+                  <p class="text-sm font-semibold text-rose-800">We could not sign you in</p>
+                  <p class="mt-0.5 text-sm text-rose-700">
+                    <%= loginError %>
+                  </p>
+                </div>
+              </div>
+              <% } %>
+
+                <form id="loginForm" method="POST" action="/login" class="mt-7 space-y-5" novalidate>
+                  <input type="hidden" name="returnTo" value="<%= back %>">
+
+                  <div>
+                    <label for="username" class="mb-1.5 block text-sm font-medium text-slate-700">Username</label>
+                    <div class="relative">
+                      <i
+                        class="fas fa-user pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400"></i>
+                      <input type="text" id="username" name="username" required autofocus autocomplete="username"
+                        autocapitalize="none" spellcheck="false" placeholder="Enter your username"
+                        class="<%= field %> pr-4">
+                    </div>
+                  </div>
+
+                  <div>
+                    <div class="mb-1.5 flex items-center justify-between">
+                      <label for="passwordField" class="block text-sm font-medium text-slate-700">Password</label>
+                      <button type="button" id="forgotBtn" aria-expanded="false" aria-controls="forgotHelp"
+                        class="text-sm font-semibold text-brand-teal hover:text-brand-tealDark">Forgot
+                        password?</button>
+                    </div>
+                    <div class="relative">
+                      <i
+                        class="fas fa-lock pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400"></i>
+                      <input type="password" id="passwordField" name="password" required autocomplete="current-password"
+                        placeholder="Enter your password" class="<%= field %> pr-12">
+                      <button type="button" id="toggleBtn" aria-label="Show password" aria-pressed="false"
+                        class="absolute right-2 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600">
+                        <i id="toggleIcon" class="far fa-eye"></i>
+                      </button>
+                    </div>
+                    <p id="capsWarn" class="mt-2 hidden items-center gap-2 text-sm font-medium text-amber-700"
+                      role="status"><i class="fas fa-exclamation-triangle text-xs"></i>Caps Lock is on</p>
+                    <p id="forgotHelp"
+                      class="mt-3 hidden items-start gap-2 rounded-xl bg-teal-50 px-3.5 py-3 text-sm text-brand-tealDark">
+                      <i class="fas fa-info-circle mt-0.5 text-xs text-brand-teal"></i><span>Passwords are reset by an
+                        administrator. Please ask them to set a new one for you.</span></p>
+                  </div>
+
+                  <label for="remember-me" class="flex cursor-pointer items-center gap-2.5 text-sm text-slate-600">
+                    <input id="remember-me" name="remember-me" type="checkbox"
+                      class="h-4 w-4 cursor-pointer rounded border-slate-300 text-brand-teal focus:ring-brand-teal">
+                    Remember this device
+                  </label>
+
+                  <button type="submit" id="submitBtn"
+                    class="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-gold px-5 py-3.5 text-[15px] font-semibold text-white shadow-sm transition-colors hover:bg-brand-goldHover focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-70">
+                    <span>Sign in</span><i class="fas fa-arrow-right text-xs"></i>
+                  </button>
+                </form>
+          </div>
+
+          <p class="mt-6 text-center text-xs text-slate-500 lg:hidden">&copy; <%= year %> Delle Ventures. All rights
+              reserved.</p>
+        </div>
+      </section>
+    </main>
+
+    <script>
+        (function () {
+          var $ = function (id) { return document.getElementById(id); };
+          var form = $('loginForm'), pass = $('passwordField'), user = $('username');
+
+          /* Show or hide the password */
+          $('toggleBtn').addEventListener('click', function () {
+            var show = pass.type === 'password'; pass.type = show ? 'text' : 'password';
+            $('toggleIcon').className = show ? 'far fa-eye-slash' : 'far fa-eye';
+            this.setAttribute('aria-pressed', show); this.setAttribute('aria-label', show ? 'Hide password' : 'Show password'); pass.focus();
+          });
+
+          /* Warn when Caps Lock is on */
+          function caps(e) {
+            if (!e.getModifierState) return;
+            var on = e.getModifierState('CapsLock'); $('capsWarn').classList.toggle('hidden', !on); $('capsWarn').classList.toggle('flex', on);
+          }
+          pass.addEventListener('keydown', caps); pass.addEventListener('keyup', caps);
+          pass.addEventListener('blur', function () { $('capsWarn').classList.add('hidden'); $('capsWarn').classList.remove('flex'); });
+
+          /* Password help */
+          $('forgotBtn').addEventListener('click', function () {
+            var box = $('forgotHelp'), open = box.classList.contains('hidden');
+            box.classList.toggle('hidden', !open); box.classList.toggle('flex', open); this.setAttribute('aria-expanded', open);
+          });
+
+          /* Stop double submits and ask for missing fields */
+          form.addEventListener('submit', function (e) {
+            if (!user.value.trim()) { e.preventDefault(); user.focus(); return; }
+            if (!pass.value) { e.preventDefault(); pass.focus(); return; }
+            var b = $('submitBtn'); b.disabled = true; b.innerHTML = '<i class="fas fa-spinner fa-spin text-sm"></i><span>Signing in</span>';
+          });
+
+          /* After a failed sign in, shake the message and go straight to the password */
+          var err = $('loginError');
+          if (err) { err.classList.add('shake'); pass.focus(); }
+        })();
+    </script>
+  </body>
+
+  </html>

@@ -1,124 +1,233 @@
 <%- include('../layouts/header') %>
+<%
+  const shops = (typeof businesses !== 'undefined' && businesses) ? businesses : [];
+  const errMsg = (typeof error !== 'undefined' && error) ? error : '';
+  const okMsg  = (typeof success !== 'undefined' && success) ? success : '';
+  const field = 'w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-teal focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-teal/20';
+  const label = 'mb-1.5 block text-sm font-medium text-slate-700';
+  const roles = [
+    { v: 'sales_officer', icon: 'fa-cash-register', title: 'Sales officer', text: 'Counter operations' },
+    { v: 'store_officer', icon: 'fa-boxes',         title: 'Store officer', text: 'Inventory control' },
+    { v: 'admin',         icon: 'fa-shield-alt',    title: 'Administrator', text: 'Full system access' }
+  ];
+%>
 
-<div class="max-w-3xl mx-auto my-8 px-4">
-  <div class="mb-6 flex items-center justify-between">
-    <div>
-      <h1 class="text-2xl font-black tracking-tight text-slate-800">User Management Hub</h1>
-      <p class="text-xs text-slate-500 mt-1">Provision core system identities and bind operational business scopes.</p>
+<div class="mx-auto max-w-5xl space-y-6">
+
+  <% if (errMsg) { %>
+    <div role="alert" class="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4">
+      <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-rose-100 text-rose-600"><i class="fas fa-exclamation-circle"></i></span>
+      <div class="min-w-0"><h4 class="text-sm font-semibold text-rose-800">The account could not be created</h4><p class="mt-0.5 text-sm text-rose-700"><%= errMsg %></p></div>
     </div>
-    <a href="/dashboard" class="px-4 py-2 text-xs font-bold uppercase tracking-wider bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg border border-slate-200 transition">
-      Workspace Overview
-    </a>
-  </div>
-
-  <% if (error) { %>
-    <div class="mb-6 p-4 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-xl flex items-center gap-3 shadow-sm animate-fade-in">
-      <i class="fas fa-exclamation-circle text-base"></i>
-      <p class="font-medium"><%= error %></p>
+  <% } %>
+  <% if (okMsg) { %>
+    <div role="status" class="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+      <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-600"><i class="fas fa-check-circle"></i></span>
+      <div class="min-w-0"><h4 class="text-sm font-semibold text-emerald-800">Account created</h4><p class="mt-0.5 text-sm text-emerald-700"><%= okMsg %></p></div>
     </div>
   <% } %>
 
-  <% if (success) { %>
-    <div class="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded-xl flex items-center gap-3 shadow-sm animate-fade-in">
-      <i class="fas fa-check-circle text-base"></i>
-      <p class="font-medium"><%= success %></p>
-    </div>
-  <% } %>
+  <div class="grid items-start gap-6 lg:grid-cols-3">
 
-  <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-    <div class="p-6 bg-slate-50 border-b border-slate-200 flex items-center gap-4">
-      <div class="w-10 h-10 bg-brand-teal/10 rounded-xl flex items-center justify-center text-brand-teal text-lg">
-        <i class="fas fa-user-plus"></i>
-      </div>
-      <div>
-        <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wide">Account Provisioning Blueprint</h2>
-        <p class="text-xs text-slate-400">All created profiles are instantly active within their explicit access scope.</p>
-      </div>
-    </div>
+    <!-- ============ Form ============ -->
+    <form id="userForm" action="/register" method="POST" class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white lg:col-span-2" autocomplete="off">
+      <div class="space-y-8 p-6 sm:p-8">
 
-    <form action="/register" method="POST" class="p-6 space-y-6">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        
-        <div class="space-y-2">
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-600">Full Official Name</label>
-          <div class="relative">
-            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 text-xs">
-              <i class="fas fa-id-card"></i>
-            </span>
-            <input type="text" name="full_name" placeholder="e.g., Ibrahimu Mwakipesile" required
-                   class="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50/50 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-teal focus:bg-white transition">
+        <div>
+          <h2 class="text-xl font-bold tracking-tight text-brand-tealDark">Create a user account</h2>
+          <p class="mt-1 text-sm text-slate-500">The account is active straight away, with the access you choose below.</p>
+        </div>
+
+        <!-- Person -->
+        <section>
+          <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>Who is it for?</h3>
+          <div class="mt-4 grid gap-5 sm:grid-cols-2">
+            <div class="sm:col-span-2">
+              <label for="full_name" class="<%= label %>">Full name</label>
+              <div class="relative">
+                <i class="fas fa-id-card pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
+                <input type="text" id="full_name" name="full_name" required autocomplete="off" placeholder="e.g. Ibrahimu Mwakipesile" class="<%= field %> pl-10 pr-3.5">
+              </div>
+            </div>
+            <div class="sm:col-span-2">
+              <label for="username" class="<%= label %>">Username</label>
+              <div class="relative">
+                <i class="fas fa-user-tag pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
+                <input type="text" id="username" name="username" required autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="e.g. ibrahimu.mwakipesile" class="<%= field %> pl-10 pr-3.5 font-mono">
+              </div>
+              <p class="mt-1.5 text-xs text-slate-500">Used to sign in. Lowercase letters, numbers and dots work best.
+                <button type="button" id="suggestBtn" class="ml-1 hidden font-semibold text-brand-teal hover:text-brand-tealDark"></button></p>
+            </div>
           </div>
-        </div>
+        </section>
 
-        <div class="space-y-2">
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-600">System Username</label>
-          <div class="relative">
-            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 text-xs">
-              <i class="fas fa-user-tag"></i>
-            </span>
-            <input type="text" name="username" placeholder="e.g., ibrahimu.dev" required
-                   class="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50/50 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-teal focus:bg-white transition">
+        <!-- Password -->
+        <section>
+          <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>Password</h3>
+          <div class="mt-4">
+            <label for="password" class="<%= label %>">Starting password</label>
+            <div class="flex gap-2">
+              <div class="relative flex-1">
+                <i class="fas fa-lock pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
+                <input type="password" id="password" name="password" required autocomplete="new-password" placeholder="Type one, or generate a strong one" class="<%= field %> pl-10 pr-11 font-mono">
+                <button type="button" id="toggleBtn" aria-label="Show password" aria-pressed="false" class="absolute right-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"><i id="toggleIcon" class="far fa-eye text-sm"></i></button>
+              </div>
+              <button type="button" id="genBtn" class="inline-flex shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-brand-teal transition-colors hover:border-brand-teal/40 hover:bg-brand-teal/5"><i class="fas fa-magic text-xs"></i><span class="hidden sm:inline">Generate</span></button>
+            </div>
+            <div class="mt-3 flex items-center gap-3">
+              <div class="grid flex-1 grid-cols-4 gap-1.5" aria-hidden="true"><span class="meter h-1.5 rounded-full bg-slate-200"></span><span class="meter h-1.5 rounded-full bg-slate-200"></span><span class="meter h-1.5 rounded-full bg-slate-200"></span><span class="meter h-1.5 rounded-full bg-slate-200"></span></div>
+              <p id="strengthText" class="w-24 text-right text-xs font-medium text-slate-400" aria-live="polite">Not set</p>
+            </div>
+            <p class="mt-2 text-xs text-slate-500">Longer is stronger. Mix letters, numbers and symbols. Share the password privately.</p>
           </div>
-        </div>
+        </section>
 
-        <div class="space-y-2">
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-600">Access Password</label>
-          <div class="relative">
-            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 text-xs">
-              <i class="fas fa-lock"></i>
-            </span>
-            <input type="password" name="password" placeholder="••••••••••••" required
-                   class="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50/50 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-teal focus:bg-white transition">
+        <!-- Role -->
+        <fieldset>
+          <legend class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>What can they do?</legend>
+          <div class="mt-4 grid gap-3 sm:grid-cols-3">
+            <% roles.forEach((r, i) => { %>
+              <label class="cursor-pointer">
+                <input type="radio" name="role" value="<%= r.v %>" required class="peer sr-only" <%= i === 0 ? 'checked' : '' %>>
+                <span class="flex h-full flex-col gap-3 rounded-xl border border-slate-200 p-4 transition-all peer-checked:border-brand-teal peer-checked:bg-brand-teal/5 peer-checked:ring-2 peer-checked:ring-brand-teal/15 peer-focus-visible:ring-2 peer-focus-visible:ring-brand-gold">
+                  <span class="grid h-9 w-9 place-items-center rounded-lg bg-slate-100 text-slate-500"><i class="fas <%= r.icon %> text-sm"></i></span>
+                  <span><span class="block text-sm font-semibold text-slate-800"><%= r.title %></span><span class="mt-0.5 block text-xs text-slate-500"><%= r.text %></span></span>
+                </span>
+              </label>
+            <% }) %>
           </div>
-        </div>
+          <p id="adminWarn" class="mt-3 hidden items-start gap-2 rounded-xl bg-amber-50 px-3.5 py-2.5 text-sm font-medium text-amber-800" role="status"><i class="fas fa-exclamation-triangle mt-0.5 text-xs"></i><span>Administrators have full access to the system. Only give this role to people you trust.</span></p>
+        </fieldset>
 
-        <div class="space-y-2">
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-600">Role Authority Tier</label>
-          <div class="relative">
-            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 text-xs">
-              <i class="fas fa-shield-alt"></i>
-            </span>
-            <select name="role" required class="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50/50 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-teal focus:bg-white transition appearance-none">
-              <option value="sales_officer" selected>Sales Officer (Counter Operations)</option>
-              <option value="store_officer">Store Officer (Inventory Control)</option>
-              <option value="admin">Administrator (Full Systems Root)</option>
-            </select>
+        <!-- Shop -->
+        <section>
+          <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>Which shop?</h3>
+          <div class="mt-4">
+            <label for="business_id" class="<%= label %>">Assigned shop</label>
+            <div class="relative">
+              <i class="fas fa-briefcase pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
+              <select id="business_id" name="business_id" class="<%= field %> pl-10 pr-3.5">
+                <option value="none">All shops (head office)</option>
+                <% shops.forEach(b => { %><option value="<%= b.id %>"><%= b.name %></option><% }) %>
+              </select>
+            </div>
+            <p class="mt-1.5 text-xs text-slate-500">The person will only see the records of the shop you choose. Pick "All shops" for head office staff.</p>
           </div>
-        </div>
-      </div>
-
-      <div class="p-5 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
-        <div class="flex items-start gap-3">
-          <input type="checkbox" id="assign_scope" class="mt-1 rounded border-slate-300 text-brand-teal focus:ring-brand-teal" checked disabled>
-          <div>
-            <label for="assign_scope" class="block text-xs font-bold uppercase tracking-wider text-slate-700">Operational Branch Bound Assignment</label>
-            <p class="text-xs text-slate-400 mt-0.5">Locks transactional accounting visibilities to the designated company branch.</p>
-          </div>
-        </div>
-        
-        <div class="relative max-w-md mt-2">
-          <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 text-xs">
-            <i class="fas fa-briefcase"></i>
-          </span>
-          <select name="business_id" class="w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-brand-teal transition">
-            <option value="none">Global Scope / Unassigned (Main Corporate Office)</option>
-            <% businesses.forEach(function(biz) { %>
-              <option value="<%= biz.id %>"><%= biz.name %></option>
-            <% }); %>
-          </select>
-        </div>
+        </section>
       </div>
 
-      <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
-        <button type="reset" class="px-5 py-2.5 text-xs font-bold uppercase tracking-wider bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition">
-          Clear Inputs
-        </button>
-        <button type="submit" class="px-6 py-2.5 text-xs font-bold uppercase tracking-wider bg-brand-teal hover:bg-brand-tealDark text-white rounded-xl shadow-sm transition">
-          Provision User Identity
+      <div class="flex flex-col-reverse items-stretch justify-end gap-3 border-t border-slate-100 bg-slate-50/60 px-6 py-4 sm:flex-row sm:items-center sm:px-8">
+        <button type="reset" id="resetBtn" class="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50">Clear form</button>
+        <button type="submit" id="saveBtn" class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-gold px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-goldHover disabled:cursor-wait disabled:opacity-70">
+          <i class="fas fa-user-plus text-xs"></i><span>Create account</span>
         </button>
       </div>
     </form>
+
+    <!-- ============ Preview ============ -->
+    <aside class="space-y-4 lg:sticky lg:top-24">
+      <section class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
+        <div class="h-1 bg-brand-gold"></div>
+        <div class="bg-teal-50 px-6 py-4"><p class="text-xs font-medium text-brand-teal">Preview</p><p class="mt-0.5 text-sm text-slate-600">How the account will look.</p></div>
+        <div class="p-6">
+          <div class="flex items-center gap-4">
+            <span id="pvInitial" class="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-brand-teal text-xl font-bold text-white">?</span>
+            <div class="min-w-0">
+              <p id="pvName" class="truncate text-base font-bold text-slate-400">Full name</p>
+              <p id="pvUser" class="truncate font-mono text-sm text-slate-400">username</p>
+            </div>
+          </div>
+          <dl class="mt-5 space-y-3 border-t border-slate-100 pt-4 text-sm">
+            <div class="flex items-center justify-between gap-3"><dt class="text-slate-500">Role</dt><dd id="pvRole" class="font-semibold text-slate-800"></dd></div>
+            <div class="flex items-center justify-between gap-3"><dt class="text-slate-500">Shop</dt><dd id="pvShop" class="truncate text-right font-medium text-slate-700"></dd></div>
+            <div class="flex items-center justify-between gap-3"><dt class="text-slate-500">Status</dt><dd><span class="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/15">Active on creation</span></dd></div>
+          </dl>
+          <button type="button" id="copyBtn" disabled class="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-brand-teal transition-colors hover:border-brand-teal/40 hover:bg-brand-teal/5 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:border-slate-200 disabled:hover:bg-white">
+            <i class="far fa-copy text-xs"></i>Copy login details
+          </button>
+          <p class="mt-2 text-center text-xs text-slate-500">Copies the username and password so you can send them privately.</p>
+        </div>
+      </section>
+    </aside>
   </div>
 </div>
+
+<script>
+  (function () {
+    var $ = function (id) { return document.getElementById(id); };
+    var form = $('userForm'), nameEl = $('full_name'), userEl = $('username'), passEl = $('password'), shopEl = $('business_id');
+    var ROLES = { sales_officer: 'Sales officer', store_officer: 'Store officer', admin: 'Administrator' };
+    function toast(icon, title) { if (typeof Toast !== 'undefined') Toast.fire({ icon: icon, title: title, timer: 1600 }); }
+    function role() { return form.querySelector('input[name="role"]:checked').value; }
+    function slug(s) { return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s.]/g, '').trim().split(/\s+/).join('.'); }
+
+    /* Password strength */
+    function strength(p) {
+      if (!p) return 0;
+      var s = 0; if (p.length >= 8) s++; if (p.length >= 12) s++;
+      if (/[a-z]/.test(p) && /[A-Z]/.test(p)) s++; if (/\d/.test(p) && /[^A-Za-z0-9]/.test(p)) s++;
+      return Math.max(1, Math.min(4, s));
+    }
+    var LEVELS = [{ t: 'Not set', c: 'bg-slate-200', x: 'text-slate-400' }, { t: 'Weak', c: 'bg-rose-500', x: 'text-rose-600' }, { t: 'Fair', c: 'bg-amber-400', x: 'text-amber-600' }, { t: 'Good', c: 'bg-brand-teal', x: 'text-brand-teal' }, { t: 'Strong', c: 'bg-emerald-500', x: 'text-emerald-600' }];
+
+    function refresh() {
+      var n = nameEl.value.trim(), u = userEl.value.trim(), p = passEl.value, r = role(), lvl = strength(p), L = LEVELS[lvl];
+
+      $('pvInitial').textContent = (n || u || '?').charAt(0).toUpperCase();
+      var pn = $('pvName'); pn.textContent = n || 'Full name'; pn.className = 'truncate text-base font-bold ' + (n ? 'text-slate-900' : 'text-slate-400');
+      var pu = $('pvUser'); pu.textContent = u || 'username'; pu.className = 'truncate font-mono text-sm ' + (u ? 'text-slate-600' : 'text-slate-400');
+      $('pvRole').textContent = ROLES[r];
+      $('pvShop').textContent = shopEl.options[shopEl.selectedIndex].textContent;
+      $('adminWarn').classList.toggle('hidden', r !== 'admin'); $('adminWarn').classList.toggle('flex', r === 'admin');
+
+      document.querySelectorAll('.meter').forEach(function (m, i) { m.className = 'meter h-1.5 rounded-full ' + (i < lvl ? L.c : 'bg-slate-200'); });
+      var st = $('strengthText'); st.textContent = L.t; st.className = 'w-24 text-right text-xs font-medium ' + L.x;
+      $('copyBtn').disabled = !(u && p);
+
+      var sug = slug(n), sb = $('suggestBtn'), show = sug && !u;     /* offer a username made from the name */
+      sb.classList.toggle('hidden', !show); if (show) sb.textContent = 'Use "' + sug + '"';
+    }
+
+    form.addEventListener('input', refresh); form.addEventListener('change', refresh);
+    userEl.addEventListener('blur', function () { userEl.value = userEl.value.trim().toLowerCase().replace(/\s+/g, '.'); refresh(); });
+    nameEl.addEventListener('blur', function () { nameEl.value = nameEl.value.trim(); refresh(); });
+    $('suggestBtn').addEventListener('click', function () { userEl.value = slug(nameEl.value); refresh(); passEl.focus(); });
+
+    /* Show / hide password */
+    $('toggleBtn').addEventListener('click', function () {
+      var show = passEl.type === 'password'; passEl.type = show ? 'text' : 'password';
+      $('toggleIcon').className = show ? 'far fa-eye-slash text-sm' : 'far fa-eye text-sm';
+      this.setAttribute('aria-pressed', show); this.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    });
+
+    /* Generate a strong password (easy-to-read characters only) */
+    function generate() {
+      var sets = ['ABCDEFGHJKLMNPQRSTUVWXYZ', 'abcdefghijkmnpqrstuvwxyz', '23456789', '!@#$%&*?'], all = sets.join(''), out;
+      function pick(chars) { var a = new Uint32Array(1); crypto.getRandomValues(a); return chars.charAt(a[0] % chars.length); }
+      do { out = ''; for (var i = 0; i < 12; i++) out += pick(all); } while (!sets.every(function (s) { return new RegExp('[' + s.replace(/[\]\\^-]/g, '\\$&') + ']').test(out); }));
+      return out;
+    }
+    $('genBtn').addEventListener('click', function () {
+      passEl.value = generate(); passEl.type = 'text'; $('toggleIcon').className = 'far fa-eye-slash text-sm'; $('toggleBtn').setAttribute('aria-pressed', true); refresh();
+      toast('success', 'Strong password generated');
+    });
+
+    /* Copy the login details */
+    $('copyBtn').addEventListener('click', function () {
+      var text = 'Username: ' + userEl.value.trim() + '\nPassword: ' + passEl.value;
+      var done = function () { toast('success', 'Login details copied'); };
+      if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(text).then(done, function () { toast('error', 'Could not copy'); }); return; }
+      var t = document.createElement('textarea'); t.value = text; t.style.position = 'fixed'; t.style.opacity = '0'; document.body.appendChild(t); t.select();
+      try { document.execCommand('copy'); done(); } catch (e) { toast('error', 'Could not copy'); } t.remove();
+    });
+
+    $('resetBtn').addEventListener('click', function () { setTimeout(function () { passEl.type = 'password'; $('toggleIcon').className = 'far fa-eye text-sm'; refresh(); nameEl.focus(); }, 0); });
+    form.addEventListener('submit', function (e) {
+      if (!userEl.value.trim() || !passEl.value) { e.preventDefault(); return; }
+      var b = $('saveBtn'); b.disabled = true; b.innerHTML = '<i class="fas fa-spinner fa-spin text-xs"></i><span>Creating</span>';
+    });
+    refresh();
+  })();
+</script>
 
 <%- include('../layouts/footer') %>
