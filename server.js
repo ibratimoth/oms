@@ -15,7 +15,7 @@ const PORT = process.env.PORT || 3000;
 
     // await sequelize.sync(); 
 
-    app.listen(PORT, () => {
+    app.listen(PORT, '127.0.0.1', () => {
       logger.info(`Server running on http://localhost:${PORT}`);
     });
   } catch (err) {

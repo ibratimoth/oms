@@ -620,7 +620,7 @@ exports.bulkUploadExcel = async (req, res) => {
       currentOriginalRowIdx++;
     }
 
-        const orderNumber = await generateOrderNumber(Order);
+    const orderNumber = await generateOrderNumber(Order);
 
     // --- STEP 2: PROCESS EACH DISTINCT ORDER GROUP ---
     for (const key of Object.keys(orderGroups)) {
