@@ -3,7 +3,7 @@
   /* ---------- helpers & derived data ---------- */
   const L       = locals;
   const num     = (v) => Number(v || 0);
-  const money   = (v) => num(v).toLocaleString('en-US');
+  const money   = (v) => num(v).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
   const admin   = typeof userRole !== 'undefined' && (userRole === 'superadmin' || userRole === 'admin');
   const q       = { search: L.search || '', date: L.date || '', from: L.from || '', to: L.to || '' };
   const cur     = Number(L.currentPage) || 1, pages = Number(L.totalPages) || 1;
@@ -24,11 +24,19 @@
   const filtered = chips.length > 0;
   const pageList = [...new Set([1, pages, cur - 1, cur, cur + 1])].filter(n => n >= 1 && n <= pages).sort((a, b) => a - b);
 
-  /* Sales split */
+  /* Sales & profit split */
   const sales = num(L.totalSales), cash = num(L.cashSales), nonCash = num(L.nonCashSales);
   const splitBase = cash + nonCash || sales || 1;
   const cashPct = Math.round((cash / splitBase) * 100), nonCashPct = 100 - cashPct;
-  const profit = num(L.totalProfit), margin = sales > 0 ? Math.round((profit / sales) * 1000) / 10 : 0;
+  const profit = num(L.totalProfit);
+  const grossMargin = sales > 0 ? Math.round((profit / sales) * 1000) / 10 : 0;
+
+  const opEx = L.totalOperatingExpenses !== undefined ? num(L.totalOperatingExpenses) : 0;
+  const restock = L.totalRestockSpend !== undefined ? num(L.totalRestockSpend) : 0;
+  const totalOutflow = L.totalCashOutflow !== undefined ? num(L.totalCashOutflow) : (num(L.totalExpenses) || (opEx + restock));
+  const netProfit = L.netProfit !== undefined ? num(L.netProfit) : (profit - opEx);
+  const netMargin = sales > 0 ? Math.round((netProfit / sales) * 1000) / 10 : 0;
+
   const net = num(L.netFinancialPosition);
 
   /* Daily volume: one row per day with stock in and sold side by side */
@@ -152,11 +160,13 @@
       <h3 class="text-sm font-semibold text-slate-800"><%= admin ? 'Profit and costs' : 'Spending' %></h3>
       <dl class="mt-2 divide-y divide-slate-100">
         <% if (admin) { %>
-          <%- stat('Calculated profit', profit, 'text-emerald-700', margin + '% of sales') %>
+          <%- stat('Net profit', netProfit, netProfit < 0 ? 'text-rose-600' : 'text-emerald-700', netMargin + '% net margin · Gross TSh ' + money(profit) + ' (' + grossMargin + '%)') %>
           <%- stat('Cost of goods sold', L.totalSoldProductsCost, 'text-amber-700', 'What the sold items cost') %>
           <%- stat('Stock value at cost', L.totalRegisteredProductsCost, 'text-brand-teal', 'Products on your shelves') %>
         <% } %>
-        <%- stat('Total expenses', L.totalExpenses, 'text-rose-600', 'Money spent so far') %>
+        <%- stat('Operating expenses', opEx, 'text-rose-600', 'Deducted from profit') %>
+        <%- stat('Restock spend', restock, 'text-brand-tealDark', 'Stock asset · No profit deduction') %>
+        <%- stat('Total cash outflow', totalOutflow, 'text-slate-800', 'Operating + restock paid out') %>
       </dl>
     </section>
 

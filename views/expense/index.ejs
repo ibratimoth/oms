@@ -6,7 +6,7 @@
   const pg    = (typeof pagination !== 'undefined' && pagination) ? pagination : { currentPage: 1, totalPages: 1 };
   const cur   = Number(pg.currentPage) || 1, pages = Number(pg.totalPages) || 1;
   const money = (v) => Number(v || 0).toLocaleString('en-US');
-  const KEYS  = ['single_date', 'start_date', 'end_date', 'category'];
+  const KEYS  = ['single_date', 'start_date', 'end_date', 'category', 'entry_type'];
 
   const build = (overrides, page) => {
     const p = new URLSearchParams();
@@ -31,17 +31,30 @@
     g.items.push(e); g.total += Number(e.amount || 0);
   });
 
-  const total = rows.reduce((s, e) => s + Number(e.amount || 0), 0);
+  const isRestockRow = (e) => e.entry_type === 'RESTOCK_INVENTORY' || e.affects_profit === false;
+
+  const fallbackOpEx = rows.filter(e => !isRestockRow(e)).reduce((s, e) => s + Number(e.amount || 0), 0);
+  const fallbackRestock = rows.filter(e => isRestockRow(e)).reduce((s, e) => s + Number(e.amount || 0), 0);
+  const fallbackTotal = fallbackOpEx + fallbackRestock;
+
+  const srvSummary = (typeof summary !== 'undefined' && summary) ? summary : null;
+  const total = srvSummary ? Number(srvSummary.totalCashOutflow || 0) : fallbackTotal;
+  const opExTotal = srvSummary ? Number(srvSummary.operatingExpenseTotal || 0) : fallbackOpEx;
+  const restockTotal = srvSummary ? Number(srvSummary.restockTotal || 0) : fallbackRestock;
+
   const byCat = {};
   rows.forEach(e => { const c = e.category || 'Uncategorised'; byCat[c] = (byCat[c] || 0) + Number(e.amount || 0); });
   const cats = Object.keys(byCat).map(c => ({ name: c, sum: byCat[c] })).sort((a, b) => b.sum - a.sum);
   const topCats = cats.slice(0, 5), maxCat = topCats.length ? topCats[0].sum : 0;
+
+  const typeLabel = (t) => t === 'RESTOCK_INVENTORY' ? 'Restock Inventory' : 'Operating Expense';
 
   const chips = [];
   if (f.single_date) chips.push({ key: 'single_date', text: 'On ' + f.single_date });
   if (f.start_date)  chips.push({ key: 'start_date',  text: 'From ' + f.start_date });
   if (f.end_date)    chips.push({ key: 'end_date',    text: 'To ' + f.end_date });
   if (f.category)    chips.push({ key: 'category',    text: 'Category: ' + f.category });
+  if (f.entry_type)  chips.push({ key: 'entry_type',  text: 'Type: ' + typeLabel(f.entry_type) });
   const filtered = chips.length > 0;
   const singleMode = !!f.single_date;
 
@@ -53,7 +66,7 @@
 
   <!-- ============ Actions ============ -->
   <div class="flex flex-wrap items-center justify-between gap-3">
-    <p class="max-w-xl text-sm text-slate-500">Everything the business spends, grouped by day so it is easy to check.</p>
+    <p class="max-w-xl text-sm text-slate-500">Everything the business pays out, grouped by day and separated between profit-deductible operating expenses and inventory restocking.</p>
     <a href="/expenses/create" class="inline-flex items-center gap-2 rounded-xl bg-brand-gold px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-goldHover">
       <i class="fas fa-plus text-xs"></i>Record expense
     </a>
@@ -61,15 +74,28 @@
 
   <!-- ============ Summary ============ -->
   <section aria-label="Spending summary" class="grid overflow-hidden rounded-2xl border border-slate-200 bg-white lg:grid-cols-5">
-    <div class="relative bg-teal-50 p-6 lg:col-span-2">
+    <div class="relative flex flex-col justify-between bg-teal-50 p-6 lg:col-span-2">
       <span class="absolute inset-x-0 top-0 h-1 bg-brand-gold"></span>
-      <p class="text-sm font-semibold text-brand-teal">Total spent</p>
-      <p class="mt-2 flex flex-wrap items-baseline gap-x-2 tabular-nums text-brand-tealDark"><span class="text-lg font-semibold opacity-70">TSh</span><span class="text-4xl font-extrabold tracking-tight"><%= money(total) %></span></p>
-      <p class="mt-2 text-sm text-slate-600"><%= rows.length %> <%= rows.length === 1 ? 'expense' : 'expenses' %><%= pages > 1 ? ' on this page' : '' %><%= filtered ? ' matching your filters' : '' %></p>
+      <div>
+        <p class="text-sm font-semibold text-brand-teal">Total cash outflow</p>
+        <p class="mt-2 flex flex-wrap items-baseline gap-x-2 tabular-nums text-brand-tealDark"><span class="text-lg font-semibold opacity-70">TSh</span><span class="text-4xl font-extrabold tracking-tight"><%= money(total) %></span></p>
+        <p class="mt-2 text-sm text-slate-600"><%= pg.totalItems || rows.length %> <%= (pg.totalItems || rows.length) === 1 ? 'entry' : 'entries' %><%= filtered ? ' matching your filters' : '' %></p>
+      </div>
+
+      <div class="mt-5 grid grid-cols-2 gap-3 border-t border-brand-teal/15 pt-4 text-xs">
+        <div class="rounded-xl bg-white/80 p-3">
+          <p class="font-medium text-slate-500">Operating (Deducts profit)</p>
+          <p class="mt-1 text-sm font-bold tabular-nums text-rose-600">TSh <%= money(opExTotal) %></p>
+        </div>
+        <div class="rounded-xl bg-white/80 p-3">
+          <p class="font-medium text-slate-500">Restock (Stock asset)</p>
+          <p class="mt-1 text-sm font-bold tabular-nums text-brand-tealDark">TSh <%= money(restockTotal) %></p>
+        </div>
+      </div>
     </div>
 
     <div class="p-6 lg:col-span-3">
-      <p class="text-sm font-semibold text-slate-800">Where it went</p>
+      <p class="text-sm font-semibold text-slate-800">Where it went (current page)</p>
       <% if (topCats.length) { %>
         <ul class="mt-4 space-y-3">
           <% topCats.forEach(c => { const w = maxCat ? Math.max(4, Math.round((c.sum / maxCat) * 100)) : 0; %>
@@ -98,7 +124,7 @@
         <% }) %>
       </div>
 
-      <div class="grid gap-3 md:grid-cols-[auto_1fr_1fr_1fr_auto] md:items-end">
+      <div class="grid gap-3 md:grid-cols-[auto_1fr_1fr_1fr_1fr_auto] md:items-end">
         <div>
           <span class="mb-1.5 block text-sm font-medium text-slate-700">Dates</span>
           <div role="group" aria-label="Date filter type" class="inline-flex rounded-xl bg-slate-100 p-1">
@@ -121,8 +147,17 @@
         </div>
 
         <div>
+          <label for="entry_type" class="mb-1.5 block text-sm font-medium text-slate-700">Entry type</label>
+          <select id="entry_type" name="entry_type" class="<%= field %> px-3">
+            <option value="" <%= !f.entry_type ? 'selected' : '' %>>All types</option>
+            <option value="OPERATING_EXPENSE" <%= f.entry_type === 'OPERATING_EXPENSE' ? 'selected' : '' %>>Operating Expense</option>
+            <option value="RESTOCK_INVENTORY" <%= f.entry_type === 'RESTOCK_INVENTORY' ? 'selected' : '' %>>Restock Inventory</option>
+          </select>
+        </div>
+
+        <div>
           <label for="category" class="mb-1.5 block text-sm font-medium text-slate-700">Category</label>
-          <input id="category" type="text" name="category" value="<%= f.category || '' %>" list="categoryList" autocomplete="off" placeholder="e.g. Rent, Supplies" class="<%= field %> px-3">
+          <input id="category" type="text" name="category" value="<%= f.category || '' %>" list="categoryList" autocomplete="off" placeholder="e.g. UMEME, Rim box" class="<%= field %> px-3">
           <datalist id="categoryList"><% cats.forEach(c => { %><option value="<%= c.name %>"><% }) %></datalist>
         </div>
 
@@ -147,7 +182,7 @@
       <table class="w-full text-left text-sm">
         <thead>
           <tr class="text-xs font-medium text-slate-500">
-            <th scope="col" class="px-5 py-3 sm:px-6">Category</th>
+            <th scope="col" class="px-5 py-3 sm:px-6">Category &amp; Type</th>
             <th scope="col" class="hidden px-3 py-3 md:table-cell">Description</th>
             <th scope="col" class="hidden px-3 py-3 lg:table-cell">Shop</th>
             <th scope="col" class="px-3 py-3 text-right">Amount</th>
@@ -162,20 +197,27 @@
                 <th colspan="3" scope="colgroup" class="px-5 py-2.5 text-left text-sm font-semibold text-brand-tealDark sm:px-6"><i class="far fa-calendar mr-2 text-xs text-brand-gold"></i><%= pretty(g.key) %></th>
                 <td colspan="2" class="px-5 py-2.5 text-right text-sm text-slate-500 sm:px-6">Day total <span class="ml-1 font-bold tabular-nums text-slate-800">TSh <%= money(g.total) %></span></td>
               </tr>
-              <% g.items.forEach(e => { %>
+              <% g.items.forEach(e => { const restock = isRestockRow(e); %>
                 <tr class="transition-colors hover:bg-brand-teal/[0.03]">
                   <td class="px-5 py-3.5 sm:px-6">
                     <div class="flex items-center gap-3">
                       <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand-teal/10 text-sm font-bold text-brand-teal"><%= String(e.category || '?').trim().charAt(0).toUpperCase() %></span>
                       <div class="min-w-0">
-                        <p class="truncate font-semibold text-slate-800"><%= e.category || 'Uncategorised' %></p>
+                        <div class="flex flex-wrap items-center gap-2">
+                          <p class="truncate font-semibold text-slate-800"><%= e.category || 'Uncategorised' %></p>
+                          <% if (restock) { %>
+                            <span class="inline-flex items-center rounded-full bg-brand-teal/10 px-2 py-0.5 text-[11px] font-semibold text-brand-tealDark">Restock · No profit hit</span>
+                          <% } else { %>
+                            <span class="inline-flex items-center rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700">Operating · Deducts profit</span>
+                          <% } %>
+                        </div>
                         <p class="mt-0.5 truncate text-xs text-slate-500 md:hidden"><%= e.description || 'No description' %></p>
                       </div>
                     </div>
                   </td>
                   <td class="hidden max-w-xs px-3 py-3.5 md:table-cell"><p class="truncate text-slate-600" title="<%= e.description || '' %>"><%= e.description || '-' %></p></td>
                   <td class="hidden px-3 py-3.5 text-slate-600 lg:table-cell"><%= e.Business ? e.Business.name : '-' %></td>
-                  <td class="whitespace-nowrap px-3 py-3.5 text-right font-bold tabular-nums text-rose-600">TSh <%= money(e.amount) %></td>
+                  <td class="whitespace-nowrap px-3 py-3.5 text-right font-bold tabular-nums <%= restock ? 'text-brand-tealDark' : 'text-rose-600' %>">TSh <%= money(e.amount) %></td>
                   <td class="py-3.5 pl-3 pr-5 text-right sm:pr-6">
                     <div class="inline-flex items-center gap-1">
                       <a href="/expenses/edit/<%= e.id %>" title="Edit" aria-label="Edit <%= e.category %> expense" class="grid h-9 w-9 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-brand-gold/10 hover:text-brand-goldHover"><i class="fas fa-edit text-sm"></i></a>
@@ -191,7 +233,7 @@
             <span class="mx-auto grid h-12 w-12 place-items-center rounded-full bg-brand-teal/10 text-brand-teal"><i class="fas fa-wallet text-lg"></i></span>
             <% if (filtered) { %>
               <p class="mt-4 text-sm font-semibold text-slate-800">No expenses match these filters</p>
-              <p class="mt-1 text-sm text-slate-500">Try a wider date range or a different category.</p>
+              <p class="mt-1 text-sm text-slate-500">Try a wider date range, a different entry type, or a different category.</p>
               <a href="/expenses" class="mt-4 inline-flex rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-brand-teal hover:bg-brand-teal/5">Reset filters</a>
             <% } else { %>
               <p class="mt-4 text-sm font-semibold text-slate-800">No expenses recorded yet</p>

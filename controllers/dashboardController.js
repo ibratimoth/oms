@@ -12,154 +12,181 @@ exports.index = async (req, res) => {
     // Filter condition for business multi-tenancy
     const businessFilter = business_id ? { business_id } : {};
 
-    // 1. Existing Product & Order Metrics
-    const totalProducts = await Product.count({ where: businessFilter });
-    const totalOrders = await Order.count({ where: businessFilter });
+    // Operating expenses reduce profit; restock entries are inventory replenishment
+    const operatingExpenseWhere = {
+      ...businessFilter,
+      [Op.or]: [
+        { affects_profit: true },
+        { affects_profit: null, entry_type: { [Op.ne]: 'RESTOCK_INVENTORY' } }
+      ]
+    };
 
-    const completedOrders = await Order.count({
-      where: { ...businessFilter, status: 'completed' }
-    });
+    const restockWhere = {
+      ...businessFilter,
+      [Op.or]: [
+        { entry_type: 'RESTOCK_INVENTORY' },
+        { affects_profit: false }
+      ]
+    };
 
-    const pendingOrders = await Order.count({
-      where: { ...businessFilter, status: 'pending' }
-    });
+    const [
+      totalProducts,
+      totalOrders,
+      completedOrders,
+      pendingOrders,
+      rawGrossProfit,
+      rawTotalSales,
+      rawOperatingExpenses,
+      rawRestockSpend,
+      rawDebtsOwedToYou,
+      rawSupplierDebts,
+      rawCustomerCredits,
+      lowStockProducts,
+      recentOrders,
+      dailySales,
+      allProducts,
+      soldOrderItems
+    ] = await Promise.all([
+      Product.count({ where: businessFilter }),
+      Order.count({ where: businessFilter }),
+      Order.count({ where: { ...businessFilter, status: 'completed' } }),
+      Order.count({ where: { ...businessFilter, status: 'pending' } }),
+      Order.sum('profit_amount', { where: { ...businessFilter, status: 'completed' } }),
+      Order.sum('final_amount', { where: { ...businessFilter, status: 'completed' } }),
+      Expense.sum('amount', { where: operatingExpenseWhere }),
+      Expense.sum('amount', { where: restockWhere }),
+      Debt.sum('amount', {
+        where: { ...businessFilter, type: 'CUSTOMER_DEBT', status: 'PENDING' }
+      }),
+      Debt.sum('amount', {
+        where: { ...businessFilter, type: 'SUPPLIER_DEBT', status: 'PENDING' }
+      }),
+      Debt.sum('amount', {
+        where: { ...businessFilter, type: 'CUSTOMER_CREDIT', status: 'PENDING' }
+      }),
+      Product.findAll({
+        where: { ...businessFilter, quantity_in_stock: { [Op.lte]: 5 } },
+        order: [['quantity_in_stock', 'ASC']]
+      }),
+      Order.findAll({
+        where: businessFilter,
+        limit: 5,
+        order: [['created_at', 'DESC']]
+      }),
+      Order.findAll({
+        attributes: [
+          [sequelize.fn('DATE', sequelize.col('created_at')), 'date'],
+          [sequelize.fn('SUM', sequelize.col('total_amount')), 'sales']
+        ],
+        where: { ...businessFilter, status: 'completed' },
+        group: [sequelize.literal('DATE(created_at)')],
+        order: [[sequelize.literal('DATE(created_at)'), 'DESC']]
+      }),
+      Product.findAll({
+        where: businessFilter,
+        attributes: ['buy_price', 'quantity_in_stock']
+      }),
+      OrderItem.findAll({
+        include: [
+          {
+            model: Order,
+            where: { ...businessFilter, status: 'completed' },
+            attributes: []
+          },
+          {
+            model: Product,
+            attributes: ['buy_price']
+          }
+        ]
+      })
+    ]);
 
-    const totalProfit = await Order.sum('profit_amount', {
-      where: { ...businessFilter, status: 'completed' }
-    }) || 0;
+    const totalProfit = Number(rawGrossProfit) || 0; // Gross profit from completed orders
+    const totalSales = Number(rawTotalSales) || 0;
+    const totalOperatingExpenses = Number(rawOperatingExpenses) || 0;
+    const totalRestockSpend = Number(rawRestockSpend) || 0;
+    const totalCashOutflow = totalOperatingExpenses + totalRestockSpend;
 
-    // 2. Financial Metrics (Sales, Expenses & Debts)
+    // Backward-compatible alias for any view still reading totalExpenses as total cash outflow
+    const totalExpenses = totalCashOutflow;
 
-    // Total Sales Revenue (from completed orders)
-    const totalSales = await Order.sum('final_amount', {
-      where: { ...businessFilter, status: 'completed' }
-    }) || 0;
+    // True Net Profit = Gross Profit minus operating expenses (excludes restock inventory)
+    const netProfit = totalProfit - totalOperatingExpenses;
+    const grossMarginPct = totalSales > 0 ? (totalProfit / totalSales) * 100 : 0;
+    const netProfitMarginPct = totalSales > 0 ? (netProfit / totalSales) * 100 : 0;
+    const opExRatioPct = totalSales > 0 ? (totalOperatingExpenses / totalSales) * 100 : 0;
 
-    // Total Operational Expenses
-    const totalExpenses = await Expense.sum('amount', {
-      where: businessFilter
-    }) || 0;
-
-    // Debts Owed to You (Unpaid Customer Debts)
-    const debtsOwedToYou = await Debt.sum('amount', {
-      where: {
-        ...businessFilter,
-        type: 'CUSTOMER_DEBT',
-        status: 'PENDING'
-      }
-    }) || 0;
-
-    // Debts You Owe Suppliers
-    const supplierDebts = await Debt.sum('amount', {
-      where: {
-        ...businessFilter,
-        type: 'SUPPLIER_DEBT',
-        status: 'PENDING'
-      }
-    }) || 0;
-
-    // Unsettled Customer Prepayments/Credits
-    const customerCredits = await Debt.sum('amount', {
-      where: {
-        ...businessFilter,
-        type: 'CUSTOMER_CREDIT',
-        status: 'PENDING'
-      }
-    }) || 0;
-
-    // Total Liabilities (Supplier Debts + Customer Credits)
+    const debtsOwedToYou = Number(rawDebtsOwedToYou) || 0;
+    const supplierDebts = Number(rawSupplierDebts) || 0;
+    const customerCredits = Number(rawCustomerCredits) || 0;
     const debtsYouOwe = supplierDebts + customerCredits;
 
-    // 3. Calculated Position Indicators
-    // Actual Cash collected from sales (Total Completed Sales - Sales given on credit)
+    // Cash flow & position metrics
     const cashCollectedFromSales = totalSales - debtsOwedToYou;
+    const cashInHand = cashCollectedFromSales - totalCashOutflow;
 
-    // Liquid Cash in Hand (Actual collected cash minus operational expenses paid)
-    const cashInHand = cashCollectedFromSales - totalExpenses;
-
-    // Net Financial Position (True overall financial balance)
-    const netFinancialPosition = (cashInHand + debtsOwedToYou) - debtsYouOwe;
-
-    // 4. Inventory, Recent Activity & Charts
-    const lowStockProducts = await Product.findAll({
-      where: {
-        ...businessFilter,
-        quantity_in_stock: { [Op.lte]: 5 }
-      }
-    });
-
-    const recentOrders = await Order.findAll({
-      where: businessFilter,
-      limit: 5,
-      order: [['created_at', 'DESC']]
-    });
-
-    const dailySales = await Order.findAll({
-      attributes: [
-        [sequelize.fn('DATE', sequelize.col('created_at')), 'date'],
-        [sequelize.fn('SUM', sequelize.col('total_amount')), 'sales']
-      ],
-      where: {
-        ...businessFilter,
-        status: 'completed'
-      },
-      group: [sequelize.literal('DATE(created_at)')],
-      order: [[sequelize.literal('DATE(created_at)'), 'DESC']]
-    });
-
-    // NEW: Total Cost of All Registered Products (buy_price * quantity_in_stock)
-    // We fetch all products for the business and sum up (buy_price * quantity_in_stock)
-    const allProducts = await Product.findAll({
-      where: businessFilter,
-      attributes: ['buy_price', 'quantity_in_stock']
-    });
-
+    // Cost of registered stock & sold goods
     const totalRegisteredProductsCost = allProducts.reduce((sum, p) => {
-      const buyPrice = p.buy_price || 0;
-      const qty = p.quantity_in_stock || 0;
+      const buyPrice = Number(p.buy_price) || 0;
+      const qty = Number(p.quantity_in_stock) || 0;
       return sum + (buyPrice * qty);
     }, 0);
 
-    // NEW: Total Cost of All Sold Products (COGS)
-    // We join OrderItems with completed Orders filtered by business
-    const soldOrderItems = await OrderItem.findAll({
-      include: [
-        {
-          model: Order,
-          where: { ...businessFilter, status: 'completed' },
-          attributes: []
-        },
-        {
-          model: Product,
-          attributes: ['buy_price']
-        }
-      ]
-    });
-
     const totalSoldProductsCost = soldOrderItems.reduce((sum, item) => {
-      const buyPrice = item.Product ? (item.Product.buy_price || 0) : 0;
-      const quantitySold = item.quantity || 0;
+      const buyPrice = item.Product ? (Number(item.Product.buy_price) || 0) : 0;
+      const quantitySold = Number(item.quantity) || 0;
       return sum + (buyPrice * quantitySold);
     }, 0);
-    // 5. Render View with All Financial Data
 
-    console.log('Dashboard Metrics:', {totalSales, netFinancialPosition, });
+    // Liquid cash + receivables - liabilities
+    const netFinancialPosition = (cashInHand + debtsOwedToYou) - debtsYouOwe;
+
+    // Total current assets including shelf stock cost
+    const totalCurrentAssets = cashInHand + totalRegisteredProductsCost + debtsOwedToYou;
+    const netWorthWithStock = totalCurrentAssets - debtsYouOwe;
+
+    logger.info('Dashboard metrics loaded', {
+      userId,
+      business_id,
+      totalSales,
+      totalProfit,
+      totalOperatingExpenses,
+      totalRestockSpend,
+      netProfit,
+      cashInHand,
+      netFinancialPosition
+    });
+
     return res.render('dashboard/index', {
       totalProducts,
       totalOrders,
       completedOrders,
       pendingOrders,
-      totalProfit,
 
-      // New Financial Balance Metrics
+      // Profit & Margin Metrics
+      totalProfit,
+      totalOperatingExpenses,
+      totalRestockSpend,
+      totalCashOutflow,
+      netProfit,
+      grossMarginPct,
+      netProfitMarginPct,
+      opExRatioPct,
+
+      // Financial Balance & Cash Metrics
       totalSales,
       totalExpenses,
+      cashCollectedFromSales,
       debtsOwedToYou,
+      supplierDebts,
+      customerCredits,
       debtsYouOwe,
       cashInHand,
       netFinancialPosition,
+      totalCurrentAssets,
+      netWorthWithStock,
 
-      // NEW: Cost Metrics
+      // Inventory & COGS Metrics
       totalRegisteredProductsCost,
       totalSoldProductsCost,
 
@@ -169,7 +196,6 @@ exports.index = async (req, res) => {
       username,
       userRole: req.session.user?.role
     });
-
   } catch (error) {
     logger.error('Failed to load user dashboard:', error);
     return res.status(500).render('error', {

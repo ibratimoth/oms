@@ -1,6 +1,6 @@
 <%- include('../layouts/header') %>
 <%
-  /* ---------- helpers & derived values (same controller data as the other dashboard versions) ---------- */
+  /* ---------- helpers & derived values ---------- */
   const L      = locals;
   const num    = (v) => Number(v || 0);
   const money  = (v) => num(v).toLocaleString('en-US');
@@ -10,7 +10,14 @@
 
   const net = num(L.netFinancialPosition), cash = num(L.cashInHand), rec = num(L.debtsOwedToYou), pay = num(L.debtsYouOwe);
   const sales = num(L.totalSales), profit = num(L.totalProfit);
-  const margin = sales > 0 ? Math.round((profit / sales) * 1000) / 10 : 0;
+  const grossMargin = sales > 0 ? Math.round((profit / sales) * 1000) / 10 : 0;
+
+  const opEx = L.totalOperatingExpenses !== undefined ? num(L.totalOperatingExpenses) : 0;
+  const restock = L.totalRestockSpend !== undefined ? num(L.totalRestockSpend) : 0;
+  const totalOutflow = L.totalCashOutflow !== undefined ? num(L.totalCashOutflow) : (num(L.totalExpenses) || (opEx + restock));
+  const netProfit = L.netProfit !== undefined ? num(L.netProfit) : (profit - opEx);
+  const netMargin = sales > 0 ? Math.round((netProfit / sales) * 1000) / 10 : 0;
+
   const ordersAll = num(L.totalOrders), ordersDone = num(L.completedOrders), ordersPend = num(L.pendingOrders);
   const donePct = pct(ordersDone, ordersAll), CIRC = 263.9;
   const lowList = L.lowStockProducts || [], orders = L.recentOrders || [];
@@ -45,8 +52,8 @@
   const barMax = Math.max(Math.abs(cash), rec, pay, 1);
   const bar = (v) => Math.max(6, Math.round((Math.max(0, v) / barMax) * 100));
 
-  /* Margin gauge (half circle, length = pi * 50) */
-  const GAUGE = 157.08, gaugeDash = (Math.max(0, Math.min(100, margin)) / 100 * GAUGE).toFixed(1);
+  /* Net margin gauge (half circle, length = pi * 50) */
+  const GAUGE = 157.08, gaugeDash = (Math.max(0, Math.min(100, netMargin)) / 100 * GAUGE).toFixed(1);
 
   const statusDot = (s) => ({ completed: 'bg-emerald-500', pending: 'bg-amber-400', cancelled: 'bg-rose-500' }[String(s || '').toLowerCase()] || 'bg-slate-400');
 
@@ -66,7 +73,7 @@
       <p id="todayLabel" class="text-sm font-medium text-slate-500"></p>
       <h2 class="mt-0.5 text-2xl font-bold tracking-tight text-brand-tealDark"><span id="greeting">Welcome</span><%= who ? ', ' + who : '' %></h2>
       <p class="mt-2 text-[15px] leading-relaxed text-slate-600">
-        You hold <strong class="amt font-semibold text-slate-900">TSh <%= money(cash) %></strong> in cash and customers owe you <strong class="amt font-semibold text-slate-900">TSh <%= money(rec) %></strong>.
+        You hold <strong class="amt font-semibold text-slate-900">TSh <%= money(cash) %></strong> in cash, net profit after operating expenses is <strong class="amt font-semibold text-emerald-700">TSh <%= money(netProfit) %></strong>, and customers owe you <strong class="amt font-semibold text-slate-900">TSh <%= money(rec) %></strong>.
         <% if (ordersPend || lowList.length) { %>
           <%= ordersPend ? ordersPend + (ordersPend === 1 ? ' order is' : ' orders are') + ' waiting' : '' %><%= ordersPend && lowList.length ? ' and ' : '' %><%= lowList.length ? lowList.length + (lowList.length === 1 ? ' product needs' : ' products need') + ' restocking' : '' %>.
         <% } else { %>Nothing needs your attention right now.<% } %>
@@ -188,15 +195,21 @@
       <div class="flex items-center justify-between"><h3 class="text-[15px] font-semibold text-slate-800"><%= admin ? 'Profit and costs' : 'Spending' %></h3><a href="/analytics" class="text-sm font-medium text-brand-teal hover:text-brand-tealDark">Analytics</a></div>
       <% if (admin) { %>
         <div class="mt-4 flex items-center gap-5">
-          <div class="relative h-[4.5rem] w-32 shrink-0" role="img" aria-label="Profit margin <%= margin %> percent">
+          <div class="relative h-[4.5rem] w-32 shrink-0" role="img" aria-label="Net profit margin <%= netMargin %> percent">
             <svg viewBox="0 0 120 66" class="h-full w-full"><path d="M10 60 A50 50 0 0 1 110 60" fill="none" stroke-width="10" stroke-linecap="round" class="stroke-slate-100"/><path d="M10 60 A50 50 0 0 1 110 60" fill="none" stroke-width="10" stroke-linecap="round" class="stroke-emerald-500" stroke-dasharray="<%= gaugeDash %> <%= GAUGE %>"/></svg>
-            <div class="absolute inset-x-0 bottom-0 text-center"><p class="text-xl font-extrabold tabular-nums leading-none text-brand-tealDark"><%= margin %>%</p></div>
+            <div class="absolute inset-x-0 bottom-0 text-center"><p class="text-xl font-extrabold tabular-nums leading-none text-brand-tealDark"><%= netMargin %>%</p></div>
           </div>
-          <div class="min-w-0"><p class="text-xs text-slate-500">Gross profit</p><p class="amt truncate text-xl font-extrabold tabular-nums text-emerald-700">TSh <%= money(profit) %></p><p class="text-xs text-slate-500">margin on sales</p></div>
+          <div class="min-w-0">
+            <p class="text-xs text-slate-500">Net profit</p>
+            <p class="amt truncate text-xl font-extrabold tabular-nums text-emerald-700">TSh <%= money(netProfit) %></p>
+            <p class="text-xs text-slate-500">net margin · Gross TSh <%= money(profit) %> (<%= grossMargin %>%)</p>
+          </div>
         </div>
       <% } %>
       <dl class="<%= admin ? 'mt-4 border-t border-slate-100 pt-2' : 'mt-3' %> divide-y divide-slate-100 text-sm tabular-nums">
-        <div class="flex items-center justify-between py-2.5"><dt class="text-slate-600">Total expenses</dt><dd class="amt font-semibold text-rose-600">TSh <%= money(L.totalExpenses) %></dd></div>
+        <div class="flex items-center justify-between py-2.5"><dt class="text-slate-600">Operating expenses</dt><dd class="amt font-semibold text-rose-600">TSh <%= money(opEx) %></dd></div>
+        <div class="flex items-center justify-between py-2.5"><dt class="text-slate-600">Restock spend</dt><dd class="amt font-semibold text-brand-tealDark">TSh <%= money(restock) %></dd></div>
+        <div class="flex items-center justify-between py-2.5"><dt class="text-slate-600">Total cash outflow</dt><dd class="amt font-semibold text-slate-800">TSh <%= money(totalOutflow) %></dd></div>
         <% if (admin) { %>
           <div class="flex items-center justify-between py-2.5"><dt class="text-slate-600">Cost of goods sold</dt><dd class="amt font-semibold text-amber-700">TSh <%= money(L.totalSoldProductsCost) %></dd></div>
           <div class="flex items-center justify-between py-2.5"><dt class="text-slate-600">Stock value at cost</dt><dd class="amt font-semibold text-brand-teal">TSh <%= money(L.totalRegisteredProductsCost) %></dd></div>

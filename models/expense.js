@@ -1,3 +1,5 @@
+'use strict';
+
 const { DataTypes } = require('sequelize');
 
 module.exports = (sequelize) => {
@@ -8,8 +10,21 @@ module.exports = (sequelize) => {
       primaryKey: true,
       allowNull: false
     },
+    entry_type: {
+      type: DataTypes.STRING(32),
+      allowNull: false,
+      defaultValue: 'OPERATING_EXPENSE', // 'OPERATING_EXPENSE' | 'RESTOCK_INVENTORY'
+      validate: {
+        isIn: [['OPERATING_EXPENSE', 'RESTOCK_INVENTORY']]
+      }
+    },
+    affects_profit: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true
+    },
     category: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(100),
       allowNull: false
     },
     amount: {
@@ -35,7 +50,17 @@ module.exports = (sequelize) => {
   }, {
     tableName: 'expenses',
     timestamps: true,
-    underscored: true
+    underscored: true,
+    hooks: {
+      beforeValidate(expense) {
+        // Keep affects_profit consistent with entry_type when not explicitly overridden
+        if (expense.entry_type === 'RESTOCK_INVENTORY' && expense.changed('entry_type') && !expense.changed('affects_profit')) {
+          expense.affects_profit = false;
+        } else if (expense.entry_type === 'OPERATING_EXPENSE' && expense.changed('entry_type') && !expense.changed('affects_profit')) {
+          expense.affects_profit = true;
+        }
+      }
+    }
   });
 
   return Expense;

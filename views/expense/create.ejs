@@ -1,6 +1,17 @@
 <%- include('../layouts/header') %>
 <%
   const shops = (typeof businesses !== 'undefined' && businesses) ? businesses : [];
+  const fd = (typeof formData !== 'undefined' && formData) ? formData : {};
+  const types = (typeof entryTypes !== 'undefined' && Array.isArray(entryTypes) && entryTypes.length)
+    ? entryTypes
+    : [
+        { value: 'OPERATING_EXPENSE', label: 'Operating Expense (Deducts from Profit)', affectsProfit: true },
+        { value: 'RESTOCK_INVENTORY', label: 'Restock Inventory (Does Not Deduct from Profit)', affectsProfit: false }
+      ];
+  const initialType = fd.entry_type === 'RESTOCK_INVENTORY' ? 'RESTOCK_INVENTORY' : 'OPERATING_EXPENSE';
+  const initialDate = fd.expense_date || new Date().toISOString().split('T')[0];
+  const initialShop = fd.business_id || (shops.length ? shops[0].id : '');
+
   const field = 'w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-teal focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-teal/20';
   const label = 'mb-1.5 block text-sm font-medium text-slate-700';
   const categories = ['Rent', 'Electricity', 'Water', 'Transport', 'Salaries', 'Stationeries', 'Supplies'];
@@ -16,7 +27,7 @@
   <% if (typeof error !== 'undefined' && error) { %>
     <div role="alert" class="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4">
       <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-rose-100 text-rose-600"><i class="fas fa-exclamation-circle"></i></span>
-      <div class="min-w-0"><h4 class="text-sm font-semibold text-rose-800">The expense could not be saved</h4><p class="mt-0.5 text-sm text-rose-700"><%= error %></p></div>
+      <div class="min-w-0"><h4 class="text-sm font-semibold text-rose-800">The entry could not be saved</h4><p class="mt-0.5 text-sm text-rose-700"><%= error %></p></div>
     </div>
   <% } %>
 
@@ -27,9 +38,25 @@
       <div class="space-y-8 p-6 sm:p-8">
 
         <div>
-          <h2 class="text-xl font-bold tracking-tight text-brand-tealDark">Record an expense</h2>
-          <p class="mt-1 text-sm text-slate-500">Write down what the business spent so your totals stay accurate.</p>
+          <h2 class="text-xl font-bold tracking-tight text-brand-tealDark">Record cash outflow</h2>
+          <p class="mt-1 text-sm text-slate-500">Separate operating bills from inventory restocking so profit and cash stay clear.</p>
         </div>
+
+        <!-- Entry Type -->
+        <section>
+          <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>How does this affect profit?</h3>
+          <div class="mt-4 grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Entry type">
+            <% types.forEach(t => { const selected = initialType === t.value; const isRestock = t.value === 'RESTOCK_INVENTORY'; %>
+              <label class="type-card flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition-colors <%= selected ? 'border-brand-teal bg-brand-teal/5' : 'border-slate-200 bg-slate-50/60 hover:bg-slate-50' %>">
+                <input type="radio" name="entry_type" value="<%= t.value %>" <%= selected ? 'checked' : '' %> class="mt-1 h-4 w-4 accent-brand-teal">
+                <div class="min-w-0">
+                  <p class="text-sm font-semibold text-slate-800"><%= isRestock ? 'Restock Inventory' : 'Operating Expense' %></p>
+                  <p class="mt-0.5 text-xs <%= isRestock ? 'text-brand-tealDark' : 'text-rose-700' %>"><%= isRestock ? 'Stock asset · Does not deduct from profit' : 'Running bill/cost · Deducts from profit' %></p>
+                </div>
+              </label>
+            <% }) %>
+          </div>
+        </section>
 
         <!-- Amount -->
         <section>
@@ -38,7 +65,7 @@
             <label for="amount" class="<%= label %>">Amount in TSh</label>
             <div class="relative">
               <span class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">TSh</span>
-              <input type="number" id="amount" name="amount" step="0.01" min="0.01" required autofocus inputmode="decimal" placeholder="0" class="<%= field %> py-3.5 pl-14 pr-4 text-xl font-bold tabular-nums">
+              <input type="number" id="amount" name="amount" step="0.01" min="0.01" value="<%= fd.amount || '' %>" required autofocus inputmode="decimal" placeholder="0" class="<%= field %> py-3.5 pl-14 pr-4 text-xl font-bold tabular-nums">
             </div>
             <p id="amountWords" class="mt-1.5 h-5 text-sm font-medium text-brand-teal"></p>
           </div>
@@ -49,7 +76,7 @@
           <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>What was it for?</h3>
           <div class="mt-4">
             <label for="category" class="<%= label %>">Category</label>
-            <input type="text" id="category" name="category" required list="categoryList" autocomplete="off" placeholder="e.g. Rent, Electricity, Stationeries" class="<%= field %> px-3.5">
+            <input type="text" id="category" name="category" value="<%= fd.category || '' %>" required list="categoryList" autocomplete="off" placeholder="e.g. Rent, Electricity, Stationeries" class="<%= field %> px-3.5">
             <datalist id="categoryList"><% categories.forEach(c => { %><option value="<%= c %>"><% }) %></datalist>
             <div class="mt-3 flex flex-wrap items-center gap-2" role="group" aria-label="Quick choices for category">
               <span class="text-sm text-slate-500">Quick pick</span>
@@ -57,7 +84,7 @@
                 <button type="button" data-category="<%= c %>" class="cat-chip rounded-full border border-slate-200 px-3 py-1 text-sm font-medium text-slate-600 transition-colors hover:border-brand-teal/40 hover:text-brand-teal"><%= c %></button>
               <% }) %>
             </div>
-            <p class="mt-2 text-xs text-slate-500">Use the same spelling each time so your reports group the expenses together.</p>
+            <p class="mt-2 text-xs text-slate-500">Use the same spelling each time so your reports group the entries together.</p>
           </div>
         </section>
 
@@ -65,9 +92,9 @@
         <section>
           <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>When?</h3>
           <div class="mt-4">
-            <label for="expense_date" class="<%= label %>">Date of the expense</label>
+            <label for="expense_date" class="<%= label %>">Date of the entry</label>
             <div class="flex flex-wrap items-center gap-3">
-              <input type="date" id="expense_date" name="expense_date" value="<%= new Date().toISOString().split('T')[0] %>" class="<%= field %> w-auto px-3.5">
+              <input type="date" id="expense_date" name="expense_date" value="<%= initialDate %>" data-has-initial="<%= fd.expense_date ? '1' : '0' %>" class="<%= field %> w-auto px-3.5">
               <div class="inline-flex rounded-xl bg-slate-100 p-1" role="group" aria-label="Quick dates">
                 <button type="button" data-day="0" class="day-btn rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors">Today</button>
                 <button type="button" data-day="1" class="day-btn rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors">Yesterday</button>
@@ -84,7 +111,7 @@
           <div class="mt-4 space-y-5">
             <div>
               <label for="description" class="<%= label %>">Note <span class="font-normal text-slate-400">(optional)</span></label>
-              <textarea id="description" name="description" rows="3" maxlength="500" placeholder="Receipt number, who was paid, or anything worth remembering" class="<%= field %> px-3.5"></textarea>
+              <textarea id="description" name="description" rows="3" maxlength="500" placeholder="Receipt number, who was paid, or anything worth remembering" class="<%= field %> px-3.5"><%= fd.description || '' %></textarea>
               <p class="mt-1 text-right text-xs text-slate-400"><span id="noteCount">0</span>/500</p>
             </div>
             <div>
@@ -94,7 +121,7 @@
                 <input type="hidden" name="business_id" value="<%= shops[0].id %>" data-name="<%= shops[0].name %>" id="business_id">
               <% } else { %>
                 <select id="business_id" name="business_id" class="<%= field %> px-3.5">
-                  <% shops.forEach(b => { %><option value="<%= b.id %>"><%= b.name %></option><% }) %>
+                  <% shops.forEach(b => { %><option value="<%= b.id %>" <%= String(initialShop) === String(b.id) ? 'selected' : '' %>><%= b.name %></option><% }) %>
                 </select>
               <% } %>
             </div>
@@ -105,7 +132,7 @@
       <div class="flex flex-col-reverse items-stretch justify-end gap-3 border-t border-slate-100 bg-slate-50/60 px-6 py-4 sm:flex-row sm:items-center sm:px-8">
         <a href="/expenses" class="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-center text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50">Cancel</a>
         <button type="submit" id="saveBtn" class="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-gold px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-goldHover disabled:cursor-wait disabled:opacity-70">
-          <i class="fas fa-check text-xs"></i><span>Save expense</span>
+          <i class="fas fa-check text-xs"></i><span>Save entry</span>
         </button>
       </div>
     </form>
@@ -124,6 +151,8 @@
             </div>
           </div>
           <dl class="mt-5 space-y-3 border-t border-slate-100 pt-4 text-sm">
+            <div class="flex items-center justify-between gap-3"><dt class="text-slate-500">Type</dt><dd id="sumType" class="font-semibold text-slate-800">-</dd></div>
+            <div class="flex items-center justify-between gap-3"><dt class="text-slate-500">Profit impact</dt><dd id="sumProfit" class="font-medium text-rose-600">-</dd></div>
             <div class="flex items-center justify-between gap-3"><dt class="text-slate-500">Amount</dt><dd id="sumAmount" class="font-bold tabular-nums text-rose-600">-</dd></div>
             <div class="flex items-center justify-between gap-3"><dt class="text-slate-500">Date</dt><dd id="sumDate" class="text-right font-medium text-slate-700">-</dd></div>
             <div class="flex items-center justify-between gap-3"><dt class="text-slate-500">Shop</dt><dd id="sumShop" class="truncate font-medium text-slate-700">-</dd></div>
@@ -144,12 +173,28 @@
     function parts(s) { var p = s.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); }
     function longDate(s) { var d = parts(s); return isNaN(d) ? '' : d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); }
     function shopName() { return shopEl.tagName === 'SELECT' ? (shopEl.options[shopEl.selectedIndex] || {}).textContent || '' : shopEl.getAttribute('data-name') || ''; }
+    function selectedType() {
+      var checked = form.querySelector('input[name="entry_type"]:checked');
+      return checked ? checked.value : 'OPERATING_EXPENSE';
+    }
 
-    /* The server fills in its own date, which can be a day behind for you. Start from the date on this device. */
-    dateEl.value = ymd(new Date());
+    if (dateEl.dataset.hasInitial !== '1') {
+      dateEl.value = ymd(new Date());
+    }
 
     function refresh() {
       var amt = parseFloat(amountEl.value), hasAmt = isFinite(amt) && amt > 0, cat = catEl.value.trim(), date = dateEl.value, shop = shopName();
+      var entryType = selectedType();
+      var isRestock = entryType === 'RESTOCK_INVENTORY';
+
+      form.querySelectorAll('.type-card').forEach(function (card) {
+        var input = card.querySelector('input[name="entry_type"]');
+        var active = input && input.value === entryType;
+        card.classList.toggle('border-brand-teal', active);
+        card.classList.toggle('bg-brand-teal/5', active);
+        card.classList.toggle('border-slate-200', !active);
+        card.classList.toggle('bg-slate-50/60', !active);
+      });
 
       $('amountWords').textContent = hasAmt ? money(amt) : '';
       $('dateWords').textContent = date ? longDate(date) : '';
@@ -170,9 +215,24 @@
       $('sumInitial').textContent = (cat || '?').charAt(0).toUpperCase();
       var c = $('sumCategory'); c.textContent = cat || 'Category'; c.className = 'truncate text-sm font-semibold ' + (cat ? 'text-brand-tealDark' : 'text-slate-400');
       var s = $('sumSentence');
-      if (hasAmt && cat) { s.textContent = money(amt) + ' spent on ' + cat.toLowerCase() + (date ? ' on ' + longDate(date) : '') + '.'; s.className = 'mt-1 text-sm font-medium leading-relaxed text-slate-800'; }
-      else { s.textContent = 'Fill in the amount and category to see a summary.'; s.className = 'mt-1 text-sm leading-relaxed text-slate-400'; }
-      $('sumAmount').textContent = hasAmt ? money(amt) : '-';
+      if (hasAmt && cat) {
+        var actionPhrase = isRestock ? 'restocking ' : 'operating expense for ';
+        s.textContent = money(amt) + ' ' + actionPhrase + cat.toLowerCase() + (date ? ' on ' + longDate(date) : '') + '.';
+        s.className = 'mt-1 text-sm font-medium leading-relaxed text-slate-800';
+      } else {
+        s.textContent = 'Fill in the amount and category to see a summary.';
+        s.className = 'mt-1 text-sm leading-relaxed text-slate-400';
+      }
+
+      $('sumType').textContent = isRestock ? 'Restock Inventory' : 'Operating Expense';
+      var sumProfit = $('sumProfit');
+      sumProfit.textContent = isRestock ? 'No deduction (Stock)' : 'Deducted from profit';
+      sumProfit.className = 'font-medium ' + (isRestock ? 'text-brand-tealDark' : 'text-rose-600');
+
+      var sumAmt = $('sumAmount');
+      sumAmt.textContent = hasAmt ? money(amt) : '-';
+      sumAmt.className = 'font-bold tabular-nums ' + (isRestock ? 'text-brand-tealDark' : 'text-rose-600');
+
       $('sumDate').textContent = date ? parts(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
       $('sumShop').textContent = shop || '-';
     }

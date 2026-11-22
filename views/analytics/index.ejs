@@ -5,6 +5,7 @@
   const top    = (typeof topProducts !== 'undefined' && topProducts) ? topProducts : [];
   const num    = (v) => Number(v || 0);
   const fmt    = (v) => num(v).toLocaleString('en-US');
+  const money  = (v) => num(v).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
   const best = top.map(p => ({
     name: p.Product ? p.Product.name : 'Unknown product',
@@ -13,12 +14,27 @@
   const bestMax = best.reduce((m, b) => Math.max(m, b.sold), 0);
 
   const state = (p) => num(p.remaining) <= 0 ? 'out' : (num(p.remaining) <= num(p.reorder_level) ? 'low' : 'ok');
-  const rows = stock.map(p => ({
-    name: p.name, stock: num(p.stock), sold: num(p.sold), left: num(p.remaining), reorder: num(p.reorder_level), s: state(p)
-  }));
+  const rows = stock.map(p => {
+    const sold = num(p.sold);
+    const buyPrice = num(p.buy_price);
+    const soldCost = p.sold_cost !== undefined ? num(p.sold_cost) : (sold * buyPrice);
+    return {
+      name: p.name,
+      buyPrice,
+      stock: num(p.stock),
+      sold,
+      soldCost,
+      left: num(p.remaining),
+      reorder: num(p.reorder_level),
+      s: state(p)
+    };
+  });
   const count = { out: 0, low: 0, ok: 0 };
   rows.forEach(r => count[r.s]++);
   const totalSold = rows.reduce((s, r) => s + r.sold, 0);
+  const grossSoldCost = (typeof totalSoldCost !== 'undefined' && totalSoldCost !== null)
+    ? num(totalSoldCost)
+    : rows.reduce((s, r) => s + r.soldCost, 0);
   const attention = rows.filter(r => r.s !== 'ok').sort((a, b) => a.left - b.left);
   const pctOf = (n) => rows.length ? Math.round((n / rows.length) * 100) : 0;
 
@@ -32,7 +48,7 @@
 
 <div class="space-y-6">
 
-  <p class="max-w-2xl text-sm text-slate-500">See what sells best, how fast stock is moving, and which products need restocking.</p>
+  <p class="max-w-2xl text-sm text-slate-500">See what sells best, how fast stock is moving, the cost of units sold, and which products need restocking.</p>
 
   <% if (rows.length || best.length) { %>
     <div>
@@ -49,8 +65,8 @@
   <% } %>
 
   <!-- ============ Key figures ============ -->
-  <section aria-label="Key figures" class="grid gap-px overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 sm:grid-cols-2 lg:grid-cols-4">
-    <div class="relative bg-teal-50 p-5 sm:col-span-2 lg:col-span-1">
+  <section aria-label="Key figures" class="grid gap-px overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 sm:grid-cols-2 xl:grid-cols-5">
+    <div class="relative bg-teal-50 p-5 sm:col-span-2 xl:col-span-1">
       <span class="absolute inset-x-0 top-0 h-1 bg-brand-gold"></span>
       <p class="flex items-center gap-2 text-sm font-semibold text-brand-teal"><i class="fas fa-trophy text-xs"></i>Best seller</p>
       <p class="mt-2 truncate text-lg font-extrabold tracking-tight text-brand-tealDark" title="<%= best.length ? best[0].name : '' %>"><%= best.length ? best[0].name : 'No sales yet' %></p>
@@ -65,6 +81,11 @@
       <p class="flex items-center gap-2 text-sm font-semibold text-slate-500"><i class="fas fa-shopping-cart text-xs text-brand-teal"></i>Units sold</p>
       <p class="mt-2 text-3xl font-extrabold tabular-nums tracking-tight text-slate-900"><%= fmt(totalSold) %></p>
       <p class="mt-1 text-sm text-slate-500">across all products</p>
+    </div>
+    <div class="bg-white p-5">
+      <p class="flex items-center gap-2 text-sm font-semibold text-slate-500"><i class="fas fa-coins text-xs text-amber-600"></i>Gross cost of sold units</p>
+      <p class="mt-2 flex flex-wrap items-baseline gap-x-1.5 tabular-nums text-amber-700"><span class="text-sm font-semibold opacity-75">TSh</span><span class="text-2xl font-extrabold tracking-tight"><%= money(grossSoldCost) %></span></p>
+      <p class="mt-1 text-sm text-slate-500">total cost of products sold</p>
     </div>
     <div class="bg-white p-5">
       <p class="flex items-center gap-2 text-sm font-semibold text-slate-500"><i class="fas fa-heartbeat text-xs text-brand-teal"></i>Stock health</p>
@@ -139,9 +160,15 @@
 
     <!-- ============ Right: stock levels ============ -->
     <section class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white lg:col-span-2">
-      <div class="px-5 pt-5 sm:px-6">
-        <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>Stock levels and sales speed</h3>
-        <p class="mt-1 text-sm text-slate-500">How much of each product has sold and how much is left.</p>
+      <div class="flex flex-wrap items-start justify-between gap-3 px-5 pt-5 sm:px-6">
+        <div>
+          <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>Stock levels and sales speed</h3>
+          <p class="mt-1 text-sm text-slate-500">How much of each product has sold, cost of units sold, and how much is left.</p>
+        </div>
+        <div class="rounded-xl bg-amber-50 px-3.5 py-2 text-right">
+          <p class="text-[11px] font-medium text-amber-800">Gross total cost of sold units</p>
+          <p class="text-sm font-extrabold tabular-nums text-amber-900">TSh <%= money(grossSoldCost) %></p>
+        </div>
       </div>
 
       <% if (rows.length) { %>
@@ -155,7 +182,7 @@
 
         <div class="flex flex-wrap items-center gap-2 px-5 pt-3 sm:px-6">
           <span class="text-sm text-slate-500">Sort by</span>
-          <% [['attention', 'Needs attention first'], ['sold', 'Most sold'], ['left', 'Least left'], ['name', 'Name']].forEach((o, i) => { %>
+          <% [['attention', 'Needs attention first'], ['sold', 'Most sold'], ['soldCost', 'Sold cost'], ['left', 'Least left'], ['name', 'Name']].forEach((o, i) => { %>
             <button type="button" data-sort="<%= o[0] %>" class="sort-btn rounded-full border border-slate-200 px-3 py-1 text-sm font-medium transition-colors <%= i === 0 ? 'border-brand-teal bg-brand-teal/10 text-brand-tealDark' : 'text-slate-600 hover:border-brand-teal/40 hover:text-brand-teal' %>"><%= o[1] %></button>
           <% }) %>
         </div>
@@ -166,12 +193,16 @@
                const leftPct = Math.max(0, 100 - soldPct);
                const leftColor = r.s === 'out' ? 'bg-rose-300' : r.s === 'low' ? 'bg-amber-300' : 'bg-slate-200';
           %>
-            <li class="stock-row px-5 py-4 sm:px-6" data-name="<%= String(r.name).toLowerCase() %>" data-state="<%= r.s %>" data-sold="<%= r.sold %>" data-left="<%= r.left %>" data-sev="<%= sev[r.s] %>" data-index="<%= i %>">
+            <li class="stock-row px-5 py-4 sm:px-6" data-name="<%= String(r.name).toLowerCase() %>" data-state="<%= r.s %>" data-sold="<%= r.sold %>" data-sold-cost="<%= r.soldCost %>" data-left="<%= r.left %>" data-sev="<%= sev[r.s] %>" data-index="<%= i %>">
               <div class="flex items-center gap-3">
                 <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-teal/10 text-sm font-bold text-brand-teal"><%= initial(r.name) %></span>
                 <div class="min-w-0 flex-1">
                   <p class="truncate font-semibold text-slate-800" title="<%= r.name %>" data-hl="<%= r.name %>"><%= r.name %></p>
-                  <p class="mt-0.5 text-xs text-slate-500">Started with <span class="font-semibold tabular-nums text-slate-700"><%= fmt(r.stock) %></span>, sold <span class="font-semibold tabular-nums text-slate-700"><%= fmt(r.sold) %></span><% if (r.stock > 0) { %> (<%= soldPct %>%)<% } %></p>
+                  <p class="mt-0.5 text-xs text-slate-500">
+                    Started with <span class="font-semibold tabular-nums text-slate-700"><%= fmt(r.stock) %></span>,
+                    sold <span class="font-semibold tabular-nums text-slate-700"><%= fmt(r.sold) %></span><% if (r.stock > 0) { %> (<%= soldPct %>%)<% } %>
+                    · Sold cost: <span class="font-semibold tabular-nums text-amber-700">TSh <%= money(r.soldCost) %></span><% if (r.buyPrice > 0) { %> <span class="text-slate-400">(@ TSh <%= money(r.buyPrice) %>/unit)</span><% } %>
+                  </p>
                 </div>
                 <div class="shrink-0 text-right">
                   <p class="text-xl font-extrabold tabular-nums leading-none <%= r.s === 'out' ? 'text-rose-600' : r.s === 'low' ? 'text-amber-600' : 'text-slate-900' %>"><%= fmt(r.left) %></p>
@@ -234,6 +265,7 @@
     var sorters = {
       attention: function (a, b) { return a.dataset.sev - b.dataset.sev || a.dataset.left - b.dataset.left || a.dataset.name.localeCompare(b.dataset.name); },
       sold:      function (a, b) { return b.dataset.sold - a.dataset.sold || a.dataset.name.localeCompare(b.dataset.name); },
+      soldCost:  function (a, b) { return b.dataset.soldCost - a.dataset.soldCost || a.dataset.name.localeCompare(b.dataset.name); },
       left:      function (a, b) { return a.dataset.left - b.dataset.left || a.dataset.name.localeCompare(b.dataset.name); },
       name:      function (a, b) { return a.dataset.name.localeCompare(b.dataset.name); }
     };

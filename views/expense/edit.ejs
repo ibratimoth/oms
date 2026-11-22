@@ -1,6 +1,13 @@
 <%- include('../layouts/header') %>
 <%
   const shops = (typeof businesses !== 'undefined' && businesses) ? businesses : [];
+  const types = (typeof entryTypes !== 'undefined' && Array.isArray(entryTypes) && entryTypes.length)
+    ? entryTypes
+    : [
+        { value: 'OPERATING_EXPENSE', label: 'Operating Expense (Deducts from Profit)', affectsProfit: true },
+        { value: 'RESTOCK_INVENTORY', label: 'Restock Inventory (Does Not Deduct from Profit)', affectsProfit: false }
+      ];
+  const currentType = expense.entry_type === 'RESTOCK_INVENTORY' ? 'RESTOCK_INVENTORY' : 'OPERATING_EXPENSE';
   const field = 'w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-teal focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-teal/20';
   const label = 'mb-1.5 block text-sm font-medium text-slate-700';
   const categories = ['Rent', 'Electricity', 'Water', 'Transport', 'Salaries', 'Stationeries', 'Supplies'];
@@ -28,7 +35,7 @@
     <span id="avatar" class="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-brand-teal text-xl font-bold text-white"><%= initial %></span>
     <div class="min-w-0">
       <h2 id="liveTitle" class="truncate text-2xl font-bold tracking-tight text-brand-tealDark"><%= expense.category %></h2>
-      <p class="mt-0.5 text-sm text-slate-500">Correct the details of this expense.</p>
+      <p class="mt-0.5 text-sm text-slate-500">Correct the details or profit classification of this entry.</p>
     </div>
   </div>
 
@@ -37,6 +44,22 @@
     <!-- ============ Form ============ -->
     <form id="expenseForm" method="POST" action="/expenses/edit/<%= expense.id %>" class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white lg:col-span-2">
       <div class="space-y-8 p-6 sm:p-8">
+
+        <section>
+          <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>How does this affect profit?</h3>
+          <div class="mt-4 grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Entry type" data-original-type="<%= currentType %>">
+            <% types.forEach(t => { const selected = currentType === t.value; const isRestock = t.value === 'RESTOCK_INVENTORY'; %>
+              <label class="type-card flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition-colors <%= selected ? 'border-brand-teal bg-brand-teal/5' : 'border-slate-200 bg-slate-50/60 hover:bg-slate-50' %>">
+                <input type="radio" name="entry_type" value="<%= t.value %>" data-original="<%= currentType %>" <%= selected ? 'checked' : '' %> class="mt-1 h-4 w-4 accent-brand-teal">
+                <div class="min-w-0">
+                  <p class="text-sm font-semibold text-slate-800"><%= isRestock ? 'Restock Inventory' : 'Operating Expense' %></p>
+                  <p class="mt-0.5 text-xs <%= isRestock ? 'text-brand-tealDark' : 'text-rose-700' %>"><%= isRestock ? 'Stock asset · Does not deduct from profit' : 'Running bill/cost · Deducts from profit' %></p>
+                </div>
+              </label>
+            <% }) %>
+          </div>
+          <p id="typeWarn" class="mt-3 hidden items-start gap-2 rounded-xl bg-amber-50 px-3.5 py-2.5 text-sm font-medium text-amber-800" role="status"><i class="fas fa-exclamation-triangle mt-0.5 text-xs"></i><span>Changing the entry type changes whether this amount is deducted from profit.</span></p>
+        </section>
 
         <section>
           <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>How much?</h3>
@@ -62,14 +85,14 @@
                 <button type="button" data-category="<%= c %>" class="cat-chip rounded-full border border-slate-200 px-3 py-1 text-sm font-medium text-slate-600 transition-colors hover:border-brand-teal/40 hover:text-brand-teal"><%= c %></button>
               <% }) %>
             </div>
-            <p id="catWarn" class="mt-3 hidden items-start gap-2 rounded-xl bg-amber-50 px-3.5 py-2.5 text-sm font-medium text-amber-800" role="status"><i class="fas fa-exclamation-triangle mt-0.5 text-xs"></i><span>Changing the category moves this expense to a different group in your reports.</span></p>
+            <p id="catWarn" class="mt-3 hidden items-start gap-2 rounded-xl bg-amber-50 px-3.5 py-2.5 text-sm font-medium text-amber-800" role="status"><i class="fas fa-exclamation-triangle mt-0.5 text-xs"></i><span>Changing the category moves this entry to a different group in your reports.</span></p>
           </div>
         </section>
 
         <section>
           <h3 class="flex items-center gap-2 text-[15px] font-semibold text-slate-800"><span class="h-4 w-1 rounded-full bg-brand-gold"></span>When?</h3>
           <div class="mt-4">
-            <label for="expense_date" class="<%= label %>">Date of the expense</label>
+            <label for="expense_date" class="<%= label %>">Date of the entry</label>
             <div class="flex flex-wrap items-center gap-3">
               <input type="date" id="expense_date" name="expense_date" value="<%= dateVal %>" data-original="<%= dateVal %>" class="<%= field %> w-auto px-3.5">
               <div class="inline-flex rounded-xl bg-slate-100 p-1" role="group" aria-label="Quick dates">
@@ -131,6 +154,8 @@
           <p id="sumSentence" class="text-sm font-medium leading-relaxed text-slate-800"></p>
           <p id="sumBefore" class="mt-4 hidden rounded-xl bg-slate-50 px-3.5 py-2.5 text-xs leading-relaxed text-slate-500"></p>
           <dl class="mt-5 space-y-3 border-t border-slate-100 pt-4 text-sm">
+            <div class="flex items-center justify-between gap-3"><dt class="text-slate-500">Type</dt><dd id="sumType" class="font-semibold text-slate-800">-</dd></div>
+            <div class="flex items-center justify-between gap-3"><dt class="text-slate-500">Profit impact</dt><dd id="sumProfit" class="font-medium text-rose-600">-</dd></div>
             <div class="flex items-center justify-between gap-3"><dt class="text-slate-500">Amount</dt><dd id="sumAmount" class="font-bold tabular-nums text-rose-600">-</dd></div>
             <div class="flex items-center justify-between gap-3"><dt class="text-slate-500">Date</dt><dd id="sumDate" class="text-right font-medium text-slate-700">-</dd></div>
             <div class="flex items-center justify-between gap-3"><dt class="text-slate-500">Shop</dt><dd id="sumShop" class="truncate font-medium text-slate-700">-</dd></div>
@@ -145,8 +170,10 @@
   (function () {
     var $ = function (id) { return document.getElementById(id); };
     var form = $('expenseForm'), amountEl = $('amount'), catEl = $('category'), dateEl = $('expense_date'), noteEl = $('description'), shopEl = $('business_id'), submitting = false;
-    function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; }
+    var typeInputs = Array.prototype.slice.call(form.querySelectorAll('input[name="entry_type"]'));
+    var origType = (typeInputs[0] && typeInputs[0].getAttribute('data-original')) || 'OPERATING_EXPENSE';
 
+    function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; }
     function ymd(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
     function money(v) { return 'TSh ' + Number(v).toLocaleString('en-US', { maximumFractionDigits: 2 }); }
     function parts(s) { var p = s.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); }
@@ -154,11 +181,21 @@
     function shortDate(s) { var d = parts(s); return isNaN(d) ? (s || 'empty') : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); }
     function shopName(v) { if (shopEl.tagName === 'SELECT') { var o = shopEl.querySelector('option[value="' + v + '"]'); return o ? o.textContent : v; } return shopEl.getAttribute('data-name') || v; }
     function orig(n) { return (n.getAttribute('data-original') || '').trim(); }
-    function sentence(amt, cat, date) { return money(amt) + ' spent on ' + String(cat || 'this').toLowerCase() + (date ? ' on ' + longDate(date) : '') + '.'; }
+    function typeLabel(t) { return t === 'RESTOCK_INVENTORY' ? 'Restock Inventory' : 'Operating Expense'; }
+    function selectedType() {
+      var checked = form.querySelector('input[name="entry_type"]:checked');
+      return checked ? checked.value : origType;
+    }
+    function sentence(amt, cat, date, t) {
+      var prefix = t === 'RESTOCK_INVENTORY' ? ' restocking ' : ' operating expense for ';
+      return money(amt) + prefix + String(cat || 'this').toLowerCase() + (date ? ' on ' + longDate(date) : '') + '.';
+    }
 
     function diff() {
       var out = [], amt = parseFloat(amountEl.value), was = parseFloat(amountEl.getAttribute('data-original'));
+      var curType = selectedType();
       function add(label, a, b) { out.push({ label: label, was: a || 'empty', now: b || 'empty' }); }
+      if (curType !== origType) add('Entry type', typeLabel(origType), typeLabel(curType));
       if (isFinite(amt) && amt !== was) add('Amount', money(was), money(amt));
       if (catEl.value.trim() !== orig(catEl)) add('Category', orig(catEl), catEl.value.trim());
       if (dateEl.value !== orig(dateEl)) add('Date', shortDate(orig(dateEl)), shortDate(dateEl.value));
@@ -170,11 +207,22 @@
 
     function refresh() {
       var amt = parseFloat(amountEl.value), hasAmt = isFinite(amt) && amt > 0, cat = catEl.value.trim(), date = dateEl.value;
+      var curType = selectedType(), isRestock = curType === 'RESTOCK_INVENTORY';
 
-      $('liveTitle').textContent = cat || 'Untitled expense'; $('avatar').textContent = (cat || '?').charAt(0).toUpperCase();
+      form.querySelectorAll('.type-card').forEach(function (card) {
+        var input = card.querySelector('input[name="entry_type"]');
+        var active = input && input.value === curType;
+        card.classList.toggle('border-brand-teal', active);
+        card.classList.toggle('bg-brand-teal/5', active);
+        card.classList.toggle('border-slate-200', !active);
+        card.classList.toggle('bg-slate-50/60', !active);
+      });
+
+      $('liveTitle').textContent = cat || 'Untitled entry'; $('avatar').textContent = (cat || '?').charAt(0).toUpperCase();
       $('amountWords').textContent = hasAmt ? money(amt) : ''; $('dateWords').textContent = date ? longDate(date) : '';
       var future = date && parts(date) > new Date(new Date().setHours(23, 59, 59, 999));
       $('futureWarn').classList.toggle('hidden', !future); $('futureWarn').classList.toggle('flex', !!future);
+      var typeChanged = curType !== origType; $('typeWarn').classList.toggle('hidden', !typeChanged); $('typeWarn').classList.toggle('flex', typeChanged);
       var catChanged = cat !== orig(catEl); $('catWarn').classList.toggle('hidden', !catChanged); $('catWarn').classList.toggle('flex', catChanged);
       $('noteCount').textContent = noteEl.value.length;
 
@@ -188,8 +236,17 @@
         b.classList.toggle('bg-white', on); b.classList.toggle('text-brand-tealDark', on); b.classList.toggle('shadow-sm', on); b.classList.toggle('text-slate-600', !on);
       });
 
-      $('sumSentence').textContent = hasAmt && cat ? sentence(amt, cat, date) : 'Fill in the amount and category to see a summary.';
-      $('sumAmount').textContent = hasAmt ? money(amt) : '-'; $('sumDate').textContent = date ? shortDate(date) : '-';
+      $('sumSentence').textContent = hasAmt && cat ? sentence(amt, cat, date, curType) : 'Fill in the amount and category to see a summary.';
+      $('sumType').textContent = typeLabel(curType);
+      var sumProfit = $('sumProfit');
+      sumProfit.textContent = isRestock ? 'No deduction (Stock)' : 'Deducted from profit';
+      sumProfit.className = 'font-medium ' + (isRestock ? 'text-brand-tealDark' : 'text-rose-600');
+
+      var sumAmt = $('sumAmount');
+      sumAmt.textContent = hasAmt ? money(amt) : '-';
+      sumAmt.className = 'font-bold tabular-nums ' + (isRestock ? 'text-brand-tealDark' : 'text-rose-600');
+
+      $('sumDate').textContent = date ? shortDate(date) : '-';
       var shop = shopEl.tagName === 'SELECT' ? ((shopEl.options[shopEl.selectedIndex] || {}).textContent || '') : (shopEl.getAttribute('data-name') || '');
       $('sumShop').textContent = shop || '-';
 
@@ -203,8 +260,8 @@
       });
       $('changesBox').classList.toggle('hidden', !ch.length);
 
-      var before = $('sumBefore'), key = ch.some(function (c) { return c.label === 'Amount' || c.label === 'Category' || c.label === 'Date'; });
-      if (key) { before.textContent = 'Saved now: ' + sentence(amountEl.getAttribute('data-original'), orig(catEl), orig(dateEl)); before.classList.remove('hidden'); } else before.classList.add('hidden');
+      var before = $('sumBefore'), key = ch.some(function (c) { return c.label === 'Amount' || c.label === 'Category' || c.label === 'Date' || c.label === 'Entry type'; });
+      if (key) { before.textContent = 'Saved now: ' + sentence(amountEl.getAttribute('data-original'), orig(catEl), orig(dateEl), origType); before.classList.remove('hidden'); } else before.classList.add('hidden');
 
       $('dirtyDot').className = 'h-2 w-2 rounded-full ' + (ch.length ? 'bg-brand-gold' : 'bg-slate-300');
       $('dirtyText').textContent = ch.length ? ch.length + (ch.length === 1 ? ' unsaved change' : ' unsaved changes') : 'No changes yet';
@@ -215,10 +272,13 @@
     form.addEventListener('input', refresh); form.addEventListener('change', refresh);
     catEl.addEventListener('blur', function () { catEl.value = catEl.value.trim(); refresh(); });
     document.querySelectorAll('.cat-chip').forEach(function (b) { b.addEventListener('click', function () { catEl.value = b.dataset.category; refresh(); }); });
-    document.querySelectorAll('.day-btn').forEach(function (b) { b.addEventListener('click', function () { var d = new Date(); d.setDate(d.getDate() - Number(b.dataset.day)); dateEl.value = ymd(d); refresh(); }); });
+    document.querySelectorAll('.day-btn').forEach(function (b) {
+      b.addEventListener('click', function () { var d = new Date(); d.setDate(d.getDate() - Number(b.dataset.day)); dateEl.value = ymd(d); refresh(); });
+    });
 
     $('discardBtn').addEventListener('click', function () {
       [amountEl, catEl, dateEl, noteEl].forEach(function (i) { i.value = i.getAttribute('data-original'); });
+      typeInputs.forEach(function (r) { r.checked = r.value === origType; });
       if (shopEl.tagName === 'SELECT') shopEl.value = shopEl.getAttribute('data-original');
       refresh();
     });
